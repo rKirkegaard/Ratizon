@@ -6,6 +6,7 @@ import { planningRouter } from "./planning.routes.js";
 import { wellnessRouter } from "./wellness.routes.js";
 import { aiCoachingRouter } from "./ai-coaching.routes.js";
 import { equipmentRouter } from "./equipment.routes.js";
+import { sportRouter } from "./sport.routes.js";
 
 export function registerRoutes(app: Express): void {
   app.use("/api/athletes", athleteRouter);
@@ -15,4 +16,5 @@ export function registerRoutes(app: Express): void {
   app.use("/api/wellness", wellnessRouter);
   app.use("/api/ai-coaching", aiCoachingRouter);
   app.use("/api/equipment", equipmentRouter);
+  app.use("/api/sports", sportRouter);
 }

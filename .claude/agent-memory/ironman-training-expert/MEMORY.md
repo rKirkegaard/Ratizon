@@ -1,0 +1,2 @@
+- [Sport-type arkitektur](project_sport-architecture-decision.md) — Beslutning om dynamisk SportType med 6 sportsgrene og SportConfig registry-pattern
+- [Sport-farve standarder](project_sport-colors-standard.md) — Standard-farver per sport der matcher industri-konventioner

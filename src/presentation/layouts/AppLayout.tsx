@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Outlet, NavLink } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -10,6 +10,9 @@ import {
   Footprints,
   Bike,
   Waves,
+  Dumbbell,
+  Mountain,
+  Flame,
   Target,
   List,
   Upload,
@@ -19,8 +22,21 @@ import {
   ChevronRight,
   MessageCircle,
   X,
+  type LucideIcon,
 } from "lucide-react";
 import { useUiStore } from "@/application/stores/uiStore";
+import { useAthleteStore } from "@/application/stores/athleteStore";
+
+const ICON_MAP: Record<string, LucideIcon> = {
+  waves: Waves,
+  bike: Bike,
+  footprints: Footprints,
+  dumbbell: Dumbbell,
+  mountain: Mountain,
+  flame: Flame,
+  heart: Heart,
+  activity: Activity,
+};
 
 interface NavItem {
   label: string;
@@ -33,7 +49,7 @@ interface NavSection {
   items: NavItem[];
 }
 
-const navSections: NavSection[] = [
+const STATIC_SECTIONS_BEFORE: NavSection[] = [
   {
     title: "DAGLIGT",
     items: [
@@ -50,14 +66,9 @@ const navSections: NavSection[] = [
       { label: "Wellness", path: "/wellness", icon: <Heart size={18} /> },
     ],
   },
-  {
-    title: "DISCIPLIN",
-    items: [
-      { label: "Lob", path: "/loeb", icon: <Footprints size={18} /> },
-      { label: "Cykling", path: "/cykling", icon: <Bike size={18} /> },
-      { label: "Svomning", path: "/svoemning", icon: <Waves size={18} /> },
-    ],
-  },
+];
+
+const STATIC_SECTIONS_AFTER: NavSection[] = [
   {
     title: "PLAN & MAAL",
     items: [
@@ -80,9 +91,40 @@ const navSections: NavSection[] = [
   },
 ];
 
+// Fallback discipline items when no sport configs are loaded
+const FALLBACK_DISCIPLINE_ITEMS: NavItem[] = [
+  { label: "Lob", path: "/disciplin/run", icon: <Footprints size={18} /> },
+  { label: "Cykling", path: "/disciplin/bike", icon: <Bike size={18} /> },
+  { label: "Svomning", path: "/disciplin/swim", icon: <Waves size={18} /> },
+];
+
 export default function AppLayout() {
   const { sidebarCollapsed, setSidebarCollapsed, aiPanelOpen, setAiPanelOpen } = useUiStore();
+  const getSportsWithPages = useAthleteStore((s) => s.getSportsWithPages);
   const [aiInput, setAiInput] = useState("");
+
+  const navSections = useMemo(() => {
+    const sportsWithPages = getSportsWithPages();
+
+    const disciplineItems: NavItem[] =
+      sportsWithPages.length > 0
+        ? sportsWithPages.map((sport) => {
+            const IconComponent = ICON_MAP[sport.icon] ?? Activity;
+            return {
+              label: sport.display_name,
+              path: `/disciplin/${sport.sport_key}`,
+              icon: <IconComponent size={18} style={{ color: sport.color }} />,
+            };
+          })
+        : FALLBACK_DISCIPLINE_ITEMS;
+
+    const disciplineSection: NavSection = {
+      title: "DISCIPLIN",
+      items: disciplineItems,
+    };
+
+    return [...STATIC_SECTIONS_BEFORE, disciplineSection, ...STATIC_SECTIONS_AFTER];
+  }, [getSportsWithPages]);
 
   return (
     <div data-testid="app-layout" className="flex h-screen overflow-hidden bg-background">
@@ -108,9 +150,9 @@ export default function AppLayout() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-2">
+        <nav data-testid="sidebar-nav" className="flex-1 overflow-y-auto py-2">
           {navSections.map((section) => (
-            <div key={section.title} className="mb-2">
+            <div key={section.title} data-testid={`nav-section-${section.title.toLowerCase()}`} className="mb-2">
               {!sidebarCollapsed && (
                 <div className="px-4 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   {section.title}
@@ -120,6 +162,7 @@ export default function AppLayout() {
                 <NavLink
                   key={item.path}
                   to={item.path}
+                  data-testid={`nav-item-${item.path.replace(/\//g, "-").slice(1)}`}
                   className={({ isActive }) =>
                     `flex items-center gap-3 px-4 py-2 text-sm transition-colors ${
                       isActive

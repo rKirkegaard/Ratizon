@@ -6,9 +6,7 @@ import WeeklyReportPage from "@/presentation/pages/WeeklyReportPage";
 import PerformancePage from "@/presentation/pages/PerformancePage";
 import LoadRecoveryPage from "@/presentation/pages/LoadRecoveryPage";
 import WellnessPage from "@/presentation/pages/WellnessPage";
-import RunningPage from "@/presentation/pages/RunningPage";
-import CyclingPage from "@/presentation/pages/CyclingPage";
-import SwimmingPage from "@/presentation/pages/SwimmingPage";
+import DisciplinePage from "@/presentation/pages/DisciplinePage";
 import SeasonGoalsPage from "@/presentation/pages/SeasonGoalsPage";
 import SessionsPage from "@/presentation/pages/SessionsPage";
 import UploadPage from "@/presentation/pages/UploadPage";
@@ -32,9 +30,7 @@ export const routes: RouteObject[] = [
       { path: "performance", element: <PerformancePage /> },
       { path: "load-restitution", element: <LoadRecoveryPage /> },
       { path: "wellness", element: <WellnessPage /> },
-      { path: "loeb", element: <RunningPage /> },
-      { path: "cykling", element: <CyclingPage /> },
-      { path: "svoemning", element: <SwimmingPage /> },
+      { path: "disciplin/:sportKey", element: <DisciplinePage /> },
       { path: "saeson-maal", element: <SeasonGoalsPage /> },
       { path: "sessioner", element: <SessionsPage /> },
       { path: "upload", element: <UploadPage /> },

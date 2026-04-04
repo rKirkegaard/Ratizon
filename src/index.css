@@ -4,10 +4,12 @@
 
 @layer base {
   :root {
-    /* Sport colors */
+    /* Sport colors are defaults — actual colors come from sport_configs per athlete */
     --sport-swim: #3c82f6;
     --sport-bike: #4ec65e;
     --sport-run: #f97429;
+    --sport-strength: #a855f7;
+    --sport-other: #6b7280;
 
     /* Zone colors */
     --zone-1: #3A7BFF;

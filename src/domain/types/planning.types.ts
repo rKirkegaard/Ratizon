@@ -28,11 +28,8 @@ export interface AthleteTrainingPhase {
   notes: string | null;
 }
 
-export interface DisciplineSplit {
-  swimPct: number;
-  bikePct: number;
-  runPct: number;
-}
+/** Dynamic discipline split — keys are sport_key strings, values are percentages */
+export type DisciplineSplit = Record<string, number>;
 
 export interface WeeklyBudget {
   id: string;
@@ -40,10 +37,8 @@ export interface WeeklyBudget {
   phaseId: string | null;
   weekStartDate: string;
   totalHours: number;
-  swimHours: number;
-  bikeHours: number;
-  runHours: number;
-  strengthHours: number;
+  /** Dynamic sport hours — keys are sport_key strings (e.g. 'swim', 'bike', 'run', 'strength') */
+  sportHours: Record<string, number>;
   targetTss: number | null;
   notes: string | null;
 }

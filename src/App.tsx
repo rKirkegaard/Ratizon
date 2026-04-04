@@ -6,9 +6,7 @@ import WeeklyReportPage from "@/presentation/pages/WeeklyReportPage";
 import PerformancePage from "@/presentation/pages/PerformancePage";
 import LoadRecoveryPage from "@/presentation/pages/LoadRecoveryPage";
 import WellnessPage from "@/presentation/pages/WellnessPage";
-import RunningPage from "@/presentation/pages/RunningPage";
-import CyclingPage from "@/presentation/pages/CyclingPage";
-import SwimmingPage from "@/presentation/pages/SwimmingPage";
+import DisciplinePage from "@/presentation/pages/DisciplinePage";
 import SeasonGoalsPage from "@/presentation/pages/SeasonGoalsPage";
 import SessionsPage from "@/presentation/pages/SessionsPage";
 import UploadPage from "@/presentation/pages/UploadPage";
@@ -28,9 +26,7 @@ export default function App() {
         <Route path="/performance" element={<PerformancePage />} />
         <Route path="/load-restitution" element={<LoadRecoveryPage />} />
         <Route path="/wellness" element={<WellnessPage />} />
-        <Route path="/loeb" element={<RunningPage />} />
-        <Route path="/cykling" element={<CyclingPage />} />
-        <Route path="/svoemning" element={<SwimmingPage />} />
+        <Route path="/disciplin/:sportKey" element={<DisciplinePage />} />
         <Route path="/saeson-maal" element={<SeasonGoalsPage />} />
         <Route path="/sessioner" element={<SessionsPage />} />
         <Route path="/upload" element={<UploadPage />} />

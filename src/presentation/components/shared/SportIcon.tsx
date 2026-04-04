@@ -1,32 +1,45 @@
-import { Waves, Bike, Footprints } from "lucide-react";
+import {
+  Waves,
+  Bike,
+  Footprints,
+  Dumbbell,
+  Mountain,
+  Flame,
+  Heart,
+  Activity,
+  type LucideIcon,
+} from "lucide-react";
+import { useAthleteStore } from "@/application/stores/athleteStore";
 
-type Sport = "swim" | "bike" | "run";
+const ICON_MAP: Record<string, LucideIcon> = {
+  waves: Waves,
+  bike: Bike,
+  footprints: Footprints,
+  dumbbell: Dumbbell,
+  mountain: Mountain,
+  flame: Flame,
+  heart: Heart,
+  activity: Activity,
+};
 
 interface SportIconProps {
-  sport: Sport;
+  sport: string;
   size?: number;
   className?: string;
+  color?: string;
 }
 
-const sportColorVars: Record<Sport, string> = {
-  swim: "var(--sport-swim)",
-  bike: "var(--sport-bike)",
-  run: "var(--sport-run)",
-};
+export function SportIcon({ sport, size = 18, className, color }: SportIconProps) {
+  const getSportColor = useAthleteStore((s) => s.getSportColor);
+  const getSportIcon = useAthleteStore((s) => s.getSportIcon);
 
-const sportIcons: Record<Sport, typeof Waves> = {
-  swim: Waves,
-  bike: Bike,
-  run: Footprints,
-};
-
-export function SportIcon({ sport, size = 18, className }: SportIconProps) {
-  const Icon = sportIcons[sport];
-  const color = sportColorVars[sport];
+  const iconName = getSportIcon(sport);
+  const resolvedColor = color ?? getSportColor(sport);
+  const Icon = ICON_MAP[iconName] ?? Activity;
 
   return (
-    <span data-testid="sport-icon" className={className}>
-      <Icon size={size} style={{ color }} />
+    <span data-testid="sport-icon" data-sport={sport} className={className}>
+      <Icon size={size} style={{ color: resolvedColor }} />
     </span>
   );
 }
