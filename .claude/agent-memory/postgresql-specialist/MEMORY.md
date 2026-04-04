@@ -1,0 +1,2 @@
+- [IronCoach → Ratizon migration](project_migration.md) — connection strings, table status, column mapping quirks (zone pct→seconds, missing daily_tss, SERIAL PKs, chat ID remapping)
+- [Ratizon project stack](project_stack.md) — packages in root node_modules, run scripts with `npx tsx` from repo root
