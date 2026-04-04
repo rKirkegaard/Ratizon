@@ -1,23 +1,25 @@
-import { Router, Request, Response } from "express";
+import { Router } from "express";
+import {
+  getDailyBriefing,
+  forceGenerateBriefing,
+  getSessionFeedbackRoute,
+  generateSessionFeedbackRoute,
+  getAlerts,
+  chat,
+} from "../controllers/ai-coaching.controller.js";
 
 export const aiCoachingRouter = Router();
 
-aiCoachingRouter.get("/health", (_req: Request, res: Response) => {
-  res.json({ status: "ok", module: "ai-coaching" });
-});
+// Daily briefing
+aiCoachingRouter.get("/:athleteId/daily-briefing", getDailyBriefing);
+aiCoachingRouter.post("/:athleteId/daily-briefing/generate", forceGenerateBriefing);
 
-aiCoachingRouter.get("/briefing/:athleteId", (req: Request, res: Response) => {
-  res.json({ data: null, message: `Daglig briefing for atlet ${req.params.athleteId} hentet` });
-});
+// Session feedback
+aiCoachingRouter.get("/:athleteId/session-feedback/:sessionId", getSessionFeedbackRoute);
+aiCoachingRouter.post("/:athleteId/session-feedback/:sessionId/generate", generateSessionFeedbackRoute);
 
-aiCoachingRouter.get("/alerts/:athleteId", (req: Request, res: Response) => {
-  res.json({ data: [], message: `Alerts for atlet ${req.params.athleteId} hentet` });
-});
+// Alerts
+aiCoachingRouter.get("/:athleteId/alerts", getAlerts);
 
-aiCoachingRouter.get("/conversations/:athleteId", (req: Request, res: Response) => {
-  res.json({ data: [], message: `Samtaler for atlet ${req.params.athleteId} hentet` });
-});
-
-aiCoachingRouter.post("/chat", (_req: Request, res: Response) => {
-  res.json({ data: null, message: "Chat besked modtaget" });
-});
+// Chat
+aiCoachingRouter.post("/:athleteId/chat", chat);

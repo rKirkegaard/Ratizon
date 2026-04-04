@@ -1,4 +1,5 @@
 import type { Express } from "express";
+import { authRouter } from "./auth.routes.js";
 import { athleteRouter } from "./athlete.routes.js";
 import { trainingRouter } from "./training.routes.js";
 import { analyticsRouter } from "./analytics.routes.js";
@@ -8,15 +9,20 @@ import { dashboardRouter } from "./dashboard.routes.js";
 import { aiCoachingRouter } from "./ai-coaching.routes.js";
 import { equipmentRouter } from "./equipment.routes.js";
 import { sportRouter } from "./sport.routes.js";
+import { authenticateToken } from "../middleware/auth.middleware.js";
 
 export function registerRoutes(app: Express): void {
-  app.use("/api/athletes", athleteRouter);
-  app.use("/api/training", trainingRouter);
-  app.use("/api/analytics", analyticsRouter);
-  app.use("/api/planning", planningRouter);
-  app.use("/api/wellness", wellnessRouter);
-  app.use("/api/dashboard", dashboardRouter);
-  app.use("/api/ai-coaching", aiCoachingRouter);
-  app.use("/api/equipment", equipmentRouter);
-  app.use("/api/sports", sportRouter);
+  // Public routes (no auth required)
+  app.use("/api/auth", authRouter);
+
+  // Protected routes (require valid JWT)
+  app.use("/api/athletes", authenticateToken, athleteRouter);
+  app.use("/api/training", authenticateToken, trainingRouter);
+  app.use("/api/analytics", authenticateToken, analyticsRouter);
+  app.use("/api/planning", authenticateToken, planningRouter);
+  app.use("/api/wellness", authenticateToken, wellnessRouter);
+  app.use("/api/dashboard", authenticateToken, dashboardRouter);
+  app.use("/api/ai-coaching", authenticateToken, aiCoachingRouter);
+  app.use("/api/equipment", authenticateToken, equipmentRouter);
+  app.use("/api/sports", authenticateToken, sportRouter);
 }
