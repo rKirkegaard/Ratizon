@@ -3,10 +3,14 @@ import { db } from "../../infrastructure/database/connection.js";
 import {
   athletePmc,
   sessionAnalytics,
+  sessionPowerCurve,
+  athletePowerRecords,
 } from "../../infrastructure/database/schema/analytics.schema.js";
 import {
   sessions,
   plannedSessions,
+  sessionTrackpoints,
+  sessionLaps,
 } from "../../infrastructure/database/schema/training.schema.js";
 import { sportConfigs } from "../../infrastructure/database/schema/sport.schema.js";
 import { eq, and, gte, lte, asc, desc, sql } from "drizzle-orm";
@@ -870,6 +874,492 @@ export async function getSportBalance(req: Request, res: Response) {
     res.json({ data });
   } catch (error: any) {
     console.error("Fejl ved hentning af sport balance:", error);
+    res.status(500).json({ error: error.message || "Intern serverfejl" });
+  }
+}
+
+// ===========================================================================
+// Fase 3 — Running: Cadence Distribution
+// ===========================================================================
+
+/**
+ * GET /api/analytics/:athleteId/running/cadence-distribution?days=90
+ * Group trackpoint cadence by 5-spm buckets, return [{spm, pctTime}]
+ */
+export async function getRunningCadenceDistribution(req: Request, res: Response) {
+  try {
+    const athleteId = req.params.athleteId as string;
+    const days = parseInt(req.query.days as string) || 90;
+
+    const sinceDate = new Date();
+    sinceDate.setDate(sinceDate.getDate() - days);
+
+    const rows = await db
+      .select({
+        bucket: sql<number>`FLOOR(${sessionTrackpoints.cadence} / 5) * 5`,
+        count: sql<number>`COUNT(*)`,
+      })
+      .from(sessionTrackpoints)
+      .innerJoin(sessions, eq(sessionTrackpoints.sessionId, sessions.id))
+      .where(
+        and(
+          eq(sessions.athleteId, athleteId),
+          eq(sessions.sport, "run"),
+          gte(sessions.startedAt, sinceDate),
+          sql`${sessionTrackpoints.cadence} IS NOT NULL`,
+          sql`${sessionTrackpoints.cadence} > 0`
+        )
+      )
+      .groupBy(sql`FLOOR(${sessionTrackpoints.cadence} / 5) * 5`)
+      .orderBy(sql`FLOOR(${sessionTrackpoints.cadence} / 5) * 5`);
+
+    const totalCount = rows.reduce((sum, r) => sum + Number(r.count), 0);
+
+    const data = rows.map((r) => ({
+      spm: Number(r.bucket),
+      pctTime: totalCount > 0 ? r2((Number(r.count) / totalCount) * 100) : 0,
+    }));
+
+    res.json({ data });
+  } catch (error: any) {
+    console.error("Fejl ved hentning af lobe-kadence-fordeling:", error);
+    res.status(500).json({ error: error.message || "Intern serverfejl" });
+  }
+}
+
+// ===========================================================================
+// Fase 3 — Running: GCT Balance
+// ===========================================================================
+
+/**
+ * GET /api/analytics/:athleteId/running/gct-balance?days=90
+ * From session_laps: avg GCT (avgCadence as proxy) per session over time
+ */
+export async function getRunningGCTBalance(req: Request, res: Response) {
+  try {
+    const athleteId = req.params.athleteId as string;
+    const days = parseInt(req.query.days as string) || 90;
+
+    const sinceDate = new Date();
+    sinceDate.setDate(sinceDate.getDate() - days);
+
+    // Use avg cadence from laps as GCT proxy (GCT ~= 60000/cadence ms per step)
+    const rows = await db
+      .select({
+        sessionId: sessions.id,
+        startedAt: sessions.startedAt,
+        avgCadence: sql<number>`AVG(${sessionLaps.avgCadence})`,
+      })
+      .from(sessions)
+      .innerJoin(sessionLaps, eq(sessions.id, sessionLaps.sessionId))
+      .where(
+        and(
+          eq(sessions.athleteId, athleteId),
+          eq(sessions.sport, "run"),
+          gte(sessions.startedAt, sinceDate),
+          sql`${sessionLaps.avgCadence} IS NOT NULL`,
+          sql`${sessionLaps.avgCadence} > 0`
+        )
+      )
+      .groupBy(sessions.id, sessions.startedAt)
+      .orderBy(asc(sessions.startedAt));
+
+    const data = rows.map((r) => {
+      const cadence = Number(r.avgCadence);
+      // GCT in ms = 60000 / (cadence * 2) — cadence is steps per minute for both feet
+      const avgGct = cadence > 0 ? r2(60000 / cadence) : 0;
+      return {
+        date: r.startedAt.toISOString(),
+        sessionId: r.sessionId.toString(),
+        avgGct,
+      };
+    });
+
+    res.json({ data });
+  } catch (error: any) {
+    console.error("Fejl ved hentning af GCT balance:", error);
+    res.status(500).json({ error: error.message || "Intern serverfejl" });
+  }
+}
+
+// ===========================================================================
+// Fase 3 — Running: Vertical Ratio
+// ===========================================================================
+
+/**
+ * GET /api/analytics/:athleteId/running/vertical-ratio?days=90
+ * From session_laps: avg vertical oscillation proxy per session
+ */
+export async function getRunningVerticalRatio(req: Request, res: Response) {
+  try {
+    const athleteId = req.params.athleteId as string;
+    const days = parseInt(req.query.days as string) || 90;
+
+    const sinceDate = new Date();
+    sinceDate.setDate(sinceDate.getDate() - days);
+
+    // Vertical oscillation: use pace and cadence as proxy
+    // VO estimate = stride_length * vertical_ratio_constant
+    // We use avg pace as indicator — lower pace means higher efficiency
+    const rows = await db
+      .select({
+        sessionId: sessions.id,
+        startedAt: sessions.startedAt,
+        avgPace: sessions.avgPace,
+        avgCadence: sql<number>`AVG(${sessionLaps.avgCadence})`,
+      })
+      .from(sessions)
+      .innerJoin(sessionLaps, eq(sessions.id, sessionLaps.sessionId))
+      .where(
+        and(
+          eq(sessions.athleteId, athleteId),
+          eq(sessions.sport, "run"),
+          gte(sessions.startedAt, sinceDate),
+          sql`${sessions.avgPace} IS NOT NULL`,
+          sql`${sessionLaps.avgCadence} IS NOT NULL`
+        )
+      )
+      .groupBy(sessions.id, sessions.startedAt, sessions.avgPace)
+      .orderBy(asc(sessions.startedAt));
+
+    const data = rows.map((r) => {
+      const pace = Number(r.avgPace) || 0;
+      const cadence = Number(r.avgCadence) || 0;
+      // Estimate stride length (m) = 1000 / (pace * cadence / 60)
+      // Estimate VO (cm) ~ stride_length * 6.5 (empirical ratio for recreational runners)
+      let avgVo = 0;
+      if (pace > 0 && cadence > 0) {
+        const strideLengthM = 1000 / (pace * cadence / 60);
+        avgVo = r2(strideLengthM * 6.5);
+      }
+      return {
+        date: r.startedAt.toISOString(),
+        sessionId: r.sessionId.toString(),
+        avgVo,
+      };
+    });
+
+    res.json({ data });
+  } catch (error: any) {
+    console.error("Fejl ved hentning af vertical ratio:", error);
+    res.status(500).json({ error: error.message || "Intern serverfejl" });
+  }
+}
+
+// ===========================================================================
+// Fase 3 — Cycling: Power Curve
+// ===========================================================================
+
+/**
+ * GET /api/analytics/:athleteId/cycling/power-curve
+ * From session_power_curve + athlete_power_records
+ * Returns [{durationSec, durationLabel, current90d, allTimeBest}]
+ */
+export async function getCyclingPowerCurve(req: Request, res: Response) {
+  try {
+    const athleteId = req.params.athleteId as string;
+
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
+    // Recent 90-day best power per duration from session_power_curve
+    const recentRows = await db
+      .select({
+        durationSeconds: sessionPowerCurve.durationSeconds,
+        maxPower: sql<number>`MAX(${sessionPowerCurve.maxPower})`,
+      })
+      .from(sessionPowerCurve)
+      .innerJoin(sessions, eq(sessionPowerCurve.sessionId, sessions.id))
+      .where(
+        and(
+          eq(sessions.athleteId, athleteId),
+          eq(sessions.sport, "bike"),
+          gte(sessions.startedAt, ninetyDaysAgo)
+        )
+      )
+      .groupBy(sessionPowerCurve.durationSeconds)
+      .orderBy(asc(sessionPowerCurve.durationSeconds));
+
+    // All-time best from athlete_power_records
+    const allTimeRows = await db
+      .select({
+        durationSeconds: athletePowerRecords.durationSeconds,
+        maxPower: athletePowerRecords.maxPower,
+      })
+      .from(athletePowerRecords)
+      .where(
+        and(
+          eq(athletePowerRecords.athleteId, athleteId),
+          eq(athletePowerRecords.sport, "bike")
+        )
+      )
+      .orderBy(asc(athletePowerRecords.durationSeconds));
+
+    // Build duration label map
+    function durationLabel(sec: number): string {
+      if (sec < 60) return `${sec}s`;
+      if (sec < 3600) return `${Math.floor(sec / 60)}m`;
+      return `${Math.floor(sec / 3600)}t`;
+    }
+
+    // Merge recent and all-time into unified durations
+    const allDurations = new Set<number>();
+    for (const r of recentRows) allDurations.add(r.durationSeconds);
+    for (const r of allTimeRows) allDurations.add(r.durationSeconds);
+
+    const recentMap = new Map(recentRows.map((r) => [r.durationSeconds, Number(r.maxPower)]));
+    const allTimeMap = new Map(allTimeRows.map((r) => [r.durationSeconds, r.maxPower]));
+
+    const data = Array.from(allDurations)
+      .sort((a, b) => a - b)
+      .map((dur) => ({
+        durationSec: dur,
+        durationLabel: durationLabel(dur),
+        current90d: recentMap.get(dur) ?? null,
+        allTimeBest: allTimeMap.get(dur) ?? null,
+      }));
+
+    res.json({ data });
+  } catch (error: any) {
+    console.error("Fejl ved hentning af power curve:", error);
+    res.status(500).json({ error: error.message || "Intern serverfejl" });
+  }
+}
+
+// ===========================================================================
+// Fase 3 — Cycling: Zone Distribution
+// ===========================================================================
+
+/**
+ * GET /api/analytics/:athleteId/cycling/zone-distribution?days=90
+ * Monthly zone distribution for bike sessions
+ */
+export async function getCyclingZoneDistribution(req: Request, res: Response) {
+  try {
+    const athleteId = req.params.athleteId as string;
+    const days = parseInt(req.query.days as string) || 90;
+
+    const sinceDate = new Date();
+    sinceDate.setDate(sinceDate.getDate() - days);
+
+    const MONTH_NAMES = [
+      "Jan", "Feb", "Mar", "Apr", "Maj", "Jun",
+      "Jul", "Aug", "Sep", "Okt", "Nov", "Dec",
+    ];
+
+    const rows = await db
+      .select({
+        month: sql<string>`TO_CHAR(${sessions.startedAt}, 'YYYY-MM')`,
+        z1: sql<number>`SUM(${sessionAnalytics.zone1Seconds})`,
+        z2: sql<number>`SUM(${sessionAnalytics.zone2Seconds})`,
+        z3: sql<number>`SUM(${sessionAnalytics.zone3Seconds})`,
+        z4: sql<number>`SUM(${sessionAnalytics.zone4Seconds})`,
+        z5: sql<number>`SUM(${sessionAnalytics.zone5Seconds})`,
+      })
+      .from(sessions)
+      .innerJoin(sessionAnalytics, eq(sessions.id, sessionAnalytics.sessionId))
+      .where(
+        and(
+          eq(sessions.athleteId, athleteId),
+          eq(sessions.sport, "bike"),
+          gte(sessions.startedAt, sinceDate)
+        )
+      )
+      .groupBy(sql`TO_CHAR(${sessions.startedAt}, 'YYYY-MM')`)
+      .orderBy(sql`TO_CHAR(${sessions.startedAt}, 'YYYY-MM')`);
+
+    const data = rows.map((r) => {
+      const totalSec =
+        Number(r.z1) + Number(r.z2) + Number(r.z3) + Number(r.z4) + Number(r.z5);
+      const monthIdx = parseInt(r.month.split("-")[1]) - 1;
+      return {
+        month: r.month,
+        monthName: MONTH_NAMES[monthIdx] ?? r.month,
+        z1: totalSec > 0 ? r2((Number(r.z1) / totalSec) * 100) : 0,
+        z2: totalSec > 0 ? r2((Number(r.z2) / totalSec) * 100) : 0,
+        z3: totalSec > 0 ? r2((Number(r.z3) / totalSec) * 100) : 0,
+        z4: totalSec > 0 ? r2((Number(r.z4) / totalSec) * 100) : 0,
+        z5: totalSec > 0 ? r2((Number(r.z5) / totalSec) * 100) : 0,
+      };
+    });
+
+    res.json({ data });
+  } catch (error: any) {
+    console.error("Fejl ved hentning af cykel-zone-fordeling:", error);
+    res.status(500).json({ error: error.message || "Intern serverfejl" });
+  }
+}
+
+// ===========================================================================
+// Fase 3 — Cycling: Cadence vs Power
+// ===========================================================================
+
+/**
+ * GET /api/analytics/:athleteId/cycling/cadence-power?days=90
+ * Sample trackpoints: cadence vs power (max 2000 points, random sample)
+ */
+export async function getCyclingCadencePower(req: Request, res: Response) {
+  try {
+    const athleteId = req.params.athleteId as string;
+    const days = parseInt(req.query.days as string) || 90;
+
+    const sinceDate = new Date();
+    sinceDate.setDate(sinceDate.getDate() - days);
+
+    const rows = await db
+      .select({
+        cadence: sessionTrackpoints.cadence,
+        power: sessionTrackpoints.power,
+        sessionId: sessionTrackpoints.sessionId,
+      })
+      .from(sessionTrackpoints)
+      .innerJoin(sessions, eq(sessionTrackpoints.sessionId, sessions.id))
+      .where(
+        and(
+          eq(sessions.athleteId, athleteId),
+          eq(sessions.sport, "bike"),
+          gte(sessions.startedAt, sinceDate),
+          sql`${sessionTrackpoints.cadence} IS NOT NULL`,
+          sql`${sessionTrackpoints.cadence} > 0`,
+          sql`${sessionTrackpoints.power} IS NOT NULL`,
+          sql`${sessionTrackpoints.power} > 0`
+        )
+      )
+      .orderBy(sql`RANDOM()`)
+      .limit(2000);
+
+    const data = rows.map((r) => ({
+      cadence: r.cadence!,
+      power: r.power!,
+      sessionId: r.sessionId.toString(),
+    }));
+
+    res.json({ data });
+  } catch (error: any) {
+    console.error("Fejl ved hentning af kadence-power:", error);
+    res.status(500).json({ error: error.message || "Intern serverfejl" });
+  }
+}
+
+// ===========================================================================
+// Fase 3 — Swimming: Pace Progression
+// ===========================================================================
+
+/**
+ * GET /api/analytics/:athleteId/swimming/pace-progression
+ * Avg pace per swim session [{date, sessionId, avgPace}]
+ */
+export async function getSwimPaceProgression(req: Request, res: Response) {
+  try {
+    const athleteId = req.params.athleteId as string;
+
+    const rows = await db
+      .select({
+        id: sessions.id,
+        startedAt: sessions.startedAt,
+        avgPace: sessions.avgPace,
+        distanceMeters: sessions.distanceMeters,
+        durationSeconds: sessions.durationSeconds,
+      })
+      .from(sessions)
+      .where(
+        and(
+          eq(sessions.athleteId, athleteId),
+          eq(sessions.sport, "swim"),
+          sql`${sessions.avgPace} IS NOT NULL OR (${sessions.distanceMeters} IS NOT NULL AND ${sessions.distanceMeters} > 0)`
+        )
+      )
+      .orderBy(asc(sessions.startedAt));
+
+    const data = rows
+      .map((r) => {
+        // avgPace stored as seconds per km; convert to seconds per 100m
+        let pacePerHundred: number | null = null;
+        if (r.avgPace && r.avgPace > 0) {
+          pacePerHundred = r2(r.avgPace / 10); // s/km -> s/100m
+        } else if (r.distanceMeters && r.distanceMeters > 0) {
+          pacePerHundred = r2((r.durationSeconds / r.distanceMeters) * 100);
+        }
+        if (pacePerHundred === null || pacePerHundred <= 0) return null;
+        return {
+          date: r.startedAt.toISOString(),
+          sessionId: r.id.toString(),
+          avgPace: pacePerHundred,
+        };
+      })
+      .filter(Boolean);
+
+    res.json({ data });
+  } catch (error: any) {
+    console.error("Fejl ved hentning af svomme-pace-progression:", error);
+    res.status(500).json({ error: error.message || "Intern serverfejl" });
+  }
+}
+
+// ===========================================================================
+// Fase 3 — Swimming: SWOLF Trend
+// ===========================================================================
+
+/**
+ * GET /api/analytics/:athleteId/swimming/swolf-trend
+ * Avg SWOLF per swim session [{date, sessionId, avgSwolf}]
+ * SWOLF = time per 25m length + strokes per length
+ * Approximated from pace and cadence
+ */
+export async function getSwimSwolfTrend(req: Request, res: Response) {
+  try {
+    const athleteId = req.params.athleteId as string;
+
+    const rows = await db
+      .select({
+        id: sessions.id,
+        startedAt: sessions.startedAt,
+        avgPace: sessions.avgPace,
+        avgCadence: sessions.avgCadence,
+        distanceMeters: sessions.distanceMeters,
+        durationSeconds: sessions.durationSeconds,
+      })
+      .from(sessions)
+      .where(
+        and(
+          eq(sessions.athleteId, athleteId),
+          eq(sessions.sport, "swim"),
+          sql`${sessions.avgCadence} IS NOT NULL`,
+          sql`${sessions.avgCadence} > 0`
+        )
+      )
+      .orderBy(asc(sessions.startedAt));
+
+    const data = rows
+      .map((r) => {
+        // Time per 25m length in seconds
+        let timePer25: number;
+        if (r.avgPace && r.avgPace > 0) {
+          timePer25 = (r.avgPace / 1000) * 25; // s/km * 25m / 1000
+        } else if (r.distanceMeters && r.distanceMeters > 0) {
+          timePer25 = (r.durationSeconds / r.distanceMeters) * 25;
+        } else {
+          return null;
+        }
+
+        // Strokes per 25m length: cadence is strokes/min
+        const strokesPerMin = r.avgCadence!;
+        const strokesPer25 = (strokesPerMin / 60) * timePer25;
+
+        const swolf = r2(timePer25 + strokesPer25);
+        if (swolf <= 0) return null;
+
+        return {
+          date: r.startedAt.toISOString(),
+          sessionId: r.id.toString(),
+          avgSwolf: swolf,
+        };
+      })
+      .filter(Boolean);
+
+    res.json({ data });
+  } catch (error: any) {
+    console.error("Fejl ved hentning af SWOLF trend:", error);
     res.status(500).json({ error: error.message || "Intern serverfejl" });
   }
 }

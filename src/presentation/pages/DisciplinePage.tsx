@@ -3,12 +3,14 @@ import { useAthleteStore } from "@/application/stores/athleteStore";
 import RunningPage from "@/presentation/pages/RunningPage";
 import CyclingPage from "@/presentation/pages/CyclingPage";
 import SwimmingPage from "@/presentation/pages/SwimmingPage";
+import StrengthPage from "@/presentation/pages/StrengthPage";
 import { SportIcon } from "@/presentation/components/shared/SportIcon";
 
 const SPECIFIC_PAGES: Record<string, React.ComponentType> = {
   run: RunningPage,
   bike: CyclingPage,
   swim: SwimmingPage,
+  strength: StrengthPage,
 };
 
 export default function DisciplinePage() {

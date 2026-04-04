@@ -61,3 +61,21 @@ export function formatNumber(value: number, decimals: number = 0): string {
     maximumFractionDigits: decimals,
   });
 }
+
+/**
+ * Formaterer pace fra sekunder per 100m til M:SS/100m
+ */
+export function formatPacePer100m(secondsPer100m: number): string {
+  const m = Math.floor(secondsPer100m / 60);
+  const s = Math.round(secondsPer100m % 60);
+  return `${m}:${s.toString().padStart(2, "0")}/100m`;
+}
+
+/**
+ * Konverterer pace (sekunder per km) til "M:SS" streng
+ */
+export function paceToMinKmString(secondsPerKm: number): string {
+  const m = Math.floor(secondsPerKm / 60);
+  const s = Math.round(secondsPerKm % 60);
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
