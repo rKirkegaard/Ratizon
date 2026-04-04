@@ -1,0 +1,66 @@
+import {
+  pgTable,
+  uuid,
+  text,
+  varchar,
+  timestamp,
+  integer,
+  real,
+  boolean,
+  jsonb,
+} from "drizzle-orm/pg-core";
+
+export const users = pgTable("users", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  email: varchar("email", { length: 255 }).notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  displayName: varchar("display_name", { length: 255 }).notNull(),
+  role: varchar("role", { length: 20 }).notNull().default("athlete"),
+  avatarUrl: text("avatar_url"),
+  emailVerified: boolean("email_verified").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const athletes = pgTable("athletes", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" })
+    .unique(),
+  dateOfBirth: timestamp("date_of_birth", { withTimezone: true }),
+  gender: varchar("gender", { length: 10 }),
+  weight: real("weight"),
+  restingHr: integer("resting_hr"),
+  maxHr: integer("max_hr"),
+  ftp: integer("ftp"),
+  lthr: integer("lthr"),
+  swimCss: integer("swim_css"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const athleteProfiles = pgTable("athlete_profiles", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  athleteId: uuid("athlete_id")
+    .notNull()
+    .references(() => athletes.id, { onDelete: "cascade" }),
+  sport: varchar("sport", { length: 10 }).notNull(),
+  hrZones: jsonb("hr_zones"),
+  paceZones: jsonb("pace_zones"),
+  powerZones: jsonb("power_zones"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const coachAthleteAssignments = pgTable("coach_athlete_assignments", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  coachId: uuid("coach_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  athleteId: uuid("athlete_id")
+    .notNull()
+    .references(() => athletes.id, { onDelete: "cascade" }),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  assignedAt: timestamp("assigned_at", { withTimezone: true }).notNull().defaultNow(),
+});

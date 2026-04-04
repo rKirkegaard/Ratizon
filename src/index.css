@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Sport colors */
+    --sport-swim: #3c82f6;
+    --sport-bike: #4ec65e;
+    --sport-run: #f97429;
+
+    /* Zone colors */
+    --zone-1: #3A7BFF;
+    --zone-2: #28CF59;
+    --zone-3: #F6D74A;
+    --zone-4: #F57C00;
+    --zone-5: #D32F2F;
+
+    /* Light theme (unused default) */
+    --background: 0 0% 100%;
+    --foreground: 210 22% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 210 22% 10%;
+    --primary: 215 80% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 15% 93%;
+    --secondary-foreground: 210 22% 10%;
+    --muted: 210 15% 93%;
+    --muted-foreground: 210 10% 45%;
+    --accent: 210 15% 93%;
+    --accent-foreground: 210 22% 10%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 210 15% 88%;
+    --input: 210 15% 88%;
+    --ring: 215 80% 55%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 210 22% 8%;
+    --foreground: 210 15% 93%;
+    --card: 210 22% 11%;
+    --card-foreground: 210 15% 93%;
+    --primary: 215 80% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 18% 16%;
+    --secondary-foreground: 210 15% 93%;
+    --muted: 210 18% 16%;
+    --muted-foreground: 210 10% 55%;
+    --accent: 210 18% 20%;
+    --accent-foreground: 210 15% 93%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 210 18% 18%;
+    --input: 210 18% 18%;
+    --ring: 215 80% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted));
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground));
+}
