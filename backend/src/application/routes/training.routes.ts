@@ -1,19 +1,16 @@
-import { Router, Request, Response } from "express";
+import { Router } from "express";
+import {
+  listSessions,
+  getSession,
+  getSessionTimeseries,
+  createSession,
+} from "../controllers/training.controller.js";
 
 export const trainingRouter = Router();
 
-trainingRouter.get("/health", (_req: Request, res: Response) => {
-  res.json({ status: "ok", module: "training" });
-});
-
-trainingRouter.get("/sessions", (_req: Request, res: Response) => {
-  res.json({ data: [], message: "Sessioner hentet" });
-});
-
-trainingRouter.get("/sessions/:id", (req: Request, res: Response) => {
-  res.json({ data: null, message: `Session ${req.params.id} hentet` });
-});
-
-trainingRouter.get("/planned", (_req: Request, res: Response) => {
-  res.json({ data: [], message: "Planlagte sessioner hentet" });
-});
+// Session endpoints mounted under /api/training
+// These map to /api/training/sessions/:athleteId etc.
+trainingRouter.get("/sessions/:athleteId", listSessions);
+trainingRouter.get("/sessions/:athleteId/:sessionId", getSession);
+trainingRouter.get("/sessions/:athleteId/:sessionId/timeseries", getSessionTimeseries);
+trainingRouter.post("/sessions/:athleteId", createSession);
