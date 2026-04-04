@@ -5,6 +5,8 @@ import {
   refresh,
   logout,
   getMe,
+  devListUsers,
+  devLogin,
 } from "../controllers/auth.controller.js";
 import { authenticateToken } from "../middleware/auth.middleware.js";
 
@@ -14,6 +16,10 @@ export const authRouter = Router();
 authRouter.post("/register", register);
 authRouter.post("/login", login);
 authRouter.post("/refresh", refresh);
+
+// Dev routes (no auth)
+authRouter.get("/dev-users", devListUsers);
+authRouter.post("/dev-login", devLogin);
 
 // Protected routes
 authRouter.post("/logout", authenticateToken, logout);

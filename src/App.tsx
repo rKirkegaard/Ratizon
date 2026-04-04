@@ -13,11 +13,13 @@ import UploadPage from "@/presentation/pages/UploadPage";
 import EquipmentPage from "@/presentation/pages/EquipmentPage";
 import SettingsPage from "@/presentation/pages/SettingsPage";
 import LoginPage from "@/presentation/pages/LoginPage";
+import DevLoginPage from "@/presentation/pages/DevLoginPage";
 
 export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/dev-login" element={<DevLoginPage />} />
       <Route element={<AppLayout />}>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<DashboardPage />} />

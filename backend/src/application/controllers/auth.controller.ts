@@ -440,3 +440,61 @@ export async function getMe(req: Request, res: Response) {
     res.status(500).json({ error: { message: "Intern serverfejl" } });
   }
 }
+
+// ─── Dev Login (development only) ───
+
+export async function devListUsers(req: Request, res: Response) {
+  try {
+    const allUsers = await db.select({
+      id: users.id,
+      email: users.email,
+      display_name: users.displayName,
+      role: users.role,
+    }).from(users).orderBy(users.role, users.email);
+
+    // Get athlete IDs
+    const allAthletes = await db.select({ id: athletes.id, userId: athletes.userId }).from(athletes);
+    const athleteMap = new Map(allAthletes.map(a => [a.userId, a.id]));
+
+    res.json(allUsers.map(u => ({
+      ...u,
+      athlete_id: athleteMap.get(u.id) || null,
+    })));
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+}
+
+export async function devLogin(req: Request, res: Response) {
+  try {
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ error: 'userId required' });
+
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const [athlete] = await db.select().from(athletes).where(eq(athletes.userId, user.id));
+
+    const JWT_SECRET = process.env.JWT_SECRET || 'ratizon-dev-secret';
+    const accessToken = jwt.sign(
+      { userId: user.id, email: user.email, role: user.role },
+      JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+    const refreshToken = randomUUID();
+
+    res.json({
+      accessToken,
+      refreshToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        displayName: user.displayName,
+        role: user.role,
+        athleteId: athlete?.id ?? null,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+}
