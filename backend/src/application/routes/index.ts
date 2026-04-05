@@ -10,6 +10,7 @@ import { aiCoachingRouter } from "./ai-coaching.routes.js";
 import { equipmentRouter } from "./equipment.routes.js";
 import { sportRouter } from "./sport.routes.js";
 import { garminRouter } from "./garmin.routes.js";
+import { racePlanRouter } from "./race-plan.routes.js";
 import { authenticateToken } from "../middleware/auth.middleware.js";
 
 export function registerRoutes(app: Express): void {
@@ -27,4 +28,5 @@ export function registerRoutes(app: Express): void {
   app.use("/api/equipment", authenticateToken, equipmentRouter);
   app.use("/api/sports", authenticateToken, sportRouter);
   app.use("/api/garmin", garminRouter); // Mixed auth — handled per-route
+  app.use("/api/planning", authenticateToken, racePlanRouter); // Race plan routes share /api/planning prefix
 }

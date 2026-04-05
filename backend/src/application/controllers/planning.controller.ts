@@ -4,6 +4,7 @@ import { plannedSessions, sessions } from "../../infrastructure/database/schema/
 import { goals, athleteTrainingPhases, weeklyBudgets } from "../../infrastructure/database/schema/planning.schema.js";
 import { athletePmc } from "../../infrastructure/database/schema/analytics.schema.js";
 import { eq, and, gte, lte, desc, asc, sql } from "drizzle-orm";
+import { generateTaper, type TaperProfile } from "../../domain/services/TaperCalculator.js";
 
 /**
  * GET /api/planning/:athleteId/sessions?startDate=X&endDate=Y
@@ -547,6 +548,93 @@ export async function getMesocycle(req: Request, res: Response) {
     });
   } catch (error: any) {
     console.error("Fejl ved hentning af mesocycle data:", error);
+    res.status(500).json({ error: error.message || "Intern serverfejl" });
+  }
+}
+
+// ── Taper Calculator ──────────────────────────────────────────────────────
+
+/**
+ * POST /api/planning/:athleteId/taper/generate
+ * Generate a taper plan projection for a goal's race date.
+ */
+export async function generateTaperPlan(req: Request, res: Response) {
+  try {
+    const athleteId = req.params.athleteId as string;
+    const { goalId, taperWeeks = 3, profile = "moderate" } = req.body;
+
+    // Get goal for race date
+    let raceDate: Date;
+    if (goalId) {
+      const [goal] = await db
+        .select()
+        .from(goals)
+        .where(and(eq(goals.id, goalId), eq(goals.athleteId, athleteId)))
+        .limit(1);
+      if (!goal?.targetDate) {
+        res.status(400).json({ error: "Maal ikke fundet eller mangler dato" });
+        return;
+      }
+      raceDate = goal.targetDate;
+    } else {
+      // Find A-priority goal
+      const [goal] = await db
+        .select()
+        .from(goals)
+        .where(and(eq(goals.athleteId, athleteId), eq(goals.racePriority, "A"), eq(goals.status, "active")))
+        .orderBy(asc(goals.targetDate))
+        .limit(1);
+      if (!goal?.targetDate) {
+        res.status(400).json({ error: "Ingen aktiv A-race fundet" });
+        return;
+      }
+      raceDate = goal.targetDate;
+    }
+
+    // Get latest PMC
+    const [latestPmc] = await db
+      .select()
+      .from(athletePmc)
+      .where(and(eq(athletePmc.athleteId, athleteId), eq(athletePmc.sport, "all")))
+      .orderBy(desc(athletePmc.date))
+      .limit(1);
+
+    const currentCTL = latestPmc?.ctl ?? 50;
+    const currentATL = latestPmc?.atl ?? 60;
+
+    // Get avg weekly TSS (last 4 weeks)
+    const fourWeeksAgo = new Date();
+    fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
+    const recentSessions = await db
+      .select({ tss: sessions.tss })
+      .from(sessions)
+      .where(and(eq(sessions.athleteId, athleteId), gte(sessions.startedAt, fourWeeksAgo)));
+
+    const totalTss = recentSessions.reduce((s, r) => s + (r.tss ?? 0), 0);
+    const avgWeeklyTSS = totalTss / 4;
+
+    const plan = generateTaper({
+      raceDate,
+      taperWeeks: taperWeeks === 2 ? 2 : 3,
+      currentWeeklyTSS: avgWeeklyTSS,
+      currentCTL,
+      currentATL,
+      profile: profile as TaperProfile,
+    });
+
+    res.json({
+      data: {
+        raceDate: raceDate.toISOString(),
+        currentCTL: Math.round(currentCTL * 10) / 10,
+        currentATL: Math.round(currentATL * 10) / 10,
+        avgWeeklyTSS: Math.round(avgWeeklyTSS),
+        taperWeeks,
+        profile,
+        ...plan,
+      },
+    });
+  } catch (error: any) {
+    console.error("Fejl ved generering af taper:", error);
     res.status(500).json({ error: error.message || "Intern serverfejl" });
   }
 }

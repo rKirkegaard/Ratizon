@@ -12,6 +12,7 @@ import SessionsPage from "@/presentation/pages/SessionsPage";
 import UploadPage from "@/presentation/pages/UploadPage";
 import EquipmentPage from "@/presentation/pages/EquipmentPage";
 import SettingsPage from "@/presentation/pages/SettingsPage";
+import RacePlanPage from "@/presentation/pages/RacePlanPage";
 import LoginPage from "@/presentation/pages/LoginPage";
 import DevLoginPage from "@/presentation/pages/DevLoginPage";
 
@@ -30,6 +31,7 @@ export default function App() {
         <Route path="/wellness" element={<WellnessPage />} />
         <Route path="/disciplin/:sportKey" element={<DisciplinePage />} />
         <Route path="/saeson-maal" element={<SeasonGoalsPage />} />
+        <Route path="/raceplan" element={<RacePlanPage />} />
         <Route path="/sessioner" element={<SessionsPage />} />
         <Route path="/upload" element={<UploadPage />} />
         <Route path="/udstyr" element={<EquipmentPage />} />

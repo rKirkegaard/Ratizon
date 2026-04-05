@@ -14,6 +14,7 @@ import {
   Mountain,
   Flame,
   Target,
+  Flag,
   List,
   Upload,
   Wrench,
@@ -73,6 +74,7 @@ const STATIC_SECTIONS_AFTER: NavSection[] = [
     title: "PLAN & MAAL",
     items: [
       { label: "Saeson & Maal", path: "/saeson-maal", icon: <Target size={18} /> },
+      { label: "Raceplan", path: "/raceplan", icon: <Flag size={18} /> },
     ],
   },
   {

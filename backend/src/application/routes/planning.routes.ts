@@ -12,6 +12,7 @@ import {
   listPhases,
   createPhase,
   getMesocycle,
+  generateTaperPlan,
 } from "../controllers/planning.controller.js";
 
 export const planningRouter = Router();
@@ -39,6 +40,9 @@ planningRouter.post("/:athleteId/phases", createPhase);
 
 // ── Mesocycle View ────────────────────────────────────────────────────
 planningRouter.get("/:athleteId/mesocycle", getMesocycle);
+
+// ── Taper Calculator ──────────────────────────────────────────────────
+planningRouter.post("/:athleteId/taper/generate", generateTaperPlan);
 
 // ── Budgets (stub) ────────────────────────────────────────────────────
 planningRouter.get("/:athleteId/budgets", (req: Request, res: Response) => {

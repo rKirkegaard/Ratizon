@@ -15,6 +15,7 @@ const ROUTES = [
   { path: '/upload', label: 'Upload' },
   { path: '/udstyr', label: 'Udstyr' },
   { path: '/indstillinger', label: 'Indstillinger' },
+  { path: '/raceplan', label: 'Raceplan' },
 ];
 
 // Shared auth state across all tests in this file

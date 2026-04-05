@@ -14,6 +14,7 @@ import PhaseTable from "@/presentation/components/planning/PhaseTable";
 import MesocycleTimeline from "@/presentation/components/planning/MesocycleTimeline";
 import PhaseComplianceCards from "@/presentation/components/planning/PhaseComplianceCards";
 import VolumeDistribution from "@/presentation/components/planning/VolumeDistribution";
+import TaperSection from "@/presentation/components/planning/TaperSection";
 import type { Goal } from "@/domain/types/planning.types";
 
 export default function SeasonGoalsPage() {
@@ -115,6 +116,11 @@ export default function SeasonGoalsPage() {
         actuals={mesocycleData?.weeklyActuals ?? []}
         isLoading={mesocycleLoading}
       />
+
+      {/* Taper Calculator */}
+      {athleteId && mainGoal && (
+        <TaperSection athleteId={athleteId} goalId={mainGoal.id} />
+      )}
 
       {/* Training phases table */}
       <PhaseTable
