@@ -4,6 +4,7 @@ import { wellnessDaily, athleteStreaks } from "../../infrastructure/database/sch
 import { sessions, plannedSessions } from "../../infrastructure/database/schema/training.schema.js";
 import { athletePmc, sessionQualityAssessments } from "../../infrastructure/database/schema/analytics.schema.js";
 import { aiAlerts } from "../../infrastructure/database/schema/ai-coaching.schema.js";
+import { goals } from "../../infrastructure/database/schema/planning.schema.js";
 import { eq, and, gte, lte, desc, asc, sql } from "drizzle-orm";
 
 /**
@@ -43,6 +44,7 @@ export async function getDashboard(req: Request, res: Response) {
       upcomingResult,
       alertsResult,
       streakResult,
+      mainGoalResult,
     ] = await Promise.all([
       // Latest wellness
       db
@@ -123,7 +125,6 @@ export async function getDashboard(req: Request, res: Response) {
       db
         .select({
           tss: sessions.tss,
-          analyticsTss: sql<number | null>`(SELECT sa.tss FROM session_analytics sa WHERE sa.session_id = ${sessions.id} LIMIT 1)`,
         })
         .from(sessions)
         .where(
@@ -180,6 +181,21 @@ export async function getDashboard(req: Request, res: Response) {
         .select()
         .from(athleteStreaks)
         .where(eq(athleteStreaks.athleteId, athleteId)),
+
+      // Main race goal (A-priority, active, future)
+      db
+        .select()
+        .from(goals)
+        .where(
+          and(
+            eq(goals.athleteId, athleteId),
+            eq(goals.status, "active"),
+            eq(goals.racePriority, "A"),
+            gte(goals.targetDate, now)
+          )
+        )
+        .orderBy(asc(goals.targetDate))
+        .limit(1),
     ]);
 
     // --- Build wellness section ---
@@ -224,7 +240,7 @@ export async function getDashboard(req: Request, res: Response) {
 
     // --- Build week status ---
     const weekTssValues = weekSessionsResult.map(
-      (s) => (s.analyticsTss ?? s.tss) || 0
+      (s) => s.tss || 0
     );
     const totalTss = Math.round(
       weekTssValues.reduce((a, b) => a + b, 0) * 100
@@ -333,6 +349,16 @@ export async function getDashboard(req: Request, res: Response) {
         ctlPctOfTarget: null as number | null,
         nextMilestone: null as string | null,
       },
+      mainGoal: mainGoalResult[0]
+        ? {
+            id: mainGoalResult[0].id,
+            title: mainGoalResult[0].title,
+            targetDate: mainGoalResult[0].targetDate?.toISOString() ?? null,
+            sport: mainGoalResult[0].sport,
+            racePriority: mainGoalResult[0].racePriority,
+            goalType: mainGoalResult[0].goalType,
+          }
+        : null,
     };
 
     res.json({ data: response });

@@ -1,8 +1,9 @@
 import { Request, Response } from "express";
 import { db } from "../../infrastructure/database/connection.js";
-import { plannedSessions } from "../../infrastructure/database/schema/training.schema.js";
-import { goals, athleteTrainingPhases } from "../../infrastructure/database/schema/planning.schema.js";
-import { eq, and, gte, lte, desc, asc } from "drizzle-orm";
+import { plannedSessions, sessions } from "../../infrastructure/database/schema/training.schema.js";
+import { goals, athleteTrainingPhases, weeklyBudgets } from "../../infrastructure/database/schema/planning.schema.js";
+import { athletePmc } from "../../infrastructure/database/schema/analytics.schema.js";
+import { eq, and, gte, lte, desc, asc, sql } from "drizzle-orm";
 
 /**
  * GET /api/planning/:athleteId/sessions?startDate=X&endDate=Y
@@ -383,6 +384,169 @@ export async function createPhase(req: Request, res: Response) {
     res.status(201).json({ data: created });
   } catch (error: any) {
     console.error("Fejl ved oprettelse af traeningsfase:", error);
+    res.status(500).json({ error: error.message || "Intern serverfejl" });
+  }
+}
+
+// ── Mesocycle View ────────────────────────────────────────────────────────
+
+/**
+ * GET /api/planning/:athleteId/mesocycle
+ * Returns combined data for the mesocycle timeline view:
+ * phases, CTL time series, weekly actuals vs budgets, phase compliance
+ */
+export async function getMesocycle(req: Request, res: Response) {
+  try {
+    const athleteId = req.params.athleteId as string;
+
+    // 1. Get all phases
+    const phases = await db
+      .select()
+      .from(athleteTrainingPhases)
+      .where(eq(athleteTrainingPhases.athleteId, athleteId))
+      .orderBy(asc(athleteTrainingPhases.startDate));
+
+    // 2. Get CTL time series (sport='all' or latest per date)
+    const ctlSeries = await db
+      .select({
+        date: athletePmc.date,
+        ctl: athletePmc.ctl,
+        atl: athletePmc.atl,
+        tsb: athletePmc.tsb,
+        sport: athletePmc.sport,
+      })
+      .from(athletePmc)
+      .where(
+        and(
+          eq(athletePmc.athleteId, athleteId),
+          eq(athletePmc.sport, "all")
+        )
+      )
+      .orderBy(asc(athletePmc.date));
+
+    // 3. Get weekly session actuals (aggregated by ISO week)
+    const weeklyActuals = await db.execute(sql`
+      SELECT
+        date_trunc('week', started_at)::date AS week_start,
+        COUNT(*)::int AS session_count,
+        ROUND(SUM(duration_seconds)::numeric / 3600, 2) AS total_hours,
+        ROUND(COALESCE(SUM(tss), 0)::numeric, 1) AS total_tss,
+        ROUND(SUM(CASE WHEN sport = 'swim' THEN duration_seconds ELSE 0 END)::numeric / 3600, 2) AS swim_hours,
+        ROUND(SUM(CASE WHEN sport = 'bike' THEN duration_seconds ELSE 0 END)::numeric / 3600, 2) AS bike_hours,
+        ROUND(SUM(CASE WHEN sport = 'run' THEN duration_seconds ELSE 0 END)::numeric / 3600, 2) AS run_hours,
+        ROUND(SUM(CASE WHEN sport = 'strength' THEN duration_seconds ELSE 0 END)::numeric / 3600, 2) AS strength_hours
+      FROM sessions
+      WHERE athlete_id = ${athleteId}
+      GROUP BY date_trunc('week', started_at)
+      ORDER BY week_start
+    `);
+
+    // 4. Get weekly budgets
+    const budgets = await db
+      .select()
+      .from(weeklyBudgets)
+      .where(eq(weeklyBudgets.athleteId, athleteId))
+      .orderBy(asc(weeklyBudgets.weekStartDate));
+
+    // 5. Get main goal
+    const [mainGoal] = await db
+      .select()
+      .from(goals)
+      .where(
+        and(
+          eq(goals.athleteId, athleteId),
+          eq(goals.status, "active"),
+          eq(goals.racePriority, "A")
+        )
+      )
+      .orderBy(asc(goals.targetDate))
+      .limit(1);
+
+    // 6. Compute phase compliance
+    const phaseCompliance = phases.map((phase) => {
+      const phaseStart = phase.startDate;
+      const phaseEnd = phase.endDate;
+
+      // Sum actual hours from weeklyActuals within this phase
+      const rows = (weeklyActuals.rows || weeklyActuals) as any[];
+      const actualHours = rows
+        .filter((w: any) => {
+          const ws = new Date(w.week_start);
+          return ws >= phaseStart && ws <= phaseEnd;
+        })
+        .reduce((sum: number, w: any) => sum + (parseFloat(w.total_hours) || 0), 0);
+
+      const targetWeeks = Math.max(1, Math.ceil(
+        (phaseEnd.getTime() - phaseStart.getTime()) / (7 * 24 * 60 * 60 * 1000)
+      ));
+      const targetHours = (phase.weeklyHoursTarget ?? 0) * targetWeeks;
+
+      return {
+        phaseId: phase.id,
+        phaseName: phase.phaseName,
+        phaseType: phase.phaseType,
+        startDate: phaseStart.toISOString(),
+        endDate: phaseEnd.toISOString(),
+        ctlTarget: phase.ctlTarget,
+        weeklyHoursTarget: phase.weeklyHoursTarget,
+        targetHours: Math.round(targetHours * 10) / 10,
+        actualHours: Math.round(actualHours * 10) / 10,
+        compliancePct: targetHours > 0
+          ? Math.round((actualHours / targetHours) * 100)
+          : 0,
+      };
+    });
+
+    res.json({
+      data: {
+        phases: phases.map((p) => ({
+          id: p.id,
+          phaseName: p.phaseName,
+          phaseType: p.phaseType,
+          phaseNumber: p.phaseNumber,
+          startDate: p.startDate.toISOString(),
+          endDate: p.endDate.toISOString(),
+          ctlTarget: p.ctlTarget,
+          weeklyHoursTarget: p.weeklyHoursTarget,
+          disciplineSplit: p.disciplineSplit,
+        })),
+        ctlTimeSeries: ctlSeries.map((row) => ({
+          date: row.date.toISOString(),
+          ctl: row.ctl ?? 0,
+          atl: row.atl ?? 0,
+          tsb: row.tsb ?? 0,
+        })),
+        weeklyActuals: ((weeklyActuals.rows || weeklyActuals) as any[]).map((w: any) => ({
+          weekStart: w.week_start,
+          totalHours: parseFloat(w.total_hours) || 0,
+          totalTss: parseFloat(w.total_tss) || 0,
+          sessionCount: w.session_count || 0,
+          swimHours: parseFloat(w.swim_hours) || 0,
+          bikeHours: parseFloat(w.bike_hours) || 0,
+          runHours: parseFloat(w.run_hours) || 0,
+          strengthHours: parseFloat(w.strength_hours) || 0,
+        })),
+        weeklyBudgets: budgets.map((b) => ({
+          weekStart: b.weekStartDate.toISOString(),
+          totalHours: b.totalHours,
+          targetTss: b.targetTss,
+          swimHours: b.swimHours,
+          bikeHours: b.bikeHours,
+          runHours: b.runHours,
+          strengthHours: b.strengthHours,
+        })),
+        phaseCompliance,
+        mainGoal: mainGoal
+          ? {
+              title: mainGoal.title,
+              targetDate: mainGoal.targetDate?.toISOString() ?? null,
+              racePriority: mainGoal.racePriority,
+            }
+          : null,
+      },
+    });
+  } catch (error: any) {
+    console.error("Fejl ved hentning af mesocycle data:", error);
     res.status(500).json({ error: error.message || "Intern serverfejl" });
   }
 }

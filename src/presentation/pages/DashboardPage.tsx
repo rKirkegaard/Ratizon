@@ -9,6 +9,7 @@ import WeekStatus from "@/presentation/components/dashboard/WeekStatus";
 import UpcomingSessions from "@/presentation/components/dashboard/UpcomingSessions";
 import CoachInbox from "@/presentation/components/dashboard/CoachInbox";
 import MotivationStrip from "@/presentation/components/dashboard/MotivationStrip";
+import RaceCountdown from "@/presentation/components/planning/RaceCountdown";
 import { UserCircle2 } from "lucide-react";
 
 function SkeletonBlock({ className = "" }: { className?: string }) {
@@ -114,6 +115,9 @@ export default function DashboardPage() {
   return (
     <div data-testid="dashboard-page" className="space-y-4">
       <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+
+      {/* Race Countdown */}
+      <RaceCountdown goal={data.main_goal as any} isLoading={false} />
 
       {/* Wellness Quick-Log */}
       <WellnessQuickLog

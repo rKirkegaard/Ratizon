@@ -9,6 +9,7 @@ import { dashboardRouter } from "./dashboard.routes.js";
 import { aiCoachingRouter } from "./ai-coaching.routes.js";
 import { equipmentRouter } from "./equipment.routes.js";
 import { sportRouter } from "./sport.routes.js";
+import { garminRouter } from "./garmin.routes.js";
 import { authenticateToken } from "../middleware/auth.middleware.js";
 
 export function registerRoutes(app: Express): void {
@@ -25,4 +26,5 @@ export function registerRoutes(app: Express): void {
   app.use("/api/ai-coaching", authenticateToken, aiCoachingRouter);
   app.use("/api/equipment", authenticateToken, equipmentRouter);
   app.use("/api/sports", authenticateToken, sportRouter);
+  app.use("/api/garmin", garminRouter); // Mixed auth — handled per-route
 }

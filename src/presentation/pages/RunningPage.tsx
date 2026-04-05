@@ -121,7 +121,7 @@ export default function RunningPage() {
       {cadenceLoading ? (
         <ChartSkeleton />
       ) : cadenceData ? (
-        <CadenceHistogram data={cadenceData.data} />
+        <CadenceHistogram data={Array.isArray(cadenceData) ? cadenceData : cadenceData.data ?? []} />
       ) : null}
 
       {/* Pace trend */}
@@ -136,13 +136,13 @@ export default function RunningPage() {
         {gctLoading ? (
           <ChartSkeleton />
         ) : gctData ? (
-          <GCTChart data={gctData.data} />
+          <GCTChart data={Array.isArray(gctData) ? gctData : gctData.data ?? []} />
         ) : null}
 
         {voLoading ? (
           <ChartSkeleton />
         ) : voData ? (
-          <VerticalOscillationChart data={voData.data} />
+          <VerticalOscillationChart data={Array.isArray(voData) ? voData : voData.data ?? []} />
         ) : null}
       </div>
     </div>

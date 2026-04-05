@@ -55,8 +55,8 @@ function PMCTooltip({ active, payload }: CustomTooltipProps) {
   );
 }
 
-export default function PMCChart({ points }: PMCChartProps) {
-  if (points.length === 0) {
+export default function PMCChart({ points = [] }: PMCChartProps) {
+  if (!points || points.length === 0) {
     return (
       <div
         data-testid="pmc-chart"

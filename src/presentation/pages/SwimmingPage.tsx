@@ -121,14 +121,14 @@ export default function SwimmingPage() {
       {paceLoading ? (
         <ChartSkeleton />
       ) : paceData ? (
-        <SwimPaceChart data={paceData.data} />
+        <SwimPaceChart data={Array.isArray(paceData) ? paceData : paceData.data ?? []} />
       ) : null}
 
       {/* SWOLF Trend */}
       {swolfLoading ? (
         <ChartSkeleton />
       ) : swolfData ? (
-        <SwolfTrendChart data={swolfData.data} />
+        <SwolfTrendChart data={Array.isArray(swolfData) ? swolfData : swolfData.data ?? []} />
       ) : null}
     </div>
   );

@@ -6,6 +6,14 @@ import {
   getSessionTimeseries,
   createSession,
 } from "../controllers/training.controller.js";
+import {
+  listBricks,
+  getBrickDetail,
+  createBrick,
+  detectBricksEndpoint,
+  deleteBrick,
+  getBrickTransition,
+} from "../controllers/brick.controller.js";
 import { uploadSession } from "../use-cases/UploadSession.js";
 
 export const trainingRouter = Router();
@@ -29,6 +37,14 @@ trainingRouter.get("/sessions/:athleteId", listSessions);
 trainingRouter.get("/sessions/:athleteId/:sessionId", getSession);
 trainingRouter.get("/sessions/:athleteId/:sessionId/timeseries", getSessionTimeseries);
 trainingRouter.post("/sessions/:athleteId", createSession);
+
+// Brick endpoints
+trainingRouter.get("/bricks/:athleteId", listBricks);
+trainingRouter.get("/bricks/:athleteId/:brickId", getBrickDetail);
+trainingRouter.post("/bricks/:athleteId", createBrick);
+trainingRouter.post("/bricks/:athleteId/detect", detectBricksEndpoint);
+trainingRouter.delete("/bricks/:athleteId/:brickId", deleteBrick);
+trainingRouter.get("/bricks/:athleteId/:brickId/transition", getBrickTransition);
 
 // File upload endpoint
 trainingRouter.post(

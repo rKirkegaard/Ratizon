@@ -73,6 +73,28 @@ export default function SessionDetail({ athleteId, sessionId }: SessionDetailPro
 
   const isLoading = detailLoading;
 
+  // useMemo must be called before any early returns to maintain hook order
+  const tsPoints = useMemo(() => {
+    if (!timeSeries?.points) return [];
+    let elapsed = 0;
+    return timeSeries.points.map((p: any, i: number) => {
+      if (i > 0 && timeSeries.points[i - 1]) {
+        const prev = new Date(timeSeries.points[i - 1].timestamp).getTime();
+        const curr = new Date(p.timestamp).getTime();
+        elapsed += (curr - prev) / 1000;
+      }
+      return {
+        elapsed: Math.round(elapsed),
+        elapsedMin: Math.round(elapsed / 60),
+        hr: p.hr,
+        power: p.power,
+        cadence: p.cadence,
+        speed: p.speed,
+        altitude: p.altitude,
+      };
+    });
+  }, [timeSeries]);
+
   if (isLoading) return <DetailSkeleton />;
   if (!detail) {
     return (
@@ -120,27 +142,7 @@ export default function SessionDetail({ athleteId, sessionId }: SessionDetailPro
   const hasPower = session.sport === "bike" && session.avgPower != null;
   const hasPace = (session.sport === "run" || session.sport === "swim") && session.avgPace != null;
 
-  // Timeseries points for the HR area chart
-  const tsPoints = useMemo(() => {
-    if (!timeSeries?.points) return [];
-    let elapsed = 0;
-    return timeSeries.points.map((p, i) => {
-      if (i > 0 && timeSeries.points[i - 1]) {
-        const prev = new Date(timeSeries.points[i - 1].timestamp).getTime();
-        const curr = new Date(p.timestamp).getTime();
-        elapsed += (curr - prev) / 1000;
-      }
-      return {
-        elapsed: Math.round(elapsed),
-        elapsedMin: Math.round(elapsed / 60),
-        hr: p.hr,
-        power: p.power,
-        cadence: p.cadence,
-        speed: p.speed,
-        altitude: p.altitude,
-      };
-    });
-  }, [timeSeries]);
+  // tsPoints is computed above (before early returns) to maintain hook order
 
   return (
     <div data-testid="session-detail">
@@ -353,10 +355,34 @@ export default function SessionDetail({ athleteId, sessionId }: SessionDetailPro
                 />
               )}
               {analytics?.decoupling != null && (
-                <StatCard
-                  label="Decoupling"
-                  value={`${analytics.decoupling.toFixed(1)}%`}
-                />
+                <div
+                  data-testid="decoupling-card"
+                  className={`rounded-lg border p-3 ${
+                    analytics.decoupling < 5
+                      ? "border-green-500/30 bg-green-500/10"
+                      : analytics.decoupling < 10
+                        ? "border-amber-500/30 bg-amber-500/10"
+                        : "border-red-500/30 bg-red-500/10"
+                  }`}
+                >
+                  <p className="text-xs text-muted-foreground">Afkobling</p>
+                  <p className={`text-lg font-bold ${
+                    analytics.decoupling < 5
+                      ? "text-green-400"
+                      : analytics.decoupling < 10
+                        ? "text-amber-400"
+                        : "text-red-400"
+                  }`}>
+                    {analytics.decoupling.toFixed(1)}%
+                  </p>
+                  <p className="mt-1 text-[10px] text-muted-foreground">
+                    {analytics.decoupling < 5
+                      ? "God aerob fitness"
+                      : analytics.decoupling < 10
+                        ? "Moderat drift"
+                        : "Hoej drift — base ikke klar"}
+                  </p>
+                </div>
               )}
               {analytics?.variabilityIndex != null && (
                 <StatCard

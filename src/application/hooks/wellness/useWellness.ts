@@ -64,8 +64,18 @@ export function useWellnessHistory(athleteId: string | null, days: number = 30) 
 export function useHRVGate(athleteId: string | null) {
   return useQuery<HRVGateResponse>({
     queryKey: ["hrv-gate", athleteId],
-    queryFn: () =>
-      apiClient.get<HRVGateResponse>(`/wellness/${athleteId}/hrv-gate`),
+    queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const raw: any = await apiClient.get(`/wellness/${athleteId}/hrv-gate`);
+      return {
+        gate: raw.gateStatus ?? raw.gate ?? "amber",
+        baseline: raw.baseline ?? null,
+        baselineSd: raw.sd ?? raw.baselineSd ?? null,
+        currentHrv: raw.latestHrv ?? raw.currentHrv ?? null,
+        status: raw.message ?? raw.status ?? "",
+        recommendation: raw.recommendation ?? raw.message ?? "",
+      };
+    },
     enabled: !!athleteId,
     staleTime: 60 * 1000,
   });

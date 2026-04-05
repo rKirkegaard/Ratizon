@@ -160,7 +160,7 @@ export default function CyclingPage() {
       {pcLoading ? (
         <ChartSkeleton height="h-72" />
       ) : powerCurveData ? (
-        <PowerCurveChart data={powerCurveData.data} />
+        <PowerCurveChart data={Array.isArray(powerCurveData) ? powerCurveData : powerCurveData.data ?? []} />
       ) : null}
 
       {/* FTP Progression + Zone Distribution side by side */}
@@ -168,13 +168,13 @@ export default function CyclingPage() {
         {pcLoading ? (
           <ChartSkeleton />
         ) : powerCurveData ? (
-          <FTPProgression powerCurveData={powerCurveData.data} />
+          <FTPProgression powerCurveData={Array.isArray(powerCurveData) ? powerCurveData : powerCurveData.data ?? []} />
         ) : null}
 
         {zoneLoading ? (
           <ChartSkeleton />
         ) : zoneData ? (
-          <CyclingZoneChart data={zoneData.data} />
+          <CyclingZoneChart data={Array.isArray(zoneData) ? zoneData : zoneData.data ?? []} />
         ) : null}
       </div>
 
@@ -182,7 +182,7 @@ export default function CyclingPage() {
       {cpLoading ? (
         <ChartSkeleton />
       ) : cadencePowerData ? (
-        <CadencePowerScatter data={cadencePowerData.data} />
+        <CadencePowerScatter data={Array.isArray(cadencePowerData) ? cadencePowerData : cadencePowerData.data ?? []} />
       ) : null}
     </div>
   );

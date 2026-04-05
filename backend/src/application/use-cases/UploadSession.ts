@@ -56,7 +56,8 @@ function parseFile(buffer: Buffer, format: FileFormat): ParsedFile {
 export async function uploadSession(
   fileBuffer: Buffer,
   athleteId: string,
-  filename?: string
+  filename?: string,
+  options?: { source?: string; externalId?: string }
 ): Promise<{ sessionId: string; sport: string; title: string }> {
   const format = detectFormat(fileBuffer, filename);
   const parsed = parseFile(fileBuffer, format);
@@ -79,7 +80,8 @@ export async function uploadSession(
       avgPace: parsed.session.avgPace,
       elevationGain: parsed.session.elevationGain,
       calories: parsed.session.calories,
-      source: format,
+      source: options?.source ?? format,
+      externalId: options?.externalId ?? null,
     })
     .returning();
 

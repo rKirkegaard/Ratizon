@@ -54,16 +54,21 @@ export function useSessions(
 ) {
   return useQuery<SessionsResponse>({
     queryKey: ["sessions", athleteId, range, sport],
-    queryFn: () => {
+    queryFn: async () => {
       const params = new URLSearchParams();
       const { startDate, endDate } = rangeToParams(range);
       if (startDate) params.set("startDate", startDate);
       if (endDate) params.set("endDate", endDate);
       if (sport && sport !== "all") params.set("sport", sport);
       const qs = params.toString();
-      return apiClient.get<SessionsResponse>(
-        `/sessions/${athleteId}${qs ? `?${qs}` : ""}`
+      const raw = await apiClient.get<Session[] | SessionsResponse>(
+        `/training/sessions/${athleteId}${qs ? `?${qs}` : ""}`
       );
+      // Backend returns array, wrap in expected shape
+      if (Array.isArray(raw)) {
+        return { sessions: raw, total: raw.length };
+      }
+      return raw as SessionsResponse;
     },
     enabled: !!athleteId,
     staleTime: 60 * 1000,
@@ -76,10 +81,18 @@ export function useSessionDetail(
 ) {
   return useQuery<SessionDetailResponse>({
     queryKey: ["session-detail", athleteId, sessionId],
-    queryFn: () =>
-      apiClient.get<SessionDetailResponse>(
-        `/sessions/${athleteId}/${sessionId}`
-      ),
+    queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const raw: any = await apiClient.get(
+        `/training/sessions/${athleteId}/${sessionId}`
+      );
+      // Backend returns flat object with analytics/laps embedded
+      if (raw && !raw.session) {
+        const { analytics, laps, ...session } = raw;
+        return { session, analytics: analytics || null, laps: laps || [] };
+      }
+      return raw as SessionDetailResponse;
+    },
     enabled: !!athleteId && !!sessionId,
     staleTime: 5 * 60 * 1000,
   });
@@ -91,10 +104,15 @@ export function useSessionTimeSeries(
 ) {
   return useQuery<SessionTimeSeriesResponse>({
     queryKey: ["session-timeseries", athleteId, sessionId],
-    queryFn: () =>
-      apiClient.get<SessionTimeSeriesResponse>(
-        `/sessions/${athleteId}/${sessionId}/timeseries?downsample=500`
-      ),
+    queryFn: async () => {
+      const raw = await apiClient.get<TimeSeriesPoint[] | SessionTimeSeriesResponse>(
+        `/training/sessions/${athleteId}/${sessionId}/timeseries?downsample=500`
+      );
+      if (Array.isArray(raw)) {
+        return { points: raw };
+      }
+      return raw as SessionTimeSeriesResponse;
+    },
     enabled: !!athleteId && !!sessionId,
     staleTime: 10 * 60 * 1000,
   });

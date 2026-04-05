@@ -6,10 +6,14 @@ import {
   usePhases,
   useCreatePhase,
 } from "@/application/hooks/planning/usePlanning";
+import { useMesocycle } from "@/application/hooks/planning/useMesocycle";
 import RaceCountdown from "@/presentation/components/planning/RaceCountdown";
 import GoalsList from "@/presentation/components/planning/GoalsList";
 import CTLProjection from "@/presentation/components/planning/CTLProjection";
 import PhaseTable from "@/presentation/components/planning/PhaseTable";
+import MesocycleTimeline from "@/presentation/components/planning/MesocycleTimeline";
+import PhaseComplianceCards from "@/presentation/components/planning/PhaseComplianceCards";
+import VolumeDistribution from "@/presentation/components/planning/VolumeDistribution";
 import type { Goal } from "@/domain/types/planning.types";
 
 export default function SeasonGoalsPage() {
@@ -20,6 +24,7 @@ export default function SeasonGoalsPage() {
   const createGoalMutation = useCreateGoal(athleteId);
   const deleteGoalMutation = useDeleteGoal(athleteId);
   const createPhaseMutation = useCreatePhase(athleteId);
+  const { data: mesocycleData, isLoading: mesocycleLoading } = useMesocycle(athleteId);
 
   const goals = goalsData?.data ?? [];
   const phases = phasesData?.data ?? [];
@@ -89,6 +94,26 @@ export default function SeasonGoalsPage() {
         targetCTL={targetCTL}
         targetDate={mainGoal?.targetDate ?? null}
         isLoading={goalsLoading || phasesLoading}
+      />
+
+      {/* Mesocycle Timeline */}
+      <MesocycleTimeline
+        phases={mesocycleData?.phases ?? []}
+        ctlTimeSeries={mesocycleData?.ctlTimeSeries ?? []}
+        mainGoal={mesocycleData?.mainGoal ?? null}
+        isLoading={mesocycleLoading}
+      />
+
+      {/* Phase Compliance Cards */}
+      <PhaseComplianceCards
+        phases={mesocycleData?.phaseCompliance ?? []}
+        isLoading={mesocycleLoading}
+      />
+
+      {/* Volume Distribution */}
+      <VolumeDistribution
+        actuals={mesocycleData?.weeklyActuals ?? []}
+        isLoading={mesocycleLoading}
       />
 
       {/* Training phases table */}

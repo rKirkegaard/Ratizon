@@ -11,6 +11,7 @@ import {
   deleteGoal,
   listPhases,
   createPhase,
+  getMesocycle,
 } from "../controllers/planning.controller.js";
 
 export const planningRouter = Router();
@@ -35,6 +36,9 @@ planningRouter.delete("/:athleteId/goals/:id", deleteGoal);
 // ── Training Phases ────────────────────────────────────────────────────
 planningRouter.get("/:athleteId/phases", listPhases);
 planningRouter.post("/:athleteId/phases", createPhase);
+
+// ── Mesocycle View ────────────────────────────────────────────────────
+planningRouter.get("/:athleteId/mesocycle", getMesocycle);
 
 // ── Budgets (stub) ────────────────────────────────────────────────────
 planningRouter.get("/:athleteId/budgets", (req: Request, res: Response) => {

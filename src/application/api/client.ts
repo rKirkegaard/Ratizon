@@ -16,9 +16,17 @@ class ApiError extends Error {
 }
 
 function getAuthHeaders(): Record<string, string> {
-  const token = localStorage.getItem("ratizon-token");
-  if (token) {
-    return { Authorization: `Bearer ${token}` };
+  try {
+    const stored = localStorage.getItem("ratizon-auth");
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      const token = parsed?.state?.accessToken;
+      if (token) {
+        return { Authorization: `Bearer ${token}` };
+      }
+    }
+  } catch {
+    // ignore parse errors
   }
   return {};
 }
@@ -47,7 +55,7 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     const data = await response.json().catch(() => null);
 
     if (response.status === 401) {
-      localStorage.removeItem("ratizon-token");
+      localStorage.removeItem("ratizon-auth");
       window.location.href = "/login";
     }
 
@@ -58,7 +66,12 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     return undefined as T;
   }
 
-  return response.json();
+  const json = await response.json();
+  // Backend wraps responses in { data: ... } — unwrap automatically
+  if (json && typeof json === "object" && "data" in json && Object.keys(json).length === 1) {
+    return json.data as T;
+  }
+  return json as T;
 }
 
 export const apiClient = {
