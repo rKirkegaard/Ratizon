@@ -73,10 +73,19 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-4 text-center">
+          <div className="mt-4 text-center space-y-2">
             <button onClick={() => { setIsRegister(!isRegister); setError(''); }} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
               {isRegister ? 'Har du allerede en konto? Log ind' : 'Ingen konto? Opret en'}
             </button>
+            <div>
+              <button
+                data-testid="dev-login-link"
+                onClick={() => navigate('/dev-login')}
+                className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+              >
+                Dev Login
+              </button>
+            </div>
           </div>
         </div>
       </div>

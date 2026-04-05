@@ -42,8 +42,12 @@ export interface WellnessLogPayload {
 export function useWellnessLatest(athleteId: string | null) {
   return useQuery<WellnessLatestResponse>({
     queryKey: ["wellness-latest", athleteId],
-    queryFn: () =>
-      apiClient.get<WellnessLatestResponse>(`/wellness/${athleteId}/latest`),
+    queryFn: async () => {
+      const raw = await apiClient.get(`/wellness/${athleteId}/latest`);
+      // Backend returns the object directly after unwrap; wrap it
+      if (raw && typeof raw === "object" && "latest" in raw) return raw as WellnessLatestResponse;
+      return { latest: (raw as WellnessDaily) ?? null };
+    },
     enabled: !!athleteId,
     staleTime: 30 * 1000,
   });
@@ -52,10 +56,12 @@ export function useWellnessLatest(athleteId: string | null) {
 export function useWellnessHistory(athleteId: string | null, days: number = 30) {
   return useQuery<WellnessHistoryResponse>({
     queryKey: ["wellness-history", athleteId, days],
-    queryFn: () =>
-      apiClient.get<WellnessHistoryResponse>(
-        `/wellness/${athleteId}/history?days=${days}`
-      ),
+    queryFn: async () => {
+      const raw = await apiClient.get(`/wellness/${athleteId}/history?days=${days}`);
+      if (Array.isArray(raw)) return { history: raw };
+      if (raw && typeof raw === "object" && "history" in raw) return raw as WellnessHistoryResponse;
+      return { history: [] };
+    },
     enabled: !!athleteId,
     staleTime: 60 * 1000,
   });
