@@ -17,6 +17,10 @@ export const racePlans = pgTable("race_plans", {
     .notNull()
     .references(() => athletes.id, { onDelete: "cascade" }),
   goalId: uuid("goal_id").references(() => goals.id, { onDelete: "set null" }),
+  raceType: varchar("race_type", { length: 20 }).notNull().default("full"), // sprint, olympic, half, full, custom
+  customSwimDistance: integer("custom_swim_distance"),  // meters (for custom races)
+  customBikeDistance: integer("custom_bike_distance"),  // meters
+  customRunDistance: integer("custom_run_distance"),    // meters
   swimPace: real("swim_pace"),          // seconds per 100m
   t1Target: integer("t1_target"),       // seconds
   bikePower: integer("bike_power"),     // watts target

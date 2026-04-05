@@ -81,8 +81,17 @@ export default function RacePlanPage() {
   const addNutrition = useCreateNutritionItem(athleteId, activePlanId);
   const deleteNutrition = useDeleteNutritionItem(athleteId, activePlanId);
 
+  const RACE_TYPES = [
+    { value: "sprint", label: "Sprint (750/20/5)" },
+    { value: "olympic", label: "Olympisk (1.5/40/10)" },
+    { value: "half", label: "Halv Ironman (1.9/90/21)" },
+    { value: "full", label: "Ironman (3.8/180/42)" },
+    { value: "custom", label: "Brugerdefineret" },
+  ];
+
   // Form state for creating plan
   const [showForm, setShowForm] = useState(false);
+  const [raceType, setRaceType] = useState("full");
   const [swimPace, setSwimPace] = useState("110"); // 1:50/100m
   const [bikePace, setBikePace] = useState("108"); // ~33.3 km/h
   const [runPace, setRunPace] = useState("330"); // 5:30/km
@@ -111,6 +120,7 @@ export default function RacePlanPage() {
   const handleCreatePlan = () => {
     createPlanMutation.mutate({
       goalId: mainGoal?.id ?? null,
+      raceType,
       swimPace: parseFloat(swimPace),
       bikePace: parseFloat(bikePace),
       runPace: parseFloat(runPace),
@@ -174,7 +184,20 @@ export default function RacePlanPage() {
       {/* Create form */}
       {showForm && (
         <div data-testid="race-plan-form" className="rounded-lg border border-border bg-card p-6 space-y-4">
-          <h3 className="text-base font-semibold text-foreground">Ny Ironman Raceplan</h3>
+          <h3 className="text-base font-semibold text-foreground">Ny Raceplan</h3>
+          <div className="mb-4">
+            <label className="block text-xs text-muted-foreground mb-1">Race-type</label>
+            <select
+              data-testid="race-type-select"
+              value={raceType}
+              onChange={(e) => setRaceType(e.target.value)}
+              className="w-full rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-foreground md:w-auto"
+            >
+              {RACE_TYPES.map((rt) => (
+                <option key={rt.value} value={rt.value}>{rt.label}</option>
+              ))}
+            </select>
+          </div>
           <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
             <div>
               <label className="block text-xs text-muted-foreground mb-1">Svoem pace (s/100m)</label>

@@ -7,6 +7,7 @@ import AthleteProfile from "@/presentation/components/settings/AthleteProfile";
 import ZoneColorPicker from "@/presentation/components/settings/ZoneColorPicker";
 import SportConfigEditor from "@/presentation/components/settings/SportConfigEditor";
 import GarminConnection from "@/presentation/components/settings/GarminConnection";
+import LLMSettings from "@/presentation/components/settings/LLMSettings";
 
 export default function SettingsPage() {
   const athleteId = useAthleteStore((s) => s.selectedAthleteId);
@@ -50,6 +51,9 @@ export default function SettingsPage() {
 
       {/* Sport disciplines section */}
       <SportConfigEditor athleteId={athleteId} />
+
+      {/* AI Coach Settings */}
+      <LLMSettings athleteId={athleteId} />
 
       {/* Garmin Connect integration */}
       <GarminConnection athleteId={athleteId} />

@@ -3,10 +3,24 @@ import { db } from "../../infrastructure/database/connection.js";
 import { racePlans, raceNutritionItems } from "../../infrastructure/database/schema/race-plan.schema.js";
 import { eq, and, asc } from "drizzle-orm";
 
-// Ironman distances in meters
-const SWIM_DISTANCE = 3800;
-const BIKE_DISTANCE = 180000;
-const RUN_DISTANCE = 42195;
+// Race type distance presets (meters)
+const RACE_DISTANCES: Record<string, { swim: number; bike: number; run: number; label: string }> = {
+  sprint:   { swim: 750,   bike: 20000,   run: 5000,   label: "Sprint Triathlon" },
+  olympic:  { swim: 1500,  bike: 40000,   run: 10000,  label: "Olympisk Triathlon" },
+  half:     { swim: 1900,  bike: 90000,   run: 21097,  label: "Halv Ironman (70.3)" },
+  full:     { swim: 3800,  bike: 180000,  run: 42195,  label: "Ironman (140.6)" },
+};
+
+function getRaceDistances(raceType: string, plan?: any): { swim: number; bike: number; run: number } {
+  if (raceType === "custom") {
+    return {
+      swim: plan?.customSwimDistance ?? 3800,
+      bike: plan?.customBikeDistance ?? 180000,
+      run: plan?.customRunDistance ?? 42195,
+    };
+  }
+  return RACE_DISTANCES[raceType] ?? RACE_DISTANCES.full;
+}
 
 function computeSegmentTime(distance: number, pace: number | null, unit: "per100m" | "perKm"): number | null {
   if (!pace || pace <= 0) return null;
@@ -64,10 +78,12 @@ export async function createRacePlan(req: Request, res: Response) {
   try {
     const { athleteId } = req.params;
     const b = req.body;
+    const raceType = b.raceType ?? "full";
+    const dist = getRaceDistances(raceType, b);
 
-    const swimTime = computeSegmentTime(SWIM_DISTANCE, b.swimPace, "per100m");
-    const bikeTime = computeSegmentTime(BIKE_DISTANCE, b.bikePace, "perKm");
-    const runTime = computeSegmentTime(RUN_DISTANCE, b.runPace, "perKm");
+    const swimTime = computeSegmentTime(dist.swim, b.swimPace, "per100m");
+    const bikeTime = computeSegmentTime(dist.bike, b.bikePace, "perKm");
+    const runTime = computeSegmentTime(dist.run, b.runPace, "perKm");
     const t1 = b.t1Target ?? 120;
     const t2 = b.t2Target ?? 90;
     const totalTime = (swimTime ?? 0) + t1 + (bikeTime ?? 0) + t2 + (runTime ?? 0);
@@ -77,6 +93,10 @@ export async function createRacePlan(req: Request, res: Response) {
       .values({
         athleteId,
         goalId: b.goalId ?? null,
+        raceType,
+        customSwimDistance: raceType === "custom" ? b.customSwimDistance : null,
+        customBikeDistance: raceType === "custom" ? b.customBikeDistance : null,
+        customRunDistance: raceType === "custom" ? b.customRunDistance : null,
         swimPace: b.swimPace ?? null,
         t1Target: t1,
         bikePower: b.bikePower ?? null,
@@ -230,6 +250,7 @@ export async function getRaceTimeline(req: Request, res: Response) {
       .orderBy(asc(raceNutritionItems.segmentType), asc(raceNutritionItems.timeOffsetMin));
 
     // Build segments
+    const dist = getRaceDistances(plan.raceType, plan);
     let clock = 0; // cumulative seconds
 
     const segments = [];
@@ -239,7 +260,7 @@ export async function getRaceTimeline(req: Request, res: Response) {
     segments.push({
       type: "swim",
       label: "Svoemning",
-      distance: SWIM_DISTANCE,
+      distance: dist.swim,
       startSec: clock,
       durationSec: swimSec,
       pace: plan.swimPace ? `${Math.floor(plan.swimPace / 60)}:${String(Math.round(plan.swimPace % 60)).padStart(2, "0")}/100m` : null,
@@ -256,7 +277,7 @@ export async function getRaceTimeline(req: Request, res: Response) {
     segments.push({
       type: "bike",
       label: "Cykling",
-      distance: BIKE_DISTANCE,
+      distance: dist.bike,
       startSec: clock,
       durationSec: bikeSec,
       pace: plan.bikePower ? `${plan.bikePower}W` : plan.bikePace ? `${Math.round(BIKE_DISTANCE / 1000 / (bikeSec / 3600))} km/t` : null,
@@ -273,7 +294,7 @@ export async function getRaceTimeline(req: Request, res: Response) {
     segments.push({
       type: "run",
       label: "Loeb",
-      distance: RUN_DISTANCE,
+      distance: dist.run,
       startSec: clock,
       durationSec: runSec,
       pace: plan.runPace ? `${Math.floor(plan.runPace / 60)}:${String(Math.round(plan.runPace % 60)).padStart(2, "0")}/km` : null,
