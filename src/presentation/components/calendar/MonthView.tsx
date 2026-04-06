@@ -188,7 +188,7 @@ export default function MonthView({
       )}
 
       {/* Calendar grid: week# + 7 days + weekly summary */}
-      <div className="grid grid-cols-[36px_repeat(7,1fr)_140px] gap-px rounded-lg border border-border overflow-hidden bg-border">
+      <div className="grid grid-cols-[36px_repeat(7,1fr)_180px] gap-px rounded-lg border border-border overflow-hidden bg-border">
         {/* Header row */}
         <div className="bg-muted/50 p-1 text-center text-[9px] font-medium text-muted-foreground">Uge</div>
         {DAY_HEADERS.map((d) => (
@@ -224,7 +224,7 @@ export default function MonthView({
                     key={key}
                     data-testid={`month-day-${key}`}
                     onClick={() => onDayClick?.(day)}
-                    className={`min-h-[90px] cursor-pointer p-1 transition-colors hover:bg-muted/20 ${
+                    className={`min-h-[110px] cursor-pointer p-1.5 transition-colors hover:bg-muted/20 ${
                       inMonth ? "bg-card" : "bg-muted/10"
                     } ${isToday ? "ring-1 ring-primary ring-inset" : ""}`}
                   >
@@ -244,7 +244,7 @@ export default function MonthView({
                         if (entry.type === "brick") {
                           const b = entry.data as SessionBrick;
                           return (
-                            <div key={`b-${b.id}`} className="flex items-center gap-0.5 rounded bg-amber-500/10 px-1 py-0.5 text-[9px]">
+                            <div key={`b-${b.id}`} className="flex items-center gap-1 rounded bg-amber-500/10 px-1.5 py-1 text-[11px]">
                               {b.segments.map((seg) => <SportIcon key={seg.id} sport={seg.sport} size={9} />)}
                               <span className="text-muted-foreground">{formatDuration(b.totalDurationSeconds)}</span>
                             </div>
@@ -263,12 +263,12 @@ export default function MonthView({
                         return (
                           <div
                             key={`${entry.type[0]}-${entry.data.id}`}
-                            className={`flex items-center gap-0.5 rounded border-l-2 px-1 py-0.5 text-[9px] ${
+                            className={`flex items-center gap-1 rounded border-l-2 px-1.5 py-1 text-[11px] ${
                               isCompleted ? "bg-card" : "bg-muted/20 opacity-50"
                             }`}
                             style={{ borderLeftColor: color }}
                           >
-                            <SportIcon sport={sport} size={9} />
+                            <SportIcon sport={sport} size={12} />
                             <span className="text-muted-foreground">
                               {formatDuration(duration)}
                             </span>
@@ -282,7 +282,7 @@ export default function MonthView({
                         );
                       })}
                       {dayEntries.length > MAX_VISIBLE && (
-                        <div className="text-center text-[8px] text-muted-foreground/50">
+                        <div className="text-center text-[10px] text-muted-foreground/50">
                           +{dayEntries.length - MAX_VISIBLE} flere
                         </div>
                       )}
@@ -291,23 +291,49 @@ export default function MonthView({
                 );
               })}
 
-              {/* Weekly summary */}
-              <div className="bg-muted/10 p-1.5 text-[10px]">
+              {/* Weekly summary — matches WeekView ugeoversigt style */}
+              <div className="bg-muted/10 p-2">
                 {ws ? (
-                  <div className="space-y-1">
-                    <div className="font-medium text-foreground">
-                      {formatDuration(ws.duration)}
+                  <div className="space-y-2 text-[11px]">
+                    <div>
+                      <div className="text-[9px] text-muted-foreground">Sessioner</div>
+                      <div className="text-base font-bold text-foreground">{ws.count}</div>
                     </div>
-                    <div className="text-muted-foreground">{Math.round(ws.tss)} TSS</div>
-                    <div className="space-y-0.5">
+                    <div>
+                      <div className="text-[9px] text-muted-foreground">Total tid</div>
+                      <div className="text-sm font-semibold text-foreground">{formatDuration(ws.duration)}</div>
+                    </div>
+                    <div>
+                      <div className="text-[9px] text-muted-foreground">Total TSS</div>
+                      <div className="text-sm font-bold text-foreground">{Math.round(ws.tss)}</div>
+                    </div>
+
+                    {/* TSS stacked bar */}
+                    {ws.tss > 0 && (
+                      <div>
+                        <div className="text-[9px] text-muted-foreground mb-0.5">Fordeling</div>
+                        <div className="flex h-2.5 w-full overflow-hidden rounded-full">
+                          {Object.entries(ws.bySport).map(([sport, data]) => {
+                            const pct = ws.duration > 0 ? (data.duration / ws.duration) * 100 : 0;
+                            if (pct <= 0) return null;
+                            return (
+                              <div key={sport} style={{ width: `${pct}%`, backgroundColor: getSportColor(sport) }} />
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Per-sport breakdown */}
+                    <div className="border-t border-border pt-1.5 space-y-1">
                       {Object.entries(ws.bySport).map(([sport, data]) => (
                         <div key={sport} className="flex items-center gap-1">
-                          <SportIcon sport={sport} size={9} />
-                          <span className="text-muted-foreground">{data.count}x</span>
+                          <SportIcon sport={sport} size={11} />
+                          <span className="font-medium text-foreground">{data.count}x</span>
+                          <span className="text-muted-foreground">{formatDuration(data.duration)}</span>
                         </div>
                       ))}
                     </div>
-                    <div className="text-muted-foreground/60">{ws.count} traen.</div>
                   </div>
                 ) : (
                   <span className="text-muted-foreground/30">—</span>
