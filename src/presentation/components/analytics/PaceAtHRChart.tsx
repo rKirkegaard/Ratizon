@@ -95,7 +95,7 @@ export default function PaceAtHRChart({
                 domain={["auto", "auto"]}
                 label={{ value: "min/km", angle: -90, position: "insideLeft", fontSize: 10 }}
               />
-              <Tooltip
+              <Tooltip cursor={false}
                 labelFormatter={formatDate}
                 formatter={(value: number, name: string) => [
                   paceToMinKm(value) + "/km",

@@ -92,7 +92,7 @@ export default function WeeklyZoneChart({
               tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
               tickFormatter={(v: number) => formatMinutesLabel(v)}
             />
-            <Tooltip
+            <Tooltip cursor={false}
               formatter={(value: number) => [`${formatMinutesLabel(value)}`, "Tid"]}
               contentStyle={{
                 backgroundColor: "hsl(var(--card))",

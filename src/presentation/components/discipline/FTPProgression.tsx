@@ -86,7 +86,7 @@ export default function FTPProgression({ powerCurveData, currentFtp }: FTPProgre
                 tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
                 domain={["auto", "auto"]}
               />
-              <Tooltip
+              <Tooltip cursor={false}
                 contentStyle={{
                   backgroundColor: "hsl(var(--card))",
                   border: "1px solid hsl(var(--border))",

@@ -71,7 +71,7 @@ export default function SwimPaceChart({ data }: SwimPaceChartProps) {
                 fill: "hsl(var(--muted-foreground))",
               }}
             />
-            <Tooltip
+            <Tooltip cursor={false}
               labelFormatter={formatDate}
               formatter={(value: number) => [
                 formatPacePer100m(value),

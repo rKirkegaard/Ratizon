@@ -104,7 +104,7 @@ export default function PaceTrend({ data }: PaceTrendProps) {
                 fill: "hsl(var(--muted-foreground))",
               }}
             />
-            <Tooltip
+            <Tooltip cursor={false}
               labelFormatter={formatDate}
               formatter={(value: number, name: string) => [
                 paceToMinKmString(value) + "/km",

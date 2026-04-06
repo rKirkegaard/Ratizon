@@ -78,7 +78,7 @@ export default function RestingHRChart({ history, isLoading }: RestingHRChartPro
               tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
               width={35}
             />
-            <Tooltip
+            <Tooltip cursor={false}
               contentStyle={{
                 backgroundColor: "var(--card)",
                 border: "1px solid var(--border)",

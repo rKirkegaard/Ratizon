@@ -54,7 +54,7 @@ export default function SportBalanceChart({ points, sports }: SportBalanceChartP
               tickFormatter={(v: number) => `${Math.round(v * 100)}%`}
               tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
             />
-            <Tooltip
+            <Tooltip cursor={false}
               formatter={(value: number, name: string) => [
                 `${(value * 100).toFixed(0)}%`,
                 name,

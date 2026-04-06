@@ -83,7 +83,7 @@ export default function RampRateChart({ points }: RampRateChartProps) {
               tickFormatter={(v: number) => `${v}%`}
               tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
             />
-            <Tooltip
+            <Tooltip cursor={false}
               formatter={(value: number) => [`${value.toFixed(1)}%`, "Ramp Rate"]}
               contentStyle={{
                 backgroundColor: "hsl(var(--card))",

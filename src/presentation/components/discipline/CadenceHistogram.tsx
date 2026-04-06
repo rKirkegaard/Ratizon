@@ -58,7 +58,7 @@ export default function CadenceHistogram({ data }: CadenceHistogramProps) {
               tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
               tickFormatter={(v: number) => `${v}%`}
             />
-            <Tooltip
+            <Tooltip cursor={false}
               contentStyle={{
                 backgroundColor: "hsl(var(--card))",
                 border: "1px solid hsl(var(--border))",

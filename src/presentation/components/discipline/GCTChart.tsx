@@ -90,7 +90,7 @@ export default function GCTChart({ data }: GCTChartProps) {
                 fill: "hsl(var(--muted-foreground))",
               }}
             />
-            <Tooltip
+            <Tooltip cursor={false}
               labelFormatter={formatDate}
               formatter={(value: number, name: string) => [
                 `${Math.round(value)} ms`,

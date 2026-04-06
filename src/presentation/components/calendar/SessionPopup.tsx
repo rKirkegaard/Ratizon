@@ -316,7 +316,7 @@ export default function SessionPopup({ session, sessionType, athleteId: propAthl
                           </defs>
                           <XAxis dataKey="sec" tickFormatter={fmtTime} tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} axisLine={{ stroke: "hsl(var(--border))" }} tickLine={{ stroke: "hsl(var(--border))" }} interval="preserveStartEnd" minTickGap={30} />
                           <YAxis domain={["dataMin - 10", "dataMax + 10"]} tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} axisLine={{ stroke: "hsl(var(--border))" }} tickLine={{ stroke: "hsl(var(--border))" }} width={35} tickFormatter={(v: number) => `${Math.round(v)}`} />
-                          <Tooltip contentStyle={{ backgroundColor: "hsl(var(--background))", border: "1px solid hsl(var(--border))", borderRadius: "6px", fontSize: "11px", color: "hsl(var(--foreground))" }} formatter={(v: number) => [`${Math.round(v)} bpm`, "Puls"]} labelFormatter={(l: number) => fmtTime(l)} />
+                          <Tooltip cursor={false} contentStyle={{ backgroundColor: "hsl(var(--background))", border: "1px solid hsl(var(--border))", borderRadius: "6px", fontSize: "11px", color: "hsl(var(--foreground))" }} formatter={(v: number) => [`${Math.round(v)} bpm`, "Puls"]} labelFormatter={(l: number) => fmtTime(l)} />
                           <Area type="monotone" dataKey="hr" stroke="#ef4444" strokeWidth={1.5} fill="url(#hrGrad)" connectNulls />
                         </AreaChart>
                       </ResponsiveContainer>
@@ -347,7 +347,7 @@ export default function SessionPopup({ session, sessionType, athleteId: propAthl
                           </defs>
                           <XAxis dataKey="sec" tickFormatter={fmtTime} tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} axisLine={{ stroke: "hsl(var(--border))" }} tickLine={{ stroke: "hsl(var(--border))" }} interval="preserveStartEnd" minTickGap={30} />
                           <YAxis domain={["dataMin - 20", "dataMax + 20"]} tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} axisLine={{ stroke: "hsl(var(--border))" }} tickLine={{ stroke: "hsl(var(--border))" }} width={35} tickFormatter={(v: number) => `${Math.round(v)}`} />
-                          <Tooltip contentStyle={{ backgroundColor: "hsl(var(--background))", border: "1px solid hsl(var(--border))", borderRadius: "6px", fontSize: "11px", color: "hsl(var(--foreground))" }} formatter={(v: number) => [`${Math.round(v)}W`, "Power"]} labelFormatter={(l: number) => fmtTime(l)} />
+                          <Tooltip cursor={false} contentStyle={{ backgroundColor: "hsl(var(--background))", border: "1px solid hsl(var(--border))", borderRadius: "6px", fontSize: "11px", color: "hsl(var(--foreground))" }} formatter={(v: number) => [`${Math.round(v)}W`, "Power"]} labelFormatter={(l: number) => fmtTime(l)} />
                           <Area type="monotone" dataKey="power" stroke="#eab308" strokeWidth={1.5} fill="url(#pwrGrad)" connectNulls />
                         </AreaChart>
                       </ResponsiveContainer>
@@ -381,7 +381,7 @@ export default function SessionPopup({ session, sessionType, athleteId: propAthl
                           </defs>
                           <XAxis dataKey="sec" tickFormatter={fmtTime} tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} axisLine={{ stroke: "hsl(var(--border))" }} tickLine={{ stroke: "hsl(var(--border))" }} interval="preserveStartEnd" minTickGap={30} />
                           <YAxis reversed={s.sport !== "bike"} domain={s.sport === "bike" ? ["dataMin - 5", "dataMax + 5"] : undefined} tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} axisLine={{ stroke: "hsl(var(--border))" }} tickLine={{ stroke: "hsl(var(--border))" }} width={35} />
-                          <Tooltip contentStyle={{ backgroundColor: "hsl(var(--background))", border: "1px solid hsl(var(--border))", borderRadius: "6px", fontSize: "11px", color: "hsl(var(--foreground))" }} formatter={(v: number) => [s.sport === "bike" ? `${v} km/t` : `${Math.floor(v)}:${String(Math.round((v % 1) * 60)).padStart(2, "0")}/km`, s.sport === "bike" ? "Hastighed" : "Pace"]} labelFormatter={(l: number) => fmtTime(l)} />
+                          <Tooltip cursor={false} contentStyle={{ backgroundColor: "hsl(var(--background))", border: "1px solid hsl(var(--border))", borderRadius: "6px", fontSize: "11px", color: "hsl(var(--foreground))" }} formatter={(v: number) => [s.sport === "bike" ? `${v} km/t` : `${Math.floor(v)}:${String(Math.round((v % 1) * 60)).padStart(2, "0")}/km`, s.sport === "bike" ? "Hastighed" : "Pace"]} labelFormatter={(l: number) => fmtTime(l)} />
                           <Area type="monotone" dataKey="paceOrSpeed" stroke="#3b82f6" strokeWidth={1.5} fill="url(#paceGrad)" connectNulls />
                         </AreaChart>
                       </ResponsiveContainer>

@@ -85,7 +85,7 @@ export default function SleepChart({ history, isLoading }: SleepChartProps) {
               width={30}
               unit="t"
             />
-            <Tooltip
+            <Tooltip cursor={false}
               contentStyle={{
                 backgroundColor: "var(--card)",
                 border: "1px solid var(--border)",

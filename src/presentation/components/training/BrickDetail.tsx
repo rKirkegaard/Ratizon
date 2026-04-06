@@ -162,7 +162,7 @@ export default function BrickDetail({ athleteId, brick }: BrickDetailProps) {
                   tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
                   width={40}
                 />
-                <Tooltip
+                <Tooltip cursor={false}
                   contentStyle={{
                     backgroundColor: "var(--card)",
                     border: "1px solid var(--border)",

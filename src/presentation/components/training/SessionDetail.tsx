@@ -225,7 +225,7 @@ export default function SessionDetail({ athleteId, sessionId }: SessionDetailPro
                     tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
                     width={35}
                   />
-                  <Tooltip
+                  <Tooltip cursor={false}
                     contentStyle={{
                       backgroundColor: "var(--card)",
                       border: "1px solid var(--border)",
@@ -290,7 +290,7 @@ export default function SessionDetail({ athleteId, sessionId }: SessionDetailPro
                       tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
                       width={50}
                     />
-                    <Tooltip
+                    <Tooltip cursor={false}
                       contentStyle={{
                         backgroundColor: "var(--card)",
                         border: "1px solid var(--border)",
@@ -451,7 +451,7 @@ export default function SessionDetail({ athleteId, sessionId }: SessionDetailPro
                         width={40}
                       />
                     )}
-                    <Tooltip
+                    <Tooltip cursor={false}
                       contentStyle={{
                         backgroundColor: "var(--card)",
                         border: "1px solid var(--border)",

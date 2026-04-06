@@ -92,7 +92,7 @@ export default function VolumeDistribution({
                 style: { fontSize: 10, fill: "var(--muted-foreground)" },
               }}
             />
-            <Tooltip
+            <Tooltip cursor={false}
               contentStyle={{
                 backgroundColor: "var(--card)",
                 border: "1px solid var(--border)",

@@ -84,7 +84,7 @@ export default function EFTrendChart({ points, trendLine }: EFTrendChartProps) {
               tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
               domain={["auto", "auto"]}
             />
-            <Tooltip
+            <Tooltip cursor={false}
               labelFormatter={formatDate}
               contentStyle={{
                 backgroundColor: "hsl(var(--card))",

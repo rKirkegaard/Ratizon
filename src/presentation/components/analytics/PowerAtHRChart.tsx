@@ -97,7 +97,7 @@ export default function PowerAtHRChart({
                 domain={["auto", "auto"]}
                 label={{ value: "Watt", angle: -90, position: "insideLeft", fontSize: 10 }}
               />
-              <Tooltip
+              <Tooltip cursor={false}
                 labelFormatter={formatDate}
                 formatter={(value: number, name: string) => [
                   `${Math.round(value)} W`,

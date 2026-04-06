@@ -111,7 +111,7 @@ export default function HRVTrendChart({
               width={35}
               unit=" ms"
             />
-            <Tooltip
+            <Tooltip cursor={false}
               contentStyle={{
                 backgroundColor: "var(--card)",
                 border: "1px solid var(--border)",

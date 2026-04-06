@@ -82,7 +82,7 @@ export default function DisciplineBalance({
                   />
                 ))}
               </Pie>
-              <Tooltip
+              <Tooltip cursor={false}
                 formatter={(value: number) => formatMinutes(value)}
                 contentStyle={{
                   backgroundColor: "hsl(var(--card))",

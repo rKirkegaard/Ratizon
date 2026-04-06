@@ -55,7 +55,7 @@ export default function MonotonyStrainChart({ points }: MonotonyStrainChartProps
               tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
               label={{ value: "Strain", angle: 90, position: "insideRight", fontSize: 10 }}
             />
-            <Tooltip
+            <Tooltip cursor={false}
               contentStyle={{
                 backgroundColor: "hsl(var(--card))",
                 border: "1px solid hsl(var(--border))",

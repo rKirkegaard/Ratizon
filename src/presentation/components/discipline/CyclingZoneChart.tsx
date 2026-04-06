@@ -66,7 +66,7 @@ export default function CyclingZoneChart({ data }: CyclingZoneChartProps) {
               tickFormatter={(v: number) => `${v}%`}
               domain={[0, 100]}
             />
-            <Tooltip
+            <Tooltip cursor={false}
               contentStyle={{
                 backgroundColor: "hsl(var(--card))",
                 border: "1px solid hsl(var(--border))",

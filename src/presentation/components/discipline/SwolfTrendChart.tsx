@@ -90,7 +90,7 @@ export default function SwolfTrendChart({ data }: SwolfTrendChartProps) {
                 fill: "hsl(var(--muted-foreground))",
               }}
             />
-            <Tooltip
+            <Tooltip cursor={false}
               labelFormatter={formatDate}
               formatter={(value: number, name: string) => [
                 value.toFixed(1),

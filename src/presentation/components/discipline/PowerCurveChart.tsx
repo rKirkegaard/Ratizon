@@ -86,7 +86,7 @@ export default function PowerCurveChart({ data, ftp }: PowerCurveChartProps) {
                 fill: "hsl(var(--muted-foreground))",
               }}
             />
-            <Tooltip
+            <Tooltip cursor={false}
               contentStyle={{
                 backgroundColor: "hsl(var(--card))",
                 border: "1px solid hsl(var(--border))",

@@ -112,7 +112,7 @@ export default function TaperSection({ athleteId, goalId }: TaperSectionProps) {
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                   <XAxis dataKey="date" tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} tickFormatter={formatDate} />
                   <YAxis tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} width={35} />
-                  <Tooltip
+                  <Tooltip cursor={false}
                     contentStyle={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: "8px", fontSize: "12px" }}
                     labelFormatter={formatDate}
                   />
