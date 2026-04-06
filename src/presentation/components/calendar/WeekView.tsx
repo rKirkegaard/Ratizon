@@ -19,6 +19,7 @@ import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { SportIcon } from "@/presentation/components/shared/SportIcon";
+import SessionPopup from "@/presentation/components/calendar/SessionPopup";
 import { useAthleteStore } from "@/application/stores/athleteStore";
 import { formatDuration, formatDistance } from "@/domain/utils/formatters";
 import { getPhaseForDate, PHASE_COLORS, PHASE_LABELS } from "@/domain/utils/phase-colors";
@@ -181,6 +182,8 @@ export default function WeekView({
   const getSportColor = useAthleteStore((s) => s.getSportColor);
   const selectedAthleteId = useAthleteStore((s) => s.selectedAthleteId);
   const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set());
+  const [popupSession, setPopupSession] = useState<Session | PlannedSession | null>(null);
+  const [popupType, setPopupType] = useState<"completed" | "planned">("completed");
 
   const toggleExpand = (id: string) => {
     setExpandedSessions((prev) => {
@@ -426,6 +429,7 @@ export default function WeekView({
                         <div
                           key={`c-${s.id}`}
                           data-testid={`session-completed-${s.id}`}
+                          onClick={() => { setPopupSession(s); setPopupType("completed"); }}
                           className="rounded-lg border border-border/50 bg-muted/40 p-2 cursor-pointer hover:shadow-md transition-shadow border-l-4"
                           style={{ borderLeftColor: sportColor }}
                         >
@@ -453,6 +457,7 @@ export default function WeekView({
                       <div
                         key={`c-${s.id}`}
                         data-testid={`session-completed-${s.id}`}
+                        onClick={() => { setPopupSession(s); setPopupType("completed"); }}
                         className="rounded-lg border border-border/50 bg-card p-3 cursor-pointer hover:shadow-md transition-shadow border-l-4"
                         style={{ borderLeftColor: sportColor }}
                       >
@@ -507,7 +512,8 @@ export default function WeekView({
                     <div
                       key={`p-${p.id}`}
                       data-testid={`session-planned-${p.id}`}
-                      className="group relative rounded border border-dashed bg-muted/20 px-2 py-1.5 opacity-60"
+                      onClick={() => { setPopupSession(p); setPopupType("planned"); }}
+                      className="group relative rounded border border-dashed bg-muted/20 px-2 py-1.5 opacity-60 cursor-pointer"
                       style={{ borderColor: sportColor }}
                     >
                       <div className="flex items-center gap-1">
@@ -627,6 +633,16 @@ export default function WeekView({
           </div>
         </div>
       </div>
+
+      {/* Session detail popup — same as MonthView */}
+      {popupSession && (
+        <SessionPopup
+          session={popupSession}
+          sessionType={popupType}
+          athleteId={selectedAthleteId ?? ""}
+          onClose={() => setPopupSession(null)}
+        />
+      )}
     </div>
   );
 }
