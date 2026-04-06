@@ -1,5 +1,6 @@
 import { Router, Request, Response } from "express";
 import multer from "multer";
+import AdmZip from "adm-zip";
 import {
   listSessions,
   getSession,
@@ -25,10 +26,10 @@ const upload = multer({
   limits: { fileSize: 50 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const ext = file.originalname.toLowerCase().split(".").pop();
-    if (ext === "fit" || ext === "tcx") {
+    if (ext === "fit" || ext === "tcx" || ext === "zip") {
       cb(null, true);
     } else {
-      cb(new Error("Kun .fit og .tcx filer er tilladt"));
+      cb(new Error("Kun .fit, .tcx og .zip filer er tilladt"));
     }
   },
 });
@@ -58,11 +59,36 @@ trainingRouter.post(
       const file = req.file;
 
       if (!file) {
-        res.status(400).json({ error: { message: "Ingen fil uploadet. Send en .fit eller .tcx fil." } });
+        res.status(400).json({ error: { message: "Ingen fil uploadet. Send en .fit, .tcx eller .zip fil." } });
         return;
       }
 
-      const result = await uploadSession(file.buffer, athleteId, file.originalname);
+      let fileBuffer = file.buffer;
+      let filename = file.originalname;
+
+      // If zip, extract first .fit or .tcx file inside
+      const ext = filename.toLowerCase().split(".").pop();
+      if (ext === "zip") {
+        try {
+          const zip = new AdmZip(fileBuffer);
+          const entries = zip.getEntries();
+          const fitEntry = entries.find((e) => {
+            const name = e.entryName.toLowerCase();
+            return (name.endsWith(".fit") || name.endsWith(".tcx")) && !e.isDirectory;
+          });
+          if (!fitEntry) {
+            res.status(400).json({ error: { message: "Zip-filen indeholder ingen .fit eller .tcx fil." } });
+            return;
+          }
+          fileBuffer = fitEntry.getData();
+          filename = fitEntry.entryName;
+        } catch (zipErr: any) {
+          res.status(400).json({ error: { message: "Kunne ikke laese zip-filen: " + zipErr.message } });
+          return;
+        }
+      }
+
+      const result = await uploadSession(fileBuffer, athleteId, filename);
 
       res.status(201).json({
         data: {
