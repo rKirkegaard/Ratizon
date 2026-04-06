@@ -417,96 +417,85 @@ export default function WeekView({
 
                   if (entry.type === "completed") {
                     const s = entry.data as Session;
-                    const intensityColor = getIntensityColor(s.sessionType);
+                    const sportColor = getSportColor(s.sport);
                     const isExpanded = expandedSessions.has(String(s.id));
 
+                    if (!isExpanded) {
+                      // ── Collapsed: IronCoach Card style ──
+                      return (
+                        <div
+                          key={`c-${s.id}`}
+                          data-testid={`session-completed-${s.id}`}
+                          className="rounded-lg border border-border/50 bg-muted/40 p-2 cursor-pointer hover:shadow-md transition-shadow border-l-4"
+                          style={{ borderLeftColor: sportColor }}
+                        >
+                          <div className="flex items-center gap-2">
+                            <SportIcon sport={s.sport} size={16} />
+                            <button
+                              onClick={(e) => { e.stopPropagation(); toggleExpand(String(s.id)); }}
+                              className="flex items-center gap-1 text-[10px] uppercase tracking-wide font-medium text-muted-foreground hover:text-foreground"
+                            >
+                              <span className="truncate">
+                                {getSessionTypeLabel(s.sessionType) || s.sport}
+                              </span>
+                              <ChevronDown className="h-3 w-3" />
+                            </button>
+                            <span className="text-[10px] text-muted-foreground ml-auto">
+                              {formatDuration(s.durationSeconds)}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // ── Expanded: IronCoach Card with metrics + charts ──
                     return (
                       <div
                         key={`c-${s.id}`}
                         data-testid={`session-completed-${s.id}`}
-                        className="rounded border-l-[3px] bg-card shadow-sm overflow-hidden"
-                        style={{ borderLeftColor: intensityColor }}
+                        className="rounded-lg border border-border/50 bg-card p-3 cursor-pointer hover:shadow-md transition-shadow border-l-4"
+                        style={{ borderLeftColor: sportColor }}
                       >
-                        {/* Header row — always visible, click to toggle */}
-                        <div
-                          className="flex items-center gap-1 px-2 py-1.5 cursor-pointer hover:bg-muted/20"
-                          onClick={(e) => { e.stopPropagation(); toggleExpand(String(s.id)); }}
-                        >
-                          <SportIcon sport={s.sport} size={13} />
-                          <span className="flex-1 truncate text-xs font-medium text-foreground">
-                            {getSessionTypeLabel(s.sessionType) || s.title}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground">{formatDuration(s.durationSeconds)}</span>
-                          {isExpanded
-                            ? <ChevronUp size={12} className="text-muted-foreground flex-shrink-0" />
-                            : <ChevronDown size={12} className="text-muted-foreground flex-shrink-0" />
-                          }
+                        {/* Header */}
+                        <div className="flex items-center gap-2 mb-2">
+                          <SportIcon sport={s.sport} size={16} />
+                          <div className="min-w-0">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); toggleExpand(String(s.id)); }}
+                              className="flex w-full flex-col items-start gap-0.5"
+                            >
+                              <div className="flex w-full items-center gap-1 text-[10px] uppercase tracking-wide font-medium text-muted-foreground hover:text-foreground">
+                                <span className="truncate">
+                                  {getSessionTypeLabel(s.sessionType) || s.sport}
+                                </span>
+                                <ChevronUp className="h-3 w-3 ml-auto" />
+                              </div>
+                              <span className="text-xs text-muted-foreground normal-case">
+                                {format(parseISO(s.startedAt), "HH:mm")}
+                              </span>
+                            </button>
+                          </div>
                         </div>
 
-                        {/* Expanded detail */}
-                        {isExpanded && (
-                          <div className="border-t border-border/30 px-2 py-1.5 space-y-1.5">
-                            {/* Start time */}
-                            <div className="text-[10px] text-muted-foreground">
-                              {format(parseISO(s.startedAt), "HH:mm")} · {s.title}
-                            </div>
+                        {/* Metrics grid — matching IronCoach 2-col layout */}
+                        <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[11px]">
+                          <div className="text-muted-foreground">Varighed</div>
+                          <div className="text-foreground">{formatDuration(s.durationSeconds)}</div>
+                          <div className="text-muted-foreground">Distance</div>
+                          <div className="text-foreground">{s.distanceMeters ? formatDistance(s.distanceMeters) : "–"}</div>
+                          <div className="text-muted-foreground">Gns. puls</div>
+                          <div className="text-foreground">{s.avgHr ?? "–"}</div>
+                          <div className="text-muted-foreground">TSS</div>
+                          <div className="text-foreground">{s.tss != null ? Math.round(s.tss) : "–"}</div>
+                          {s.avgPower != null && (
+                            <><div className="text-muted-foreground">Effekt</div><div className="text-foreground">{s.avgPower}W</div></>
+                          )}
+                        </div>
 
-                            {/* Metrics grid */}
-                            <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px]">
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Varighed</span>
-                                <span className="font-medium text-foreground">{formatDuration(s.durationSeconds)}</span>
-                              </div>
-                              {s.distanceMeters != null && s.distanceMeters > 0 && (
-                                <div className="flex justify-between">
-                                  <span className="text-muted-foreground">Distance</span>
-                                  <span className="font-medium text-foreground">{formatDistance(s.distanceMeters)}</span>
-                                </div>
-                              )}
-                              {s.avgHr != null && (
-                                <div className="flex justify-between">
-                                  <span className="text-muted-foreground">Gns. puls</span>
-                                  <span className="font-medium text-foreground">{s.avgHr} bpm</span>
-                                </div>
-                              )}
-                              {s.tss != null && (
-                                <div className="flex justify-between">
-                                  <span className="text-muted-foreground">TSS</span>
-                                  <span className="font-medium text-foreground">{Math.round(s.tss)}</span>
-                                </div>
-                              )}
-                              {s.avgPower != null && (
-                                <div className="flex justify-between">
-                                  <span className="text-muted-foreground">Effekt</span>
-                                  <span className="font-medium text-foreground">{s.avgPower}W</span>
-                                </div>
-                              )}
-                              {s.avgPace != null && (
-                                <div className="flex justify-between">
-                                  <span className="text-muted-foreground">Pace</span>
-                                  <span className="font-medium text-foreground">
-                                    {Math.floor(s.avgPace / 60)}:{String(Math.round(s.avgPace % 60)).padStart(2, "0")}/km
-                                  </span>
-                                </div>
-                              )}
-                              {s.elevationGain != null && s.elevationGain > 0 && (
-                                <div className="flex justify-between">
-                                  <span className="text-muted-foreground">Stigning</span>
-                                  <span className="font-medium text-foreground">{Math.round(s.elevationGain)}m</span>
-                                </div>
-                              )}
-                              {s.avgCadence != null && (
-                                <div className="flex justify-between">
-                                  <span className="text-muted-foreground">Kadence</span>
-                                  <span className="font-medium text-foreground">{Math.round(s.avgCadence)} {s.sport === "bike" ? "rpm" : "spm"}</span>
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Compact charts — rendered inline */}
-                            <WeekSessionCharts athleteId={selectedAthleteId} sessionId={String(s.id)} sport={s.sport} />
-                          </div>
-                        )}
+                        {/* Compact charts */}
+                        <div className="mt-2">
+                          <WeekSessionCharts athleteId={selectedAthleteId} sessionId={String(s.id)} sport={s.sport} />
+                        </div>
                       </div>
                     );
                   }
