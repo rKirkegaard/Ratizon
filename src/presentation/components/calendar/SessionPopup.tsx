@@ -106,6 +106,7 @@ export default function SessionPopup({ session, sessionType, athleteId: propAthl
     const sportColor = getSportColor(s.sport);
     const typeColors = SESSION_TYPE_COLORS[s.sessionType] ?? { bg: "bg-muted", text: "text-foreground", border: "border-border" };
     const hasPower = s.sport === "bike" && s.avgPower != null;
+    const hasSpeed = chartData.some((d) => d.speed != null && d.speed > 0);
 
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
@@ -204,27 +205,108 @@ export default function SessionPopup({ session, sessionType, athleteId: propAthl
             )}
           </div>
 
-          {/* HR / Power time series chart */}
+          {/* 3 charts grid — matching IronCoach: HR, Power, Pace/Speed */}
           {chartData.length > 10 && (
-            <div className="mb-5">
-              <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Tidsserie</h4>
-              <div className="h-44 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                    <XAxis dataKey="min" tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} tickFormatter={(v) => `${v}m`} />
-                    <YAxis yAxisId="hr" orientation="left" tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} width={30} />
-                    {hasPower && (
-                      <YAxis yAxisId="power" orientation="right" tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} width={35} />
-                    )}
-                    <Tooltip contentStyle={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: "8px", fontSize: "11px" }} />
-                    <Area yAxisId="hr" dataKey="hr" stroke="#EF4444" fill="#EF444420" strokeWidth={1.5} dot={false} name="Puls" />
-                    {hasPower && (
-                      <Area yAxisId="power" dataKey="power" stroke="#EAB308" fill="#EAB30820" strokeWidth={1.5} dot={false} name="Power" />
-                    )}
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
+            <div className={`mb-5 grid gap-4 ${
+              hasPower && hasSpeed ? "grid-cols-3" : hasPower || hasSpeed ? "grid-cols-2" : "grid-cols-1"
+            }`}>
+              {/* Chart 1: Heart Rate */}
+              {chartData.some((d) => d.hr != null) && (
+                <div>
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <Heart className="h-3.5 w-3.5 text-red-500" />
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Puls</span>
+                    <span className="ml-auto text-[10px] text-muted-foreground">
+                      Gns. {s.avgHr ?? "–"} · Max {s.maxHr ?? "–"} bpm
+                    </span>
+                  </div>
+                  <div className="h-36 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                        <XAxis dataKey="min" tick={{ fontSize: 9, fill: "var(--muted-foreground)" }} tickFormatter={(v) => `${v}m`} />
+                        <YAxis tick={{ fontSize: 9, fill: "var(--muted-foreground)" }} width={28} domain={["dataMin - 10", "dataMax + 10"]} />
+                        <Tooltip contentStyle={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: "6px", fontSize: "10px" }} formatter={(v: number) => [`${v} bpm`, "Puls"]} />
+                        <Area dataKey="hr" stroke="#EF4444" fill="#EF444420" strokeWidth={1.5} dot={false} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+
+              {/* Chart 2: Power (only for bike) */}
+              {hasPower && chartData.some((d) => d.power != null) && (
+                <div>
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <Zap className="h-3.5 w-3.5 text-yellow-500" />
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Watt</span>
+                    <span className="ml-auto text-[10px] text-muted-foreground">
+                      Gns. {s.avgPower ?? "–"} · NP {s.normalizedPower ?? "–"} W
+                    </span>
+                  </div>
+                  <div className="h-36 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                        <XAxis dataKey="min" tick={{ fontSize: 9, fill: "var(--muted-foreground)" }} tickFormatter={(v) => `${v}m`} />
+                        <YAxis tick={{ fontSize: 9, fill: "var(--muted-foreground)" }} width={28} domain={["dataMin - 20", "dataMax + 20"]} />
+                        <Tooltip contentStyle={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: "6px", fontSize: "10px" }} formatter={(v: number) => [`${v}W`, "Power"]} />
+                        <Area dataKey="power" stroke="#EAB308" fill="#EAB30820" strokeWidth={1.5} dot={false} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+
+              {/* Chart 3: Pace (run/swim) or Speed (bike) */}
+              {hasSpeed && chartData.some((d) => d.speed != null && d.speed > 0) && (
+                <div>
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <TrendingUp className="h-3.5 w-3.5 text-blue-500" />
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      {s.sport === "bike" ? "Hastighed" : "Pace"}
+                    </span>
+                    <span className="ml-auto text-[10px] text-muted-foreground">
+                      {s.sport === "bike"
+                        ? `Gns. ${s.avgPace ? Math.round(s.distanceMeters! / s.durationSeconds * 3.6) : "–"} km/t`
+                        : `Gns. ${s.avgPace ? `${Math.floor(s.avgPace / 60)}:${String(Math.round(s.avgPace % 60)).padStart(2, "0")}/km` : "–"}`
+                      }
+                    </span>
+                  </div>
+                  <div className="h-36 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart
+                        data={chartData.map((d) => ({
+                          ...d,
+                          paceOrSpeed: d.speed && d.speed > 0
+                            ? s.sport === "bike"
+                              ? Math.round(d.speed * 3.6 * 10) / 10  // km/h
+                              : Math.round((1000 / d.speed / 60) * 100) / 100  // min/km
+                            : null,
+                        }))}
+                        margin={{ top: 5, right: 5, bottom: 5, left: 0 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                        <XAxis dataKey="min" tick={{ fontSize: 9, fill: "var(--muted-foreground)" }} tickFormatter={(v) => `${v}m`} />
+                        <YAxis
+                          tick={{ fontSize: 9, fill: "var(--muted-foreground)" }}
+                          width={32}
+                          reversed={s.sport !== "bike"}
+                          domain={s.sport === "bike" ? ["dataMin - 5", "dataMax + 5"] : undefined}
+                        />
+                        <Tooltip
+                          contentStyle={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: "6px", fontSize: "10px" }}
+                          formatter={(v: number) => [
+                            s.sport === "bike" ? `${v} km/t` : `${Math.floor(v)}:${String(Math.round((v % 1) * 60)).padStart(2, "0")}/km`,
+                            s.sport === "bike" ? "Hastighed" : "Pace",
+                          ]}
+                        />
+                        <Area dataKey="paceOrSpeed" stroke="#3B82F6" fill="#3B82F620" strokeWidth={1.5} dot={false} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
