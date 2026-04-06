@@ -56,7 +56,7 @@ function mapSport(fitSport: string | undefined): string {
   return "other";
 }
 
-export function parseFIT(buffer: Buffer): ParsedFile {
+export async function parseFIT(buffer: Buffer): Promise<ParsedFile> {
   const fitParser = new FitParser({
     force: true,
     speedUnit: "m/s",
@@ -66,9 +66,12 @@ export function parseFIT(buffer: Buffer): ParsedFile {
     mode: "list",
   });
 
-  fitParser.parse(buffer);
-
-  const data = fitParser as any;
+  const data: any = await new Promise((resolve, reject) => {
+    fitParser.parse(buffer, (error: any, parsed: any) => {
+      if (error) reject(new Error("FIT parse fejl: " + error));
+      else resolve(parsed);
+    });
+  });
 
   // Extract session summary
   const fitSession = data.sessions?.[0] ?? data.activity?.sessions?.[0] ?? {};

@@ -38,10 +38,10 @@ export function detectFormat(buffer: Buffer, filename?: string): FileFormat {
 /**
  * Parse file buffer into a structured ParsedFile.
  */
-function parseFile(buffer: Buffer, format: FileFormat): ParsedFile {
+async function parseFile(buffer: Buffer, format: FileFormat): Promise<ParsedFile> {
   switch (format) {
     case "fit":
-      return parseFIT(buffer);
+      return await parseFIT(buffer);
     case "tcx":
       return parseTCX(buffer);
     default:
@@ -60,7 +60,7 @@ export async function uploadSession(
   options?: { source?: string; externalId?: string }
 ): Promise<{ sessionId: string; sport: string; title: string }> {
   const format = detectFormat(fileBuffer, filename);
-  const parsed = parseFile(fileBuffer, format);
+  const parsed = await parseFile(fileBuffer, format);
 
   // Insert session
   const [createdSession] = await db
