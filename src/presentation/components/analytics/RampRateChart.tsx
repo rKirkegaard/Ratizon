@@ -76,8 +76,13 @@ export default function RampRateChart({ points }: RampRateChartProps) {
             />
 
             <XAxis
-              dataKey="weekLabel"
-              tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+              dataKey="weekStart"
+              tickFormatter={(v: string) => {
+                if (!v) return "";
+                const d = new Date(v);
+                return `${d.getDate()}/${d.getMonth() + 1}`;
+              }}
+              tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
             />
             <YAxis
               tickFormatter={(v: number) => `${v}%`}

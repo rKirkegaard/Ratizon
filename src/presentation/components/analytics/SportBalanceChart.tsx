@@ -47,8 +47,13 @@ export default function SportBalanceChart({ points, sports }: SportBalanceChartP
           >
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
             <XAxis
-              dataKey="weekLabel"
-              tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+              dataKey="weekStart"
+              tickFormatter={(v: string) => {
+                if (!v) return "";
+                const d = new Date(v);
+                return `${d.getDate()}/${d.getMonth() + 1}`;
+              }}
+              tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
             />
             <YAxis
               tickFormatter={(v: number) => `${Math.round(v * 100)}%`}
