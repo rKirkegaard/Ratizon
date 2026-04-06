@@ -89,7 +89,10 @@ export default function DisciplineBalance({
                   border: "1px solid hsl(var(--border))",
                   borderRadius: 8,
                   fontSize: 12,
+                  color: "hsl(var(--foreground))",
                 }}
+                labelStyle={{ color: "hsl(var(--foreground))" }}
+                itemStyle={{ color: "hsl(var(--foreground))" }}
               />
             </PieChart>
           </ResponsiveContainer>
