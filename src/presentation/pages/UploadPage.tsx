@@ -40,6 +40,7 @@ export default function UploadPage() {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [deletingAll, setDeletingAll] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [visibleMonths, setVisibleMonths] = useState(2);
 
   // Group sessions by month
   const groupedSessions = useMemo(() => {
@@ -249,11 +250,15 @@ export default function UploadPage() {
           <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">Ingen uploads endnu.</div>
         ) : (
           <div className="space-y-3">
-            {groupedSessions.map(([monthLabel, monthSessions]) => {
+            {groupedSessions.slice(0, visibleMonths).map(([monthLabel, monthSessions]) => {
               const collapsed = collapsedGroups.has(monthLabel);
               return (
                 <div key={monthLabel}>
-                  <button onClick={() => toggleGroup(monthLabel)} className="flex w-full items-center justify-between rounded-md bg-muted/30 px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground capitalize">
+                  {/* Sticky month header with backdrop blur */}
+                  <button
+                    onClick={() => toggleGroup(monthLabel)}
+                    className="flex w-full items-center justify-between rounded-md px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground capitalize sticky top-0 z-10 bg-card/80 backdrop-blur-sm border border-border/30"
+                  >
                     <span>{monthLabel} ({monthSessions.length})</span>
                     {collapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
                   </button>
@@ -303,6 +308,16 @@ export default function UploadPage() {
                 </div>
               );
             })}
+
+            {/* Load More button */}
+            {visibleMonths < groupedSessions.length && (
+              <button
+                onClick={() => setVisibleMonths((v) => v + 3)}
+                className="w-full rounded-md border border-border py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/20 transition-colors"
+              >
+                Vis flere ({groupedSessions.length - visibleMonths} maaneder mere)
+              </button>
+            )}
           </div>
         )}
       </div>
