@@ -36,6 +36,11 @@ export const athletes = pgTable("athletes", {
   ftp: integer("ftp"),
   lthr: integer("lthr"),
   swimCss: integer("swim_css"),
+  runThresholdPace: real("run_threshold_pace"),       // seconds per km
+  height: real("height"),                              // cm
+  trainingPhilosophy: varchar("training_philosophy", { length: 50 }), // polarized, pyramidal, sweet_spot, norwegian, etc.
+  weeklyVolumeMin: real("weekly_volume_min"),           // hours per week
+  weeklyVolumeMax: real("weekly_volume_max"),           // hours per week
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

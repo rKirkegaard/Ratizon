@@ -13,6 +13,8 @@ import UploadPage from "@/presentation/pages/UploadPage";
 import EquipmentPage from "@/presentation/pages/EquipmentPage";
 import SettingsPage from "@/presentation/pages/SettingsPage";
 import RacePlanPage from "@/presentation/pages/RacePlanPage";
+import ComparisonPage from "@/presentation/pages/ComparisonPage";
+import TestBaselinesPage from "@/presentation/pages/TestBaselinesPage";
 import LoginPage from "@/presentation/pages/LoginPage";
 import DevLoginPage from "@/presentation/pages/DevLoginPage";
 
@@ -29,6 +31,8 @@ export default function App() {
         <Route path="/performance" element={<PerformancePage />} />
         <Route path="/load-restitution" element={<LoadRecoveryPage />} />
         <Route path="/wellness" element={<WellnessPage />} />
+        <Route path="/sammenligning" element={<ComparisonPage />} />
+        <Route path="/test-resultater" element={<TestBaselinesPage />} />
         <Route path="/disciplin/:sportKey" element={<DisciplinePage />} />
         <Route path="/saeson-maal" element={<SeasonGoalsPage />} />
         <Route path="/raceplan" element={<RacePlanPage />} />

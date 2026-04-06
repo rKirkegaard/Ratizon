@@ -65,6 +65,8 @@ const STATIC_SECTIONS_BEFORE: NavSection[] = [
       { label: "Performance", path: "/performance", icon: <TrendingUp size={18} /> },
       { label: "Load & Restitution", path: "/load-restitution", icon: <Activity size={18} /> },
       { label: "Wellness", path: "/wellness", icon: <Heart size={18} /> },
+      { label: "Sammenligning", path: "/sammenligning", icon: <Activity size={18} /> },
+      { label: "Test & Baselines", path: "/test-resultater", icon: <Flame size={18} /> },
     ],
   },
 ];

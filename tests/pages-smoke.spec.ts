@@ -16,6 +16,8 @@ const ROUTES = [
   { path: '/udstyr', label: 'Udstyr' },
   { path: '/indstillinger', label: 'Indstillinger' },
   { path: '/raceplan', label: 'Raceplan' },
+  { path: '/sammenligning', label: 'Sammenligning' },
+  { path: '/test-resultater', label: 'Test & Baselines' },
 ];
 
 // Shared auth state across all tests in this file

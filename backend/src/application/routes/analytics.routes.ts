@@ -18,6 +18,10 @@ import {
   getSwimPaceProgression,
   getSwimSwolfTrend,
 } from "../controllers/analytics.controller.js";
+import {
+  compareSessions,
+  comparePeriods,
+} from "../controllers/comparison.controller.js";
 
 export const analyticsRouter = Router();
 
@@ -51,3 +55,7 @@ analyticsRouter.get("/:athleteId/cycling/cadence-power", getCyclingCadencePower)
 // Fase 3 — Swimming
 analyticsRouter.get("/:athleteId/swimming/pace-progression", getSwimPaceProgression);
 analyticsRouter.get("/:athleteId/swimming/swolf-trend", getSwimSwolfTrend);
+
+// Comparison
+analyticsRouter.get("/:athleteId/compare/sessions", compareSessions);
+analyticsRouter.get("/:athleteId/compare/periods", comparePeriods);

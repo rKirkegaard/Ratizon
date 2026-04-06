@@ -12,6 +12,7 @@ import { sportRouter } from "./sport.routes.js";
 import { garminRouter } from "./garmin.routes.js";
 import { racePlanRouter } from "./race-plan.routes.js";
 import { llmSettingsRouter } from "./llm-settings.routes.js";
+import { testRouter } from "./test.routes.js";
 import { authenticateToken } from "../middleware/auth.middleware.js";
 
 export function registerRoutes(app: Express): void {
@@ -31,4 +32,5 @@ export function registerRoutes(app: Express): void {
   app.use("/api/garmin", garminRouter); // Mixed auth — handled per-route
   app.use("/api/planning", authenticateToken, racePlanRouter); // Race plan routes share /api/planning prefix
   app.use("/api/llm", authenticateToken, llmSettingsRouter);
+  app.use("/api/tests", authenticateToken, testRouter);
 }

@@ -25,6 +25,11 @@ export async function getAthleteProfile(req: Request, res: Response) {
         ftp: athletes.ftp,
         lthr: athletes.lthr,
         swimCss: athletes.swimCss,
+        runThresholdPace: athletes.runThresholdPace,
+        height: athletes.height,
+        trainingPhilosophy: athletes.trainingPhilosophy,
+        weeklyVolumeMin: athletes.weeklyVolumeMin,
+        weeklyVolumeMax: athletes.weeklyVolumeMax,
         createdAt: athletes.createdAt,
         updatedAt: athletes.updatedAt,
       })
@@ -65,6 +70,11 @@ export async function updateAthleteProfile(req: Request, res: Response) {
     if (body.gender !== undefined) updateData.gender = body.gender;
     if (body.dateOfBirth !== undefined)
       updateData.dateOfBirth = body.dateOfBirth ? new Date(body.dateOfBirth) : null;
+    if (body.runThresholdPace !== undefined) updateData.runThresholdPace = body.runThresholdPace;
+    if (body.height !== undefined) updateData.height = body.height;
+    if (body.trainingPhilosophy !== undefined) updateData.trainingPhilosophy = body.trainingPhilosophy;
+    if (body.weeklyVolumeMin !== undefined) updateData.weeklyVolumeMin = body.weeklyVolumeMin;
+    if (body.weeklyVolumeMax !== undefined) updateData.weeklyVolumeMax = body.weeklyVolumeMax;
 
     const [updated] = await db
       .update(athletes)
