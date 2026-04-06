@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   BarChart,
   Bar,
@@ -16,6 +17,8 @@ interface MonotonyStrainChartProps {
 }
 
 export default function MonotonyStrainChart({ points }: MonotonyStrainChartProps) {
+  const [hoveredKey, setHoveredKey] = useState<string | null>(null);
+
   if (points.length === 0) {
     return (
       <div
@@ -66,13 +69,19 @@ export default function MonotonyStrainChart({ points }: MonotonyStrainChartProps
                 border: "1px solid hsl(var(--border))",
                 borderRadius: 8,
                 fontSize: 12,
+                color: "hsl(var(--foreground))",
               }}
+              itemStyle={{ color: "hsl(var(--foreground))" }}
               formatter={(value: number, name: string) => [
                 value.toFixed(2),
                 name === "monotony" ? "Monotoni" : "Strain",
               ]}
             />
-            <Legend />
+            <Legend
+              wrapperStyle={{ color: "hsl(var(--muted-foreground))", fontSize: 12 }}
+              onMouseEnter={(e: any) => setHoveredKey(e.dataKey || e.value)}
+              onMouseLeave={() => setHoveredKey(null)}
+            />
             <ReferenceLine
               yAxisId="monotony"
               y={2.0}
@@ -85,16 +94,20 @@ export default function MonotonyStrainChart({ points }: MonotonyStrainChartProps
               dataKey="monotony"
               name="Monotoni"
               fill="#3B82F6"
+              fillOpacity={hoveredKey === null ? 0.8 : hoveredKey === "monotony" ? 1 : 0.15}
               radius={[4, 4, 0, 0]}
               barSize={20}
+              activeBar={{ fillOpacity: 0.7, stroke: "hsl(var(--foreground))", strokeWidth: 1 }}
             />
             <Bar
               yAxisId="strain"
               dataKey="strain"
               name="Strain"
               fill="#F59E0B"
+              fillOpacity={hoveredKey === null ? 0.8 : hoveredKey === "strain" ? 1 : 0.15}
               radius={[4, 4, 0, 0]}
               barSize={20}
+              activeBar={{ fillOpacity: 0.7, stroke: "hsl(var(--foreground))", strokeWidth: 1 }}
             />
           </BarChart>
         </ResponsiveContainer>
