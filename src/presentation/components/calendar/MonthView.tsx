@@ -307,15 +307,11 @@ export default function MonthView({
                           </div>
                         )}
                         {Object.entries(summary.bySport).map(([sport, data]) => (
-                          <div key={sport} className="pl-2" style={{ color: getSportColor(sport) }}>
-                            <div className="flex items-center gap-1">
-                              <SportIcon sport={sport} size={12} />
-                              <span className="whitespace-nowrap">{formatDuration(data.duration)}</span>
-                            </div>
-                            <div className="flex items-center gap-1 pl-4 text-[10px] text-muted-foreground">
-                              {data.distance > 0 && <span>{formatDistance(data.distance)}</span>}
-                              <span className="ml-auto">{Math.round(data.tss)} TSS</span>
-                            </div>
+                          <div key={sport} className="flex items-center gap-1 pl-2 whitespace-nowrap text-[10px]" style={{ color: getSportColor(sport) }}>
+                            <SportIcon sport={sport} size={10} />
+                            <span>{formatDuration(data.duration)}</span>
+                            {data.distance > 0 && <span className="text-muted-foreground">{formatDistance(data.distance)}</span>}
+                            <span className="text-muted-foreground">{Math.round(data.tss)}</span>
                           </div>
                         ))}
                       </div>
@@ -334,15 +330,11 @@ export default function MonthView({
                           </div>
                         )}
                         {Object.entries(summary.plannedBySport).map(([sport, data]) => (
-                          <div key={sport} className="pl-2" style={{ color: getSportColor(sport) }}>
-                            <div className="flex items-center gap-1">
-                              <SportIcon sport={sport} size={12} />
-                              <span className="whitespace-nowrap">{formatDuration(data.duration)}</span>
-                            </div>
-                            <div className="flex items-center gap-1 pl-4 text-[10px] text-muted-foreground">
-                              {data.distance > 0 && <span>{formatDistance(data.distance)}</span>}
-                              <span className="ml-auto">{Math.round(data.tss)} TSS</span>
-                            </div>
+                          <div key={sport} className="flex items-center gap-1 pl-2 whitespace-nowrap text-[10px]" style={{ color: getSportColor(sport) }}>
+                            <SportIcon sport={sport} size={10} />
+                            <span>{formatDuration(data.duration)}</span>
+                            {data.distance > 0 && <span className="text-muted-foreground">{formatDistance(data.distance)}</span>}
+                            <span className="text-muted-foreground">{Math.round(data.tss)}</span>
                           </div>
                         ))}
                       </div>
