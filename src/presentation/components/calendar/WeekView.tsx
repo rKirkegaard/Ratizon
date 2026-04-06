@@ -433,20 +433,25 @@ export default function WeekView({
                           className="rounded-lg border border-border/50 bg-muted/40 p-2 cursor-pointer hover:shadow-md transition-shadow border-l-4"
                           style={{ borderLeftColor: sportColor }}
                         >
-                          <div className="flex items-center gap-2">
-                            <SportIcon sport={s.sport} size={16} />
-                            <button
-                              onClick={(e) => { e.stopPropagation(); toggleExpand(String(s.id)); }}
-                              className="flex items-center gap-1 text-[10px] uppercase tracking-wide font-medium text-muted-foreground hover:text-foreground"
-                            >
-                              <span className="truncate">
-                                {getSessionTypeLabel(s.sessionType) || s.sport}
-                              </span>
-                              <ChevronDown className="h-3 w-3" />
-                            </button>
-                            <span className="text-[10px] text-muted-foreground ml-auto">
-                              {formatDuration(s.durationSeconds)}
-                            </span>
+                          <div className="flex items-start gap-2">
+                            <SportIcon sport={s.sport} size={16} className="mt-0.5 flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); toggleExpand(String(s.id)); }}
+                                className="flex w-full items-center gap-1 text-[10px] uppercase tracking-wide font-medium text-muted-foreground hover:text-foreground"
+                              >
+                                <span className="truncate">
+                                  {getSessionTypeLabel(s.sessionType) || s.sport}
+                                </span>
+                                <ChevronDown className="h-3 w-3 ml-auto flex-shrink-0" />
+                              </button>
+                              <div className="text-[10px] text-muted-foreground">
+                                {formatDuration(s.durationSeconds)}
+                                {s.distanceMeters != null && s.distanceMeters > 0 && (
+                                  <span className="ml-1">· {formatDistance(s.distanceMeters)}</span>
+                                )}
+                              </div>
+                            </div>
                           </div>
                         </div>
                       );
