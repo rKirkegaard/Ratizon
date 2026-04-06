@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   startOfMonth,
   endOfMonth,
@@ -13,7 +13,7 @@ import {
   parseISO,
   getYear,
 } from "date-fns";
-import { ChevronLeft, ChevronRight, CheckCircle2, Zap, Target } from "lucide-react";
+import { ChevronLeft, ChevronRight, CheckCircle2, Zap, Target, X, Clock, Heart, TrendingUp } from "lucide-react";
 import { SportIcon } from "@/presentation/components/shared/SportIcon";
 import { useAthleteStore } from "@/application/stores/athleteStore";
 import { formatDuration, formatDistance } from "@/domain/utils/formatters";
@@ -59,6 +59,8 @@ export default function MonthView({
   onDayClick,
 }: MonthViewProps) {
   const getSportColor = useAthleteStore((s) => s.getSportColor);
+  const [selectedSession, setSelectedSession] = useState<Session | PlannedSession | null>(null);
+  const [sessionType, setSessionType] = useState<"completed" | "planned">("completed");
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
   const calStart = startOfWeek(monthStart, { weekStartsOn: 1 });
@@ -230,7 +232,8 @@ export default function MonthView({
                           return (
                             <div
                               key={`c-${s.id}`}
-                              className="rounded border-l-2 border border-border/50 bg-muted/40 px-1.5 py-1 text-xs text-muted-foreground hover:opacity-80"
+                              onClick={(e) => { e.stopPropagation(); setSelectedSession(s); setSessionType("completed"); }}
+                              className="rounded border-l-2 border border-border/50 bg-muted/40 px-1.5 py-1 text-xs text-muted-foreground hover:opacity-80 cursor-pointer"
                               style={{ borderLeftColor: getSportColor(s.sport) }}
                             >
                               <div className="flex items-center gap-1 mb-0.5">
@@ -258,7 +261,8 @@ export default function MonthView({
                           return (
                             <div
                               key={`p-${p.id}`}
-                              className="rounded border border-dashed border-border/50 bg-muted/20 px-1.5 py-1 text-xs text-muted-foreground/60 opacity-60"
+                              onClick={(e) => { e.stopPropagation(); setSelectedSession(p); setSessionType("planned"); }}
+                              className="rounded border border-dashed border-border/50 bg-muted/20 px-1.5 py-1 text-xs text-muted-foreground/60 opacity-60 cursor-pointer"
                               style={{ borderLeftColor: getSportColor(p.sport), borderLeftWidth: 2, borderLeftStyle: "solid" }}
                             >
                               <div className="flex items-center gap-1 mb-0.5">
@@ -344,6 +348,179 @@ export default function MonthView({
           );
         })}
       </div>
+
+      {/* Session Detail Modal — IronCoach style */}
+      {selectedSession && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setSelectedSession(null)}>
+          <div
+            className="relative mx-4 max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-border bg-card p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setSelectedSession(null)}
+              className="absolute right-4 top-4 rounded-md p-1 text-muted-foreground hover:text-foreground"
+            >
+              <X size={18} />
+            </button>
+
+            {sessionType === "completed" ? (() => {
+              const s = selectedSession as Session;
+              const sportColor = getSportColor(s.sport);
+              return (
+                <>
+                  {/* Header */}
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg text-white" style={{ backgroundColor: sportColor }}>
+                      <SportIcon sport={s.sport} size={20} />
+                    </div>
+                    <div>
+                      <div className="text-lg font-semibold text-foreground">{s.title}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {format(parseISO(s.startedAt), "EEEE d. MMMM yyyy 'kl.' HH:mm", { locale: undefined })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Quick stats grid */}
+                  <div className="grid grid-cols-4 gap-3 mb-6">
+                    <div className="rounded-lg bg-muted/30 p-3 text-center">
+                      <div className="text-2xl font-bold text-foreground">{formatDuration(s.durationSeconds)}</div>
+                      <div className="text-xs text-muted-foreground">Varighed</div>
+                    </div>
+                    <div className="rounded-lg bg-muted/30 p-3 text-center">
+                      <div className="text-2xl font-bold text-foreground">{s.tss != null ? Math.round(s.tss) : "–"}</div>
+                      <div className="text-xs text-muted-foreground">TSS</div>
+                    </div>
+                    <div className="rounded-lg bg-muted/30 p-3 text-center">
+                      <div className="text-sm font-bold uppercase text-foreground" style={{ color: sportColor }}>
+                        {getSessionTypeLabel(s.sessionType)}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">Type</div>
+                    </div>
+                    <div className="rounded-lg bg-muted/30 p-3 text-center">
+                      <div className="text-2xl font-bold text-foreground">
+                        {s.distanceMeters ? formatDistance(s.distanceMeters) : "–"}
+                      </div>
+                      <div className="text-xs text-muted-foreground">Distance</div>
+                    </div>
+                  </div>
+
+                  {/* Detailed metrics */}
+                  <div className="grid grid-cols-3 gap-3 mb-4">
+                    {s.avgHr != null && (
+                      <div className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/5 p-2">
+                        <Heart className="h-4 w-4 text-red-500" />
+                        <div>
+                          <div className="text-sm font-semibold text-foreground">{s.avgHr} bpm</div>
+                          <div className="text-[10px] text-muted-foreground">Gns. puls{s.maxHr ? ` (max ${s.maxHr})` : ""}</div>
+                        </div>
+                      </div>
+                    )}
+                    {s.avgPower != null && (
+                      <div className="flex items-center gap-2 rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-2">
+                        <Zap className="h-4 w-4 text-yellow-500" />
+                        <div>
+                          <div className="text-sm font-semibold text-foreground">{s.avgPower}W</div>
+                          <div className="text-[10px] text-muted-foreground">Gns. effekt{s.normalizedPower ? ` (NP ${s.normalizedPower})` : ""}</div>
+                        </div>
+                      </div>
+                    )}
+                    {s.avgPace != null && (
+                      <div className="flex items-center gap-2 rounded-lg border border-blue-500/20 bg-blue-500/5 p-2">
+                        <TrendingUp className="h-4 w-4 text-blue-500" />
+                        <div>
+                          <div className="text-sm font-semibold text-foreground">
+                            {Math.floor(s.avgPace / 60)}:{String(Math.round(s.avgPace % 60)).padStart(2, "0")}/km
+                          </div>
+                          <div className="text-[10px] text-muted-foreground">Gns. pace</div>
+                        </div>
+                      </div>
+                    )}
+                    {s.avgCadence != null && (
+                      <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/20 p-2">
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <div className="text-sm font-semibold text-foreground">{Math.round(s.avgCadence)}</div>
+                          <div className="text-[10px] text-muted-foreground">Kadence {s.sport === "bike" ? "rpm" : "spm"}</div>
+                        </div>
+                      </div>
+                    )}
+                    {s.elevationGain != null && s.elevationGain > 0 && (
+                      <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/20 p-2">
+                        <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <div className="text-sm font-semibold text-foreground">{Math.round(s.elevationGain)}m</div>
+                          <div className="text-[10px] text-muted-foreground">Stigning</div>
+                        </div>
+                      </div>
+                    )}
+                    {s.calories != null && (
+                      <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/20 p-2">
+                        <Zap className="h-4 w-4 text-orange-400" />
+                        <div>
+                          <div className="text-sm font-semibold text-foreground">{Math.round(s.calories)}</div>
+                          <div className="text-[10px] text-muted-foreground">Kalorier</div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {s.notes && (
+                    <div className="rounded-lg border border-border bg-muted/10 p-3">
+                      <div className="text-xs font-medium text-muted-foreground mb-1">Noter</div>
+                      <p className="text-sm text-foreground">{s.notes}</p>
+                    </div>
+                  )}
+                </>
+              );
+            })() : (() => {
+              const p = selectedSession as PlannedSession;
+              const sportColor = getSportColor(p.sport);
+              return (
+                <>
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg text-white" style={{ backgroundColor: sportColor }}>
+                      <SportIcon sport={p.sport} size={20} />
+                    </div>
+                    <div>
+                      <div className="text-lg font-semibold text-foreground">{p.title}</div>
+                      <div className="text-sm text-muted-foreground">
+                        Planlagt — {format(parseISO(p.scheduledDate), "EEEE d. MMMM yyyy")}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3 mb-6">
+                    {p.targetDurationSeconds && (
+                      <div className="rounded-lg bg-muted/30 p-3 text-center">
+                        <div className="text-2xl font-bold text-foreground">{formatDuration(p.targetDurationSeconds)}</div>
+                        <div className="text-xs text-muted-foreground">Maal varighed</div>
+                      </div>
+                    )}
+                    {p.targetTss != null && (
+                      <div className="rounded-lg bg-muted/30 p-3 text-center">
+                        <div className="text-2xl font-bold text-foreground">{Math.round(p.targetTss)}</div>
+                        <div className="text-xs text-muted-foreground">Maal TSS</div>
+                      </div>
+                    )}
+                    <div className="rounded-lg bg-muted/30 p-3 text-center">
+                      <div className="text-sm font-bold text-foreground">{p.sessionPurpose}</div>
+                      <div className="text-xs text-muted-foreground mt-1">Formaal</div>
+                    </div>
+                  </div>
+
+                  {p.description && (
+                    <div className="rounded-lg border border-border bg-muted/10 p-3">
+                      <div className="text-xs font-medium text-muted-foreground mb-1">Beskrivelse</div>
+                      <p className="text-sm text-foreground">{p.description}</p>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
