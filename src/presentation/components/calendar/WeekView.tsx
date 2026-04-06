@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   startOfWeek,
   endOfWeek,
@@ -13,7 +13,11 @@ import {
   subWeeks,
 } from "date-fns";
 import { da } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Clock, Trash2, Coffee, MapPin } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Clock, Trash2, Coffee, MapPin, Zap, Heart, TrendingUp } from "lucide-react";
+import { useSessionTimeSeries } from "@/application/hooks/training/useSessions";
+import {
+  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
+} from "recharts";
 import { SportIcon } from "@/presentation/components/shared/SportIcon";
 import { useAthleteStore } from "@/application/stores/athleteStore";
 import { formatDuration, formatDistance } from "@/domain/utils/formatters";
@@ -27,6 +31,108 @@ import type {
 } from "@/application/hooks/planning/useCalendar";
 
 const DAY_NAMES = ["Man", "Tir", "Ons", "Tor", "Fre", "Loer", "Soen"];
+
+function getSessionTypeLabel(t: string): string {
+  const map: Record<string, string> = {
+    endurance: "Udholdenhed", tempo: "Tempo", sweet_spot: "Sweet Spot",
+    threshold: "Taerskel", vo2max: "VO2max", recovery: "Restitution",
+    interval: "Interval", race: "Konkurrence", easy: "Let",
+    long: "Lang", base: "Base", hard: "Haardt",
+  };
+  return map[t] || t;
+}
+
+/** Compact inline charts for expanded week session */
+function WeekSessionCharts({ athleteId, sessionId, sport }: { athleteId: string | null; sessionId: string; sport: string }) {
+  const { data: timeSeries } = useSessionTimeSeries(athleteId, sessionId);
+
+  const chartData = useMemo(() => {
+    if (!timeSeries?.points || timeSeries.points.length === 0) return [];
+    let elapsed = 0;
+    const raw = timeSeries.points.map((p: any, i: number) => {
+      if (i > 0 && timeSeries.points[i - 1]) {
+        const prev = new Date(timeSeries.points[i - 1].timestamp).getTime();
+        const curr = new Date(p.timestamp).getTime();
+        elapsed += (curr - prev) / 1000;
+      }
+      return { sec: elapsed, hr: p.hr, power: p.power, speed: p.speed };
+    });
+    // Downsample to ~60 points
+    if (raw.length <= 60) return raw;
+    const step = Math.ceil(raw.length / 60);
+    const result: typeof raw = [];
+    for (let i = 0; i < raw.length; i += step) {
+      const chunk = raw.slice(i, Math.min(i + step, raw.length));
+      const hrV = chunk.filter((c) => c.hr != null);
+      const pwV = chunk.filter((c) => c.power != null);
+      const spV = chunk.filter((c) => c.speed != null && c.speed > 0);
+      result.push({
+        sec: chunk[0].sec,
+        hr: hrV.length > 0 ? Math.round(hrV.reduce((s, c) => s + c.hr, 0) / hrV.length) : null,
+        power: pwV.length > 0 ? Math.round(pwV.reduce((s, c) => s + c.power, 0) / pwV.length) : null,
+        speed: spV.length > 0 ? spV.reduce((s, c) => s + c.speed, 0) / spV.length : null,
+      });
+    }
+    return result;
+  }, [timeSeries]);
+
+  if (chartData.length < 5) return null;
+
+  const hasHr = chartData.some((d) => d.hr != null);
+  const hasPwr = chartData.some((d) => d.power != null && d.power > 0);
+  const hasSpd = chartData.some((d) => d.speed != null && d.speed > 0);
+  const fmtTime = (sec: number) => { const m = Math.floor(sec / 60); return m < 60 ? `${m}m` : `${Math.floor(m / 60)}h${m % 60 > 0 ? (m % 60) + "m" : ""}`; };
+
+  return (
+    <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${[hasHr, hasPwr, hasSpd].filter(Boolean).length}, 1fr)` }}>
+      {hasHr && (
+        <div className="bg-muted/20 rounded px-1 pt-1">
+          <div className="flex items-center gap-1 text-[8px] text-muted-foreground mb-0.5"><Heart className="h-2.5 w-2.5 text-red-500" />Puls</div>
+          <div style={{ height: 48 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData} margin={{ top: 2, right: 2, left: -20, bottom: -4 }}>
+                <defs><linearGradient id={`whr-${sessionId}`} x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} /><stop offset="95%" stopColor="#ef4444" stopOpacity={0} /></linearGradient></defs>
+                <XAxis dataKey="sec" tickFormatter={fmtTime} tick={{ fontSize: 8, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} interval="preserveStartEnd" minTickGap={20} />
+                <YAxis domain={["dataMin - 10", "dataMax + 10"]} tick={{ fontSize: 8, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} width={28} />
+                <Area type="monotone" dataKey="hr" stroke="#ef4444" strokeWidth={1} fill={`url(#whr-${sessionId})`} connectNulls />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+      {hasPwr && (
+        <div className="bg-muted/20 rounded px-1 pt-1">
+          <div className="flex items-center gap-1 text-[8px] text-muted-foreground mb-0.5"><Zap className="h-2.5 w-2.5 text-yellow-500" />Watt</div>
+          <div style={{ height: 48 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData} margin={{ top: 2, right: 2, left: -20, bottom: -4 }}>
+                <defs><linearGradient id={`wpwr-${sessionId}`} x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#eab308" stopOpacity={0.3} /><stop offset="95%" stopColor="#eab308" stopOpacity={0} /></linearGradient></defs>
+                <XAxis dataKey="sec" tickFormatter={fmtTime} tick={{ fontSize: 8, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} interval="preserveStartEnd" minTickGap={20} />
+                <YAxis domain={["dataMin - 20", "dataMax + 20"]} tick={{ fontSize: 8, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} width={28} />
+                <Area type="monotone" dataKey="power" stroke="#eab308" strokeWidth={1} fill={`url(#wpwr-${sessionId})`} connectNulls />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+      {hasSpd && (
+        <div className="bg-muted/20 rounded px-1 pt-1">
+          <div className="flex items-center gap-1 text-[8px] text-muted-foreground mb-0.5"><TrendingUp className="h-2.5 w-2.5 text-blue-500" />{sport === "bike" ? "km/t" : "Pace"}</div>
+          <div style={{ height: 48 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData.map((d) => ({ ...d, paceOrSpeed: d.speed && d.speed > 0 ? (sport === "bike" ? Math.round(d.speed * 3.6 * 10) / 10 : Math.round((1000 / d.speed / 60) * 100) / 100) : null }))} margin={{ top: 2, right: 2, left: -20, bottom: -4 }}>
+                <defs><linearGradient id={`wspd-${sessionId}`} x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} /><stop offset="95%" stopColor="#3b82f6" stopOpacity={0} /></linearGradient></defs>
+                <XAxis dataKey="sec" tickFormatter={fmtTime} tick={{ fontSize: 8, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} interval="preserveStartEnd" minTickGap={20} />
+                <YAxis reversed={sport !== "bike"} tick={{ fontSize: 8, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} width={28} />
+                <Area type="monotone" dataKey="paceOrSpeed" stroke="#3b82f6" strokeWidth={1} fill={`url(#wspd-${sessionId})`} connectNulls />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // Zone-based border color: Z1-2=blue, Z3=yellow, Z4+=red
 function getIntensityColor(sessionType: string | undefined): string {
@@ -73,6 +179,16 @@ export default function WeekView({
   pmcPoints,
 }: WeekViewProps) {
   const getSportColor = useAthleteStore((s) => s.getSportColor);
+  const selectedAthleteId = useAthleteStore((s) => s.selectedAthleteId);
+  const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set());
+
+  const toggleExpand = (id: string) => {
+    setExpandedSessions((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
 
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
@@ -302,30 +418,95 @@ export default function WeekView({
                   if (entry.type === "completed") {
                     const s = entry.data as Session;
                     const intensityColor = getIntensityColor(s.sessionType);
+                    const isExpanded = expandedSessions.has(String(s.id));
+
                     return (
                       <div
                         key={`c-${s.id}`}
                         data-testid={`session-completed-${s.id}`}
-                        className="rounded border-l-[3px] bg-card px-2 py-1.5 shadow-sm"
+                        className="rounded border-l-[3px] bg-card shadow-sm overflow-hidden"
                         style={{ borderLeftColor: intensityColor }}
                       >
-                        <div className="flex items-center gap-1">
+                        {/* Header row — always visible, click to toggle */}
+                        <div
+                          className="flex items-center gap-1 px-2 py-1.5 cursor-pointer hover:bg-muted/20"
+                          onClick={(e) => { e.stopPropagation(); toggleExpand(String(s.id)); }}
+                        >
                           <SportIcon sport={s.sport} size={13} />
-                          <span className="truncate text-xs font-medium text-foreground">{s.title}</span>
-                        </div>
-                        <div className="mt-0.5 flex flex-wrap gap-1 text-[10px] text-muted-foreground">
-                          <span className="flex items-center gap-0.5">
-                            <Clock size={9} /> {formatDuration(s.durationSeconds)}
+                          <span className="flex-1 truncate text-xs font-medium text-foreground">
+                            {getSessionTypeLabel(s.sessionType) || s.title}
                           </span>
-                          {s.distanceMeters && s.distanceMeters > 0 && (
-                            <span>{formatDistance(s.distanceMeters)}</span>
-                          )}
-                          {s.tss !== null && (
-                            <span className={`rounded-full px-1.5 text-[10px] font-medium ${tssBadgeColor(s.tss)}`}>
-                              {Math.round(s.tss)}
-                            </span>
-                          )}
+                          <span className="text-[10px] text-muted-foreground">{formatDuration(s.durationSeconds)}</span>
+                          {isExpanded
+                            ? <ChevronUp size={12} className="text-muted-foreground flex-shrink-0" />
+                            : <ChevronDown size={12} className="text-muted-foreground flex-shrink-0" />
+                          }
                         </div>
+
+                        {/* Expanded detail */}
+                        {isExpanded && (
+                          <div className="border-t border-border/30 px-2 py-1.5 space-y-1.5">
+                            {/* Start time */}
+                            <div className="text-[10px] text-muted-foreground">
+                              {format(parseISO(s.startedAt), "HH:mm")} · {s.title}
+                            </div>
+
+                            {/* Metrics grid */}
+                            <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px]">
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Varighed</span>
+                                <span className="font-medium text-foreground">{formatDuration(s.durationSeconds)}</span>
+                              </div>
+                              {s.distanceMeters != null && s.distanceMeters > 0 && (
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Distance</span>
+                                  <span className="font-medium text-foreground">{formatDistance(s.distanceMeters)}</span>
+                                </div>
+                              )}
+                              {s.avgHr != null && (
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Gns. puls</span>
+                                  <span className="font-medium text-foreground">{s.avgHr} bpm</span>
+                                </div>
+                              )}
+                              {s.tss != null && (
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">TSS</span>
+                                  <span className="font-medium text-foreground">{Math.round(s.tss)}</span>
+                                </div>
+                              )}
+                              {s.avgPower != null && (
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Effekt</span>
+                                  <span className="font-medium text-foreground">{s.avgPower}W</span>
+                                </div>
+                              )}
+                              {s.avgPace != null && (
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Pace</span>
+                                  <span className="font-medium text-foreground">
+                                    {Math.floor(s.avgPace / 60)}:{String(Math.round(s.avgPace % 60)).padStart(2, "0")}/km
+                                  </span>
+                                </div>
+                              )}
+                              {s.elevationGain != null && s.elevationGain > 0 && (
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Stigning</span>
+                                  <span className="font-medium text-foreground">{Math.round(s.elevationGain)}m</span>
+                                </div>
+                              )}
+                              {s.avgCadence != null && (
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Kadence</span>
+                                  <span className="font-medium text-foreground">{Math.round(s.avgCadence)} {s.sport === "bike" ? "rpm" : "spm"}</span>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Compact charts — rendered inline */}
+                            <WeekSessionCharts athleteId={selectedAthleteId} sessionId={String(s.id)} sport={s.sport} />
+                          </div>
+                        )}
                       </div>
                     );
                   }
