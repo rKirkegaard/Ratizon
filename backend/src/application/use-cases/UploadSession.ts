@@ -71,7 +71,7 @@ export async function uploadSession(
     .values({
       athleteId,
       sport: parsed.session.sport,
-      sessionType: "training",
+      sessionType: parsed.session.sessionType || "training",
       title: parsed.session.title,
       startedAt: parsed.session.startTime,
       durationSeconds: parsed.session.durationSeconds,
@@ -80,7 +80,9 @@ export async function uploadSession(
       avgHr: parsed.session.avgHr,
       maxHr: parsed.session.maxHr,
       avgPower: parsed.session.avgPowerW,
+      normalizedPower: parsed.session.normalizedPower,
       avgPace: parsed.session.avgPace,
+      avgCadence: parsed.session.avgCadence,
       elevationGain: parsed.session.elevationGain,
       calories: parsed.session.calories,
       source: options?.source ?? format,
