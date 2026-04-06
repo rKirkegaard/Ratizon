@@ -219,10 +219,10 @@ export default function MonthView({
                     data-testid={`month-day-${key}`}
                     onClick={() => onDayClick?.(day)}
                     className={`min-h-[120px] cursor-pointer border-r border-border/30 p-2 transition-colors hover:bg-muted/20 ${
-                      !inMonth ? "bg-muted/5" : ""
+                      !inMonth ? "bg-muted/20 text-muted-foreground" : ""
                     } ${isToday ? "bg-primary/5" : ""}`}
                   >
-                    <div className={`mb-1 text-sm ${isToday ? "font-bold text-primary" : inMonth ? "text-foreground" : "text-muted-foreground/30"}`}>
+                    <div className={`mb-1 text-sm ${isToday ? "font-bold text-primary" : inMonth ? "text-foreground" : "text-muted-foreground/50"}`}>
                       {format(day, "d")}
                     </div>
 
