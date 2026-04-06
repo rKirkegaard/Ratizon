@@ -44,8 +44,20 @@ trainingRouter.get("/bricks/:athleteId/:brickId/transition", getBrickTransition)
 // File upload endpoint
 trainingRouter.post(
   "/upload/:athleteId",
-  upload.single("file") as any,
   async (req: Request, res: Response) => {
+    // Manually invoke multer to avoid Express 5 callback issues
+    await new Promise<void>((resolve, reject) => {
+      (upload.single("file") as any)(req, res, (err: any) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    }).catch((err) => {
+      res.status(400).json({ error: { message: err.message || "Upload fejl" } });
+      return;
+    });
+    if (res.headersSent) return;
+
+    // Original handler continues here
     try {
       const { athleteId } = req.params;
       const file = req.file;
