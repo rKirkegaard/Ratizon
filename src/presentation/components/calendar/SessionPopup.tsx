@@ -77,24 +77,40 @@ export default function SessionPopup({ session, sessionType, athleteId: propAthl
   const { data: detail } = useSessionDetail(athleteId, sessionId);
   const { data: timeSeries } = useSessionTimeSeries(athleteId, sessionId);
 
-  // Build chart data from timeseries
+  // Build chart data — downsample to ~100 points with averaging (matching IronCoach)
   const chartData = useMemo(() => {
     if (!timeSeries?.points || timeSeries.points.length === 0) return [];
+
+    // First build raw data with elapsed seconds
     let elapsed = 0;
-    return timeSeries.points.map((p: any, i: number) => {
+    const raw = timeSeries.points.map((p: any, i: number) => {
       if (i > 0 && timeSeries.points[i - 1]) {
         const prev = new Date(timeSeries.points[i - 1].timestamp).getTime();
         const curr = new Date(p.timestamp).getTime();
         elapsed += (curr - prev) / 1000;
       }
-      return {
-        min: Math.round(elapsed / 60),
-        hr: p.hr,
-        power: p.power,
-        speed: p.speed,
-        cadence: p.cadence,
-      };
+      return { sec: elapsed, hr: p.hr, power: p.power, speed: p.speed };
     });
+
+    // Downsample to ~100 points with chunk averaging
+    const maxPoints = 100;
+    if (raw.length <= maxPoints) return raw;
+
+    const step = Math.ceil(raw.length / maxPoints);
+    const result: typeof raw = [];
+    for (let i = 0; i < raw.length; i += step) {
+      const chunk = raw.slice(i, Math.min(i + step, raw.length));
+      const hrVals = chunk.filter((c) => c.hr != null);
+      const pwrVals = chunk.filter((c) => c.power != null);
+      const spdVals = chunk.filter((c) => c.speed != null && c.speed > 0);
+      result.push({
+        sec: chunk[0].sec,
+        hr: hrVals.length > 0 ? Math.round(hrVals.reduce((s, c) => s + c.hr, 0) / hrVals.length) : null,
+        power: pwrVals.length > 0 ? Math.round(pwrVals.reduce((s, c) => s + c.power, 0) / pwrVals.length) : null,
+        speed: spdVals.length > 0 ? spdVals.reduce((s, c) => s + c.speed, 0) / spdVals.length : null,
+      });
+    }
+    return result;
   }, [timeSeries]);
 
   // Zone distribution from detail analytics
@@ -253,110 +269,127 @@ export default function SessionPopup({ session, sessionType, athleteId: propAthl
             )}
           </div>
 
-          {/* 3 charts grid — matching IronCoach: HR, Power, Pace/Speed */}
-          {chartData.length > 10 && (
-            <div className={`mb-5 grid gap-4 ${
-              hasPower && hasSpeed ? "grid-cols-3" : hasPower || hasSpeed ? "grid-cols-2" : "grid-cols-1"
-            }`}>
-              {/* Chart 1: Heart Rate */}
-              {chartData.some((d) => d.hr != null) && (
-                <div>
-                  <div className="flex items-center gap-1.5 mb-1.5">
-                    <Heart className="h-3.5 w-3.5 text-red-500" />
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Puls</span>
-                    <span className="ml-auto text-[10px] text-muted-foreground">
-                      Gns. {s.avgHr ?? "–"} · Max {s.maxHr ?? "–"} bpm
-                    </span>
-                  </div>
-                  <div className="h-36 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                        <XAxis dataKey="min" tick={{ fontSize: 9, fill: "var(--muted-foreground)" }} tickFormatter={(v) => `${v}m`} />
-                        <YAxis tick={{ fontSize: 9, fill: "var(--muted-foreground)" }} width={28} domain={["dataMin - 10", "dataMax + 10"]} />
-                        <Tooltip contentStyle={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: "6px", fontSize: "10px" }} formatter={(v: number) => [`${v} bpm`, "Puls"]} />
-                        <Area dataKey="hr" stroke="#EF4444" fill="#EF444420" strokeWidth={1.5} dot={false} />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              )}
+          {/* 3 charts grid — IronCoach style: 100 points, monotone, gradient fills */}
+          {chartData.length > 5 && (() => {
+            const fmtTime = (sec: number) => {
+              const m = Math.floor(sec / 60);
+              if (m < 60) return `${m}m`;
+              const h = Math.floor(m / 60);
+              const rm = m % 60;
+              return `${h}h${rm > 0 ? rm + "m" : ""}`;
+            };
+            const hasHr = chartData.some((d) => d.hr != null);
+            const hasPwr = hasPower;
+            const hasSpd = hasSpeed;
+            const chartCount = [hasHr, hasPwr, hasSpd].filter(Boolean).length;
+            const cols = chartCount >= 3 ? "grid-cols-3" : chartCount === 2 ? "grid-cols-2" : "grid-cols-1";
+            const paceData = hasSpd ? chartData.map((d) => ({
+              ...d,
+              paceOrSpeed: d.speed && d.speed > 0
+                ? s.sport === "bike" ? Math.round(d.speed * 3.6 * 10) / 10 : Math.round((1000 / d.speed / 60) * 100) / 100
+                : null,
+            })) : [];
 
-              {/* Chart 2: Power (only for bike) */}
-              {hasPower && chartData.some((d) => d.power != null) && (
-                <div>
-                  <div className="flex items-center gap-1.5 mb-1.5">
-                    <Zap className="h-3.5 w-3.5 text-yellow-500" />
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Watt</span>
-                    <span className="ml-auto text-[10px] text-muted-foreground">
-                      Gns. {s.avgPower ?? "–"} · NP {s.normalizedPower ?? "–"} W
-                    </span>
+            return (
+              <div className={`mb-5 grid gap-3 ${cols}`}>
+                {/* HR chart */}
+                {hasHr && (
+                  <div className="px-2 pt-2 pb-3 bg-muted/30 rounded-lg">
+                    <div className="flex items-center justify-between h-5 mb-2">
+                      <div className="flex items-center gap-1.5">
+                        <Heart className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />
+                        <span className="text-xs font-medium">Puls</span>
+                      </div>
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                        <span className="font-medium text-foreground">{s.avgHr ?? "–"}</span> gns · <span className="font-medium text-foreground">{s.maxHr ?? "–"}</span> max
+                      </span>
+                    </div>
+                    <div style={{ height: 80 }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -15, bottom: 0 }}>
+                          <defs>
+                            <linearGradient id="hrGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
+                              <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <XAxis dataKey="sec" tickFormatter={fmtTime} tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} axisLine={{ stroke: "hsl(var(--border))" }} tickLine={{ stroke: "hsl(var(--border))" }} interval="preserveStartEnd" minTickGap={30} />
+                          <YAxis domain={["dataMin - 10", "dataMax + 10"]} tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} axisLine={{ stroke: "hsl(var(--border))" }} tickLine={{ stroke: "hsl(var(--border))" }} width={35} tickFormatter={(v: number) => `${Math.round(v)}`} />
+                          <Tooltip contentStyle={{ backgroundColor: "hsl(var(--background))", border: "1px solid hsl(var(--border))", borderRadius: "6px", fontSize: "11px", color: "hsl(var(--foreground))" }} formatter={(v: number) => [`${Math.round(v)} bpm`, "Puls"]} labelFormatter={(l: number) => fmtTime(l)} />
+                          <Area type="monotone" dataKey="hr" stroke="#ef4444" strokeWidth={1.5} fill="url(#hrGrad)" connectNulls />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
                   </div>
-                  <div className="h-36 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                        <XAxis dataKey="min" tick={{ fontSize: 9, fill: "var(--muted-foreground)" }} tickFormatter={(v) => `${v}m`} />
-                        <YAxis tick={{ fontSize: 9, fill: "var(--muted-foreground)" }} width={28} domain={["dataMin - 20", "dataMax + 20"]} />
-                        <Tooltip contentStyle={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: "6px", fontSize: "10px" }} formatter={(v: number) => [`${v}W`, "Power"]} />
-                        <Area dataKey="power" stroke="#EAB308" fill="#EAB30820" strokeWidth={1.5} dot={false} />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              )}
+                )}
 
-              {/* Chart 3: Pace (run/swim) or Speed (bike) */}
-              {hasSpeed && chartData.some((d) => d.speed != null && d.speed > 0) && (
-                <div>
-                  <div className="flex items-center gap-1.5 mb-1.5">
-                    <TrendingUp className="h-3.5 w-3.5 text-blue-500" />
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      {s.sport === "bike" ? "Hastighed" : "Pace"}
-                    </span>
-                    <span className="ml-auto text-[10px] text-muted-foreground">
-                      {s.sport === "bike"
-                        ? `Gns. ${s.avgPace ? Math.round(s.distanceMeters! / s.durationSeconds * 3.6) : "–"} km/t`
-                        : `Gns. ${s.avgPace ? `${Math.floor(s.avgPace / 60)}:${String(Math.round(s.avgPace % 60)).padStart(2, "0")}/km` : "–"}`
-                      }
-                    </span>
+                {/* Power chart */}
+                {hasPwr && (
+                  <div className="px-2 pt-2 pb-3 bg-muted/30 rounded-lg">
+                    <div className="flex items-center justify-between h-5 mb-2">
+                      <div className="flex items-center gap-1.5">
+                        <Zap className="h-3.5 w-3.5 text-yellow-500 flex-shrink-0" />
+                        <span className="text-xs font-medium">Watt</span>
+                      </div>
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                        <span className="font-medium text-foreground">{s.avgPower ?? "–"}</span> gns · <span className="font-medium text-foreground">{s.normalizedPower ?? "–"}</span> NP
+                      </span>
+                    </div>
+                    <div style={{ height: 80 }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -15, bottom: 0 }}>
+                          <defs>
+                            <linearGradient id="pwrGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#eab308" stopOpacity={0.3} />
+                              <stop offset="95%" stopColor="#eab308" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <XAxis dataKey="sec" tickFormatter={fmtTime} tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} axisLine={{ stroke: "hsl(var(--border))" }} tickLine={{ stroke: "hsl(var(--border))" }} interval="preserveStartEnd" minTickGap={30} />
+                          <YAxis domain={["dataMin - 20", "dataMax + 20"]} tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} axisLine={{ stroke: "hsl(var(--border))" }} tickLine={{ stroke: "hsl(var(--border))" }} width={35} tickFormatter={(v: number) => `${Math.round(v)}`} />
+                          <Tooltip contentStyle={{ backgroundColor: "hsl(var(--background))", border: "1px solid hsl(var(--border))", borderRadius: "6px", fontSize: "11px", color: "hsl(var(--foreground))" }} formatter={(v: number) => [`${Math.round(v)}W`, "Power"]} labelFormatter={(l: number) => fmtTime(l)} />
+                          <Area type="monotone" dataKey="power" stroke="#eab308" strokeWidth={1.5} fill="url(#pwrGrad)" connectNulls />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
                   </div>
-                  <div className="h-36 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart
-                        data={chartData.map((d) => ({
-                          ...d,
-                          paceOrSpeed: d.speed && d.speed > 0
-                            ? s.sport === "bike"
-                              ? Math.round(d.speed * 3.6 * 10) / 10  // km/h
-                              : Math.round((1000 / d.speed / 60) * 100) / 100  // min/km
-                            : null,
-                        }))}
-                        margin={{ top: 5, right: 5, bottom: 5, left: 0 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                        <XAxis dataKey="min" tick={{ fontSize: 9, fill: "var(--muted-foreground)" }} tickFormatter={(v) => `${v}m`} />
-                        <YAxis
-                          tick={{ fontSize: 9, fill: "var(--muted-foreground)" }}
-                          width={32}
-                          reversed={s.sport !== "bike"}
-                          domain={s.sport === "bike" ? ["dataMin - 5", "dataMax + 5"] : undefined}
-                        />
-                        <Tooltip
-                          contentStyle={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: "6px", fontSize: "10px" }}
-                          formatter={(v: number) => [
-                            s.sport === "bike" ? `${v} km/t` : `${Math.floor(v)}:${String(Math.round((v % 1) * 60)).padStart(2, "0")}/km`,
-                            s.sport === "bike" ? "Hastighed" : "Pace",
-                          ]}
-                        />
-                        <Area dataKey="paceOrSpeed" stroke="#3B82F6" fill="#3B82F620" strokeWidth={1.5} dot={false} />
-                      </AreaChart>
-                    </ResponsiveContainer>
+                )}
+
+                {/* Pace/Speed chart */}
+                {hasSpd && (
+                  <div className="px-2 pt-2 pb-3 bg-muted/30 rounded-lg">
+                    <div className="flex items-center justify-between h-5 mb-2">
+                      <div className="flex items-center gap-1.5">
+                        <TrendingUp className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
+                        <span className="text-xs font-medium">{s.sport === "bike" ? "Hastighed" : "Pace"}</span>
+                      </div>
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                        {s.sport === "bike"
+                          ? <><span className="font-medium text-foreground">{s.distanceMeters ? Math.round(s.distanceMeters / s.durationSeconds * 3.6) : "–"}</span> km/t gns</>
+                          : <><span className="font-medium text-foreground">{s.avgPace ? `${Math.floor(s.avgPace / 60)}:${String(Math.round(s.avgPace % 60)).padStart(2, "0")}` : "–"}</span>/km gns</>
+                        }
+                      </span>
+                    </div>
+                    <div style={{ height: 80 }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={paceData} margin={{ top: 5, right: 5, left: -15, bottom: 0 }}>
+                          <defs>
+                            <linearGradient id="paceGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                              <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <XAxis dataKey="sec" tickFormatter={fmtTime} tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} axisLine={{ stroke: "hsl(var(--border))" }} tickLine={{ stroke: "hsl(var(--border))" }} interval="preserveStartEnd" minTickGap={30} />
+                          <YAxis reversed={s.sport !== "bike"} domain={s.sport === "bike" ? ["dataMin - 5", "dataMax + 5"] : undefined} tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} axisLine={{ stroke: "hsl(var(--border))" }} tickLine={{ stroke: "hsl(var(--border))" }} width={35} />
+                          <Tooltip contentStyle={{ backgroundColor: "hsl(var(--background))", border: "1px solid hsl(var(--border))", borderRadius: "6px", fontSize: "11px", color: "hsl(var(--foreground))" }} formatter={(v: number) => [s.sport === "bike" ? `${v} km/t` : `${Math.floor(v)}:${String(Math.round((v % 1) * 60)).padStart(2, "0")}/km`, s.sport === "bike" ? "Hastighed" : "Pace"]} labelFormatter={(l: number) => fmtTime(l)} />
+                          <Area type="monotone" dataKey="paceOrSpeed" stroke="#3b82f6" strokeWidth={1.5} fill="url(#paceGrad)" connectNulls />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-          )}
+                )}
+              </div>
+            );
+          })()}
 
           {/* Zone distribution */}
           {zoneData && (
