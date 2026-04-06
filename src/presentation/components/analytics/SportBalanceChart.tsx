@@ -52,8 +52,7 @@ export default function SportBalanceChart({ points, sports }: SportBalanceChartP
               dataKey="weekStart"
               tickFormatter={(v: string) => {
                 if (!v) return "";
-                const d = new Date(v);
-                return `${d.getDate()}/${d.getMonth() + 1}`;
+                return new Date(v).toLocaleDateString("da-DK", { day: "numeric", month: "short" });
               }}
               tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
             />
