@@ -108,7 +108,7 @@ export default function RacePlanPage() {
 
   if (!athleteId) {
     return (
-      <div data-testid="race-plan-page" className="mx-auto max-w-5xl p-4 md:p-6">
+      <div data-testid="race-plan-page" className="p-4 md:p-6">
         <h1 className="mb-4 text-2xl font-bold text-foreground">Raceplan</h1>
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-16">
           <p className="text-sm text-muted-foreground">Vaelg en atlet for at se raceplan.</p>
@@ -152,7 +152,7 @@ export default function RacePlanPage() {
   };
 
   return (
-    <div data-testid="race-plan-page" className="mx-auto max-w-5xl space-y-6 p-4 md:p-6">
+    <div data-testid="race-plan-page" className="space-y-6 p-4 md:p-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-foreground">Raceplan</h1>
         <div className="flex items-center gap-3">

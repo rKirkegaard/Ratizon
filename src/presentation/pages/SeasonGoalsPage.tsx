@@ -61,7 +61,7 @@ export default function SeasonGoalsPage() {
   // No athlete selected
   if (!athleteId) {
     return (
-      <div data-testid="season-goals-page" className="mx-auto max-w-5xl p-4 md:p-6">
+      <div data-testid="season-goals-page" className="p-4 md:p-6">
         <h1 className="mb-4 text-2xl font-bold text-foreground">
           Saeson & Maal
         </h1>
@@ -75,7 +75,7 @@ export default function SeasonGoalsPage() {
   }
 
   return (
-    <div data-testid="season-goals-page" className="mx-auto max-w-5xl space-y-6 p-4 md:p-6">
+    <div data-testid="season-goals-page" className="space-y-6 p-4 md:p-6">
       <h1 className="text-2xl font-bold text-foreground">Saeson & Maal</h1>
 
       {/* Race countdown */}

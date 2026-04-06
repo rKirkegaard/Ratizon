@@ -158,7 +158,7 @@ export default function UploadPage() {
 
   if (!athleteId) {
     return (
-      <div data-testid="upload-page" className="mx-auto max-w-4xl p-4 md:p-6">
+      <div data-testid="upload-page" className="p-4 md:p-6">
         <h1 className="mb-4 text-2xl font-bold text-foreground">Upload</h1>
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-16">
           <p className="text-sm text-muted-foreground">Vaelg en atlet for at uploade traeningsfiler.</p>
@@ -171,7 +171,7 @@ export default function UploadPage() {
   const errorCount = uploadResults.filter((r) => !r.success).length;
 
   return (
-    <div data-testid="upload-page" className="mx-auto max-w-4xl space-y-6 p-4 md:p-6">
+    <div data-testid="upload-page" className="space-y-6 p-4 md:p-6">
       <h1 className="text-2xl font-bold text-foreground">Upload</h1>
 
       {/* Upload zone */}

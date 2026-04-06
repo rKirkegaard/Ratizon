@@ -33,7 +33,7 @@ export default function SessionsPage() {
   const brickList = bricks ?? [];
 
   return (
-    <div data-testid="sessions-page" className="mx-auto max-w-4xl space-y-4 p-4 md:p-6">
+    <div data-testid="sessions-page" className="space-y-4 p-4 md:p-6">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-foreground">Sessioner</h1>

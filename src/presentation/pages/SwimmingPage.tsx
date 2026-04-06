@@ -47,7 +47,7 @@ export default function SwimmingPage() {
 
   if (!athleteId) {
     return (
-      <div data-testid="swimming-page" className="mx-auto max-w-5xl p-4 md:p-6">
+      <div data-testid="swimming-page" className="p-4 md:p-6">
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-16">
           <p className="text-sm text-muted-foreground">
             Vaelg en atlet for at se svommedata.
@@ -77,7 +77,7 @@ export default function SwimmingPage() {
   }
 
   return (
-    <div data-testid="swimming-page" className="mx-auto max-w-5xl space-y-6 p-4 md:p-6">
+    <div data-testid="swimming-page" className="space-y-6 p-4 md:p-6">
       {/* Header */}
       <div className="flex items-center gap-3">
         <SportIcon sport="swim" size={28} />

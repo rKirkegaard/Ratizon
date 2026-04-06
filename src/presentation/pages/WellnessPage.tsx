@@ -31,7 +31,7 @@ export default function WellnessPage() {
   // No athlete selected
   if (!athleteId) {
     return (
-      <div data-testid="wellness-page" className="mx-auto max-w-4xl p-4 md:p-6">
+      <div data-testid="wellness-page" className="p-4 md:p-6">
         <h1 className="mb-4 text-2xl font-bold text-foreground">
           Wellness & Restitution
         </h1>
@@ -48,7 +48,7 @@ export default function WellnessPage() {
   }
 
   return (
-    <div data-testid="wellness-page" className="mx-auto max-w-4xl space-y-6 p-4 md:p-6">
+    <div data-testid="wellness-page" className="space-y-6 p-4 md:p-6">
       {/* Header */}
       <h1 className="text-2xl font-bold text-foreground">
         Wellness & Restitution

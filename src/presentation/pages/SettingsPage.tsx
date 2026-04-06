@@ -21,7 +21,7 @@ export default function SettingsPage() {
   // No athlete selected
   if (!athleteId) {
     return (
-      <div data-testid="settings-page" className="mx-auto max-w-4xl p-4 md:p-6">
+      <div data-testid="settings-page" className="p-4 md:p-6">
         <h1 className="mb-4 text-2xl font-bold text-foreground">
           Indstillinger
         </h1>
@@ -35,7 +35,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div data-testid="settings-page" className="mx-auto max-w-4xl space-y-6 p-4 md:p-6">
+    <div data-testid="settings-page" className="space-y-6 p-4 md:p-6">
       <h1 className="text-2xl font-bold text-foreground">Indstillinger</h1>
 
       {/* Athlete profile section */}
