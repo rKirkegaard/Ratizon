@@ -95,7 +95,10 @@ export default function RampRateChart({ points }: RampRateChartProps) {
                 border: "1px solid hsl(var(--border))",
                 borderRadius: 8,
                 fontSize: 12,
+                color: "hsl(var(--foreground))",
               }}
+              labelStyle={{ color: "hsl(var(--foreground))" }}
+              itemStyle={{ color: "hsl(var(--foreground))" }}
             />
             <Bar activeBar={{ fillOpacity: 0.7, stroke: "hsl(var(--foreground))", strokeWidth: 1 }} dataKey="rampRatePct" name="Ramp Rate" radius={[4, 4, 0, 0]}>
               {points.map((entry, index) => (
