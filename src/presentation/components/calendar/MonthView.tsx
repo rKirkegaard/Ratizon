@@ -307,11 +307,11 @@ export default function MonthView({
                           </div>
                         )}
                         {Object.entries(summary.bySport).map(([sport, data]) => (
-                          <div key={sport} className="flex items-center gap-1 pl-2 whitespace-nowrap text-[10px]" style={{ color: getSportColor(sport) }}>
-                            <SportIcon sport={sport} size={10} />
+                          <div key={sport} className="flex items-center gap-1 pl-2 whitespace-nowrap text-xs" style={{ color: getSportColor(sport) }}>
+                            <SportIcon sport={sport} size={12} />
                             <span>{formatDuration(data.duration)}</span>
-                            {data.distance > 0 && <span className="text-muted-foreground">{formatDistance(data.distance)}</span>}
-                            <span className="text-muted-foreground">{Math.round(data.tss)}</span>
+                            {data.distance > 0 && <span className="text-muted-foreground">- {formatDistance(data.distance)}</span>}
+                            <span className="text-muted-foreground ml-auto">{Math.round(data.tss)} TSS</span>
                           </div>
                         ))}
                       </div>
@@ -330,11 +330,11 @@ export default function MonthView({
                           </div>
                         )}
                         {Object.entries(summary.plannedBySport).map(([sport, data]) => (
-                          <div key={sport} className="flex items-center gap-1 pl-2 whitespace-nowrap text-[10px]" style={{ color: getSportColor(sport) }}>
-                            <SportIcon sport={sport} size={10} />
+                          <div key={sport} className="flex items-center gap-1 pl-2 whitespace-nowrap text-xs" style={{ color: getSportColor(sport) }}>
+                            <SportIcon sport={sport} size={12} />
                             <span>{formatDuration(data.duration)}</span>
-                            {data.distance > 0 && <span className="text-muted-foreground">{formatDistance(data.distance)}</span>}
-                            <span className="text-muted-foreground">{Math.round(data.tss)}</span>
+                            {data.distance > 0 && <span className="text-muted-foreground">- {formatDistance(data.distance)}</span>}
+                            <span className="text-muted-foreground ml-auto">{Math.round(data.tss)} TSS</span>
                           </div>
                         ))}
                       </div>

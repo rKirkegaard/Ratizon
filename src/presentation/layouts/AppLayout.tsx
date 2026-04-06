@@ -136,7 +136,7 @@ export default function AppLayout() {
       <aside
         data-testid="sidebar"
         className={`flex flex-col border-r border-border bg-card transition-all duration-200 ${
-          sidebarCollapsed ? "w-16" : "w-60"
+          sidebarCollapsed ? "w-16" : "w-52"
         }`}
       >
         {/* Logo */}
