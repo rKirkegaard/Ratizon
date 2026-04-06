@@ -66,15 +66,43 @@ trainingRouter.post(
       let fileBuffer = file.buffer;
       let filename = file.originalname;
 
-      // If zip, extract first .fit or .tcx file inside
+      // If zip, validate contents and extract .fit/.tcx
       const ext = filename.toLowerCase().split(".").pop();
       if (ext === "zip") {
         try {
           const zip = new AdmZip(fileBuffer);
-          const entries = zip.getEntries();
+          const entries = zip.getEntries().filter((e) => !e.isDirectory);
+
+          // Security: reject zip if it contains anything other than .fit/.tcx files
+          const ALLOWED_EXTENSIONS = new Set(["fit", "tcx"]);
+          for (const entry of entries) {
+            const entryExt = entry.entryName.toLowerCase().split(".").pop() || "";
+            if (!ALLOWED_EXTENSIONS.has(entryExt)) {
+              res.status(400).json({
+                error: {
+                  message: `Zip-filen indeholder en ikke-tilladt fil: ${entry.entryName}. Kun .fit og .tcx filer er tilladt i zip-arkiver.`,
+                },
+              });
+              return;
+            }
+          }
+
+          // Security: limit number of entries to prevent zip bombs
+          if (entries.length > 50) {
+            res.status(400).json({ error: { message: "Zip-filen indeholder for mange filer (max 50)." } });
+            return;
+          }
+
+          // Security: limit total uncompressed size (100MB)
+          const totalSize = entries.reduce((sum, e) => sum + e.header.size, 0);
+          if (totalSize > 100 * 1024 * 1024) {
+            res.status(400).json({ error: { message: "Zip-filens indhold er for stort (max 100MB udpakket)." } });
+            return;
+          }
+
           const fitEntry = entries.find((e) => {
             const name = e.entryName.toLowerCase();
-            return (name.endsWith(".fit") || name.endsWith(".tcx")) && !e.isDirectory;
+            return name.endsWith(".fit") || name.endsWith(".tcx");
           });
           if (!fitEntry) {
             res.status(400).json({ error: { message: "Zip-filen indeholder ingen .fit eller .tcx fil." } });
