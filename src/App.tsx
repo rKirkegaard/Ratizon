@@ -15,6 +15,7 @@ import SettingsPage from "@/presentation/pages/SettingsPage";
 import RacePlanPage from "@/presentation/pages/RacePlanPage";
 import ComparisonPage from "@/presentation/pages/ComparisonPage";
 import TestBaselinesPage from "@/presentation/pages/TestBaselinesPage";
+import UXTestPage from "@/presentation/pages/UXTestPage";
 import LoginPage from "@/presentation/pages/LoginPage";
 import DevLoginPage from "@/presentation/pages/DevLoginPage";
 
@@ -40,6 +41,7 @@ export default function App() {
         <Route path="/upload" element={<UploadPage />} />
         <Route path="/udstyr" element={<EquipmentPage />} />
         <Route path="/indstillinger" element={<SettingsPage />} />
+        <Route path="/ux-test" element={<UXTestPage />} />
       </Route>
     </Routes>
   );

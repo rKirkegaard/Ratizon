@@ -93,6 +93,12 @@ const STATIC_SECTIONS_AFTER: NavSection[] = [
       { label: "App & Zoner", path: "/indstillinger", icon: <Settings size={18} /> },
     ],
   },
+  {
+    title: "DEV",
+    items: [
+      { label: "UX Test Lab", path: "/ux-test", icon: <Flame size={18} /> },
+    ],
+  },
 ];
 
 // Fallback discipline items when no sport configs are loaded
