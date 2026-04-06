@@ -65,9 +65,17 @@ export default function UploadZone({
           };
           xhr.onerror = () => reject(new Error("Netvaerksfejl under upload"));
           xhr.open("POST", `/api/training/upload/${athleteId}`);
-          const token = localStorage.getItem("ratizon-token");
-          if (token) {
-            xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+          try {
+            const stored = localStorage.getItem("ratizon-auth");
+            if (stored) {
+              const parsed = JSON.parse(stored);
+              const token = parsed?.state?.accessToken;
+              if (token) {
+                xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+              }
+            }
+          } catch {
+            // ignore parse errors
           }
           xhr.send(formData);
         });
