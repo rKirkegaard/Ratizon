@@ -205,7 +205,7 @@ export default function MonthView({
           const weekNum = format(week[3] || week[0], "w");
 
           return (
-            <div key={wi} className="grid gap-0 border-b border-border/50 last:border-b-0" style={{ gridTemplateColumns: "repeat(7, 1fr) 200px" }}
+            <div key={wi} className="grid gap-0 border-b border-border/50 last:border-b-0" style={{ gridTemplateColumns: "repeat(7, 1fr) 200px" }}>
               {/* Day cells */}
               {week.map((day) => {
                 const key = format(day, "yyyy-MM-dd");
