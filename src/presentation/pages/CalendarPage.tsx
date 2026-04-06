@@ -59,7 +59,7 @@ export default function CalendarPage() {
     [currentDate, viewMode]
   );
 
-  const { all, isLoading, isError, error } = useCalendarSessions(
+  const { all, phases, goals, pmcPoints, isLoading, isError, error } = useCalendarSessions(
     selectedAthleteId,
     start,
     end
@@ -202,6 +202,9 @@ export default function CalendarPage() {
           isLoading={isLoading}
           onDeletePlanned={handleDeletePlanned}
           onMovePlanned={handleMovePlanned}
+          phases={phases}
+          goals={goals}
+          pmcPoints={pmcPoints}
         />
       )}
 
@@ -213,6 +216,8 @@ export default function CalendarPage() {
           sportFilter={sportFilter}
           isLoading={isLoading}
           onDayClick={handleDayClick}
+          phases={phases}
+          goals={goals}
         />
       )}
 
@@ -224,6 +229,8 @@ export default function CalendarPage() {
           sportFilter={sportFilter}
           isLoading={isLoading}
           onMonthClick={handleMonthClick}
+          phases={phases}
+          goals={goals}
         />
       )}
     </div>

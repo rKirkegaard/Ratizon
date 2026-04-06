@@ -1,36 +1,26 @@
 import { useMemo } from "react";
 import {
-  startOfYear,
-  endOfYear,
-  startOfMonth,
   endOfMonth,
-  addMonths,
+  startOfWeek,
+  addDays,
   addYears,
   subYears,
-  eachDayOfInterval,
   format,
-  parseISO,
+  isSameMonth,
   getYear,
-  getDaysInMonth,
+  parseISO,
 } from "date-fns";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { SportIcon } from "@/presentation/components/shared/SportIcon";
-import { useAthleteStore } from "@/application/stores/athleteStore";
-import { formatDuration } from "@/domain/utils/formatters";
+import { ChevronLeft, ChevronRight, MapPin } from "lucide-react";
+import { PHASE_COLORS } from "@/domain/utils/phase-colors";
 import type { Session } from "@/domain/types/training.types";
-import type { CalendarEntry } from "@/application/hooks/planning/useCalendar";
+import type { SessionBrick } from "@/domain/types/brick.types";
+import type {
+  CalendarEntry,
+  CalendarPhase,
+  CalendarGoal,
+} from "@/application/hooks/planning/useCalendar";
 
-const MONTH_NAMES = [
-  "Jan", "Feb", "Mar", "Apr", "Maj", "Jun",
-  "Jul", "Aug", "Sep", "Okt", "Nov", "Dec",
-];
-
-function tssBadgeColor(tss: number | null): string {
-  if (tss === null) return "bg-gray-100 text-gray-500";
-  if (tss < 70) return "bg-green-100 text-green-700";
-  if (tss <= 100) return "bg-amber-100 text-amber-700";
-  return "bg-red-100 text-red-700";
-}
+const SHORT_MONTHS = ["Jan", "Feb", "Mar", "Apr", "Maj", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dec"];
 
 interface YearViewProps {
   currentDate: Date;
@@ -39,6 +29,18 @@ interface YearViewProps {
   sportFilter: string | null;
   isLoading: boolean;
   onMonthClick: (date: Date) => void;
+  phases: CalendarPhase[];
+  goals: CalendarGoal[];
+}
+
+function heatColor(tss: number, maxTss: number): string {
+  if (tss === 0) return "var(--muted)";
+  const ratio = tss / maxTss;
+  if (ratio < 0.2) return "#86EFAC";
+  if (ratio < 0.4) return "#4ADE80";
+  if (ratio < 0.6) return "#22C55E";
+  if (ratio < 0.8) return "#16A34A";
+  return "#15803D";
 }
 
 export default function YearView({
@@ -48,243 +50,162 @@ export default function YearView({
   sportFilter,
   isLoading,
   onMonthClick,
+  phases,
+  goals,
 }: YearViewProps) {
-  const getSportColor = useAthleteStore((s) => s.getSportColor);
-
   const year = getYear(currentDate);
 
-  // Group entries by day for quick lookup
-  const entriesByDay = useMemo(() => {
-    const map = new Map<string, CalendarEntry[]>();
+  const { dayTss, maxDayTss } = useMemo(() => {
+    const map = new Map<string, number>();
+    let max = 1;
     const filtered = sportFilter
-      ? entries.filter((e) => {
-          const sport = e.type === "completed" ? e.data.sport : e.data.sport;
-          return sport === sportFilter;
-        })
+      ? entries.filter((e) => e.type === "brick" || e.data.sport === sportFilter)
       : entries;
 
     for (const entry of filtered) {
-      const dateStr =
-        entry.type === "completed"
-          ? format(parseISO(entry.data.startedAt), "yyyy-MM-dd")
-          : format(parseISO(entry.data.scheduledDate), "yyyy-MM-dd");
-      if (!map.has(dateStr)) map.set(dateStr, []);
-      map.get(dateStr)!.push(entry);
-    }
-    return map;
-  }, [entries, sportFilter]);
-
-  // Year summary
-  const yearSummary = useMemo(() => {
-    const completed = entries.filter((e) => e.type === "completed") as Array<{
-      type: "completed";
-      data: Session;
-    }>;
-    const filtered = sportFilter
-      ? completed.filter((e) => e.data.sport === sportFilter)
-      : completed;
-
-    let totalTss = 0;
-    let totalDuration = 0;
-    const sportBreakdown: Record<string, { tss: number; duration: number; count: number }> = {};
-
-    for (const e of filtered) {
-      const s = e.data;
-      totalTss += s.tss ?? 0;
-      totalDuration += s.durationSeconds;
-      if (!sportBreakdown[s.sport]) {
-        sportBreakdown[s.sport] = { tss: 0, duration: 0, count: 0 };
+      let dateStr: string;
+      let tss = 0;
+      if (entry.type === "completed") {
+        dateStr = format(parseISO(entry.data.startedAt), "yyyy-MM-dd");
+        tss = (entry.data as Session).tss ?? 0;
+      } else if (entry.type === "planned") {
+        dateStr = format(parseISO(entry.data.scheduledDate), "yyyy-MM-dd");
+        tss = entry.data.targetTss ?? 0;
+      } else {
+        dateStr = (entry.data as SessionBrick).startedAt.split("T")[0];
+        tss = (entry.data as SessionBrick).totalTss ?? 0;
       }
-      sportBreakdown[s.sport].tss += s.tss ?? 0;
-      sportBreakdown[s.sport].duration += s.durationSeconds;
-      sportBreakdown[s.sport].count += 1;
+      map.set(dateStr, (map.get(dateStr) || 0) + tss);
     }
-
-    return { totalTss, totalDuration, sportBreakdown, sessionCount: filtered.length };
+    for (const v of map.values()) if (v > max) max = v;
+    return { dayTss: map, maxDayTss: max };
   }, [entries, sportFilter]);
+
+  const goalsByDate = useMemo(() => {
+    const m = new Map<string, CalendarGoal[]>();
+    for (const g of goals) {
+      if (!g.targetDate) continue;
+      const key = g.targetDate.split("T")[0];
+      const arr = m.get(key) || [];
+      arr.push(g);
+      m.set(key, arr);
+    }
+    return m;
+  }, [goals]);
 
   const months = useMemo(() => {
-    return Array.from({ length: 12 }, (_, i) => {
-      const monthDate = new Date(year, i, 1);
-      const daysInMonth = getDaysInMonth(monthDate);
-      const days = eachDayOfInterval({
-        start: startOfMonth(monthDate),
-        end: endOfMonth(monthDate),
-      });
-      return { monthIndex: i, date: monthDate, daysInMonth, days };
-    });
-  }, [year]);
+    return Array.from({ length: 12 }, (_, monthIdx) => {
+      const ms = new Date(year, monthIdx, 1);
+      const me = endOfMonth(ms);
+      const gridStart = startOfWeek(ms, { weekStartsOn: 1 });
 
-  const handlePrev = () => onDateChange(subYears(currentDate, 1));
-  const handleNext = () => onDateChange(addYears(currentDate, 1));
+      const weeks: Array<Array<{ date: Date; inMonth: boolean; key: string }>> = [];
+      let d = gridStart;
+      for (let w = 0; w < 6; w++) {
+        const week: Array<{ date: Date; inMonth: boolean; key: string }> = [];
+        for (let di = 0; di < 7; di++) {
+          week.push({ date: d, inMonth: isSameMonth(d, ms), key: format(d, "yyyy-MM-dd") });
+          d = addDays(d, 1);
+        }
+        if (week.some((dd) => dd.inMonth)) weeks.push(week);
+      }
+
+      let monthTss = 0;
+      for (let dd = new Date(ms); dd <= me; dd = addDays(dd, 1)) {
+        monthTss += dayTss.get(format(dd, "yyyy-MM-dd")) || 0;
+      }
+
+      const monthPhases = phases.filter((p) => {
+        const ps = new Date(p.startDate).getTime();
+        const pe = new Date(p.endDate).getTime();
+        return ps <= me.getTime() && pe >= ms.getTime();
+      });
+
+      return { monthIdx, ms, weeks, monthTss: Math.round(monthTss), monthPhases };
+    });
+  }, [year, dayTss, phases]);
 
   if (isLoading) {
-    return (
-      <div data-testid="calendar-year-view" className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="h-8 w-24 animate-pulse rounded bg-gray-200" />
-          <div className="h-8 w-32 animate-pulse rounded bg-gray-200" />
-          <div className="h-8 w-24 animate-pulse rounded bg-gray-200" />
-        </div>
-        <div className="grid grid-cols-4 gap-4">
-          {Array.from({ length: 12 }).map((_, i) => (
-            <div key={i} className="h-40 animate-pulse rounded-lg bg-gray-100" />
-          ))}
-        </div>
-      </div>
-    );
+    return <div data-testid="calendar-year-view" className="h-96 animate-pulse rounded-lg bg-muted/50" />;
   }
 
   return (
     <div data-testid="calendar-year-view" className="space-y-4">
-      {/* Year summary header */}
-      <div
-        data-testid="year-summary"
-        className="flex flex-wrap items-center gap-4 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3"
-      >
-        <div className="text-sm">
-          <span className="text-gray-500">Sessioner:</span>{" "}
-          <span className="font-semibold">{yearSummary.sessionCount}</span>
-        </div>
-        <div className="text-sm">
-          <span className="text-gray-500">Timer:</span>{" "}
-          <span className="font-semibold">{formatDuration(yearSummary.totalDuration)}</span>
-        </div>
-        <div className="text-sm">
-          <span className="text-gray-500">TSS:</span>{" "}
-          <span
-            className={`inline-flex rounded-full px-2 py-0.5 text-xs font-bold ${tssBadgeColor(
-              yearSummary.totalTss
-            )}`}
-          >
-            {Math.round(yearSummary.totalTss)}
-          </span>
-        </div>
-        <div className="ml-auto flex items-center gap-3">
-          {Object.entries(yearSummary.sportBreakdown).map(([sport, data]) => (
-            <div key={sport} className="flex items-center gap-1 text-xs text-gray-600">
-              <SportIcon sport={sport} size={14} />
-              <span className="font-medium">{data.count}x</span>
-              <span className="text-gray-400">{formatDuration(data.duration)}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Navigation */}
       <div className="flex items-center justify-between">
-        <button
-          data-testid="year-prev"
-          onClick={handlePrev}
-          className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"
-        >
-          <ChevronLeft size={16} />
-          Forrige
+        <button onClick={() => onDateChange(subYears(currentDate, 1))} className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted">
+          <ChevronLeft size={16} /> {year - 1}
         </button>
-        <h2 data-testid="year-title" className="text-lg font-semibold text-gray-900">
-          {year}
-        </h2>
-        <button
-          data-testid="year-next"
-          onClick={handleNext}
-          className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"
-        >
-          Næste
-          <ChevronRight size={16} />
+        <h2 className="text-lg font-semibold text-foreground">{year}</h2>
+        <button onClick={() => onDateChange(addYears(currentDate, 1))} className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted">
+          {year + 1} <ChevronRight size={16} />
         </button>
       </div>
 
-      {/* 4x3 Month grid */}
-      <div className="grid grid-cols-4 gap-4">
-        {months.map(({ monthIndex, date, days }) => {
-          // Compute per-month stats
-          let monthTss = 0;
-          let monthSessions = 0;
-          for (const day of days) {
-            const key = format(day, "yyyy-MM-dd");
-            const dayEntries = entriesByDay.get(key) ?? [];
-            for (const e of dayEntries) {
-              if (e.type === "completed") {
-                monthTss += (e.data as Session).tss ?? 0;
-                monthSessions++;
-              }
-            }
-          }
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+        {months.map(({ monthIdx, ms, weeks, monthTss, monthPhases }) => (
+          <div
+            key={monthIdx}
+            data-testid={`year-month-${monthIdx}`}
+            onClick={() => onMonthClick(ms)}
+            className="cursor-pointer rounded-lg border border-border bg-card p-3 transition-colors hover:bg-muted/20"
+          >
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-sm font-semibold text-foreground">{SHORT_MONTHS[monthIdx]}</span>
+              <span className="text-xs text-muted-foreground">{monthTss > 0 ? `${monthTss} TSS` : ""}</span>
+            </div>
 
-          return (
-            <div
-              key={monthIndex}
-              data-testid={`year-month-${monthIndex}`}
-              onClick={() => onMonthClick(date)}
-              className="cursor-pointer rounded-lg border border-gray-200 bg-white p-3 transition-shadow hover:shadow-md"
-            >
-              {/* Month header */}
-              <div className="mb-2 flex items-baseline justify-between">
-                <span className="text-sm font-semibold text-gray-900">
-                  {MONTH_NAMES[monthIndex]}
-                </span>
-                <span className="text-[10px] text-gray-400">
-                  {monthSessions > 0 && (
-                    <>
-                      {monthSessions}x &middot;{" "}
-                      <span
-                        className={`inline rounded-full px-1 ${tssBadgeColor(monthTss)}`}
-                      >
-                        {Math.round(monthTss)}
-                      </span>
-                    </>
-                  )}
-                </span>
+            {monthPhases.length > 0 && (
+              <div className="mb-1.5 flex h-1 w-full overflow-hidden rounded-full">
+                {monthPhases.map((p, i) => (
+                  <div key={i} className="flex-1" style={{ backgroundColor: PHASE_COLORS[p.phaseType] || "#6B7280" }} title={p.phaseName} />
+                ))}
               </div>
+            )}
 
-              {/* Mini stacked bar chart — one column per day */}
-              <div className="flex gap-px" style={{ height: 40 }}>
-                {days.map((day) => {
-                  const key = format(day, "yyyy-MM-dd");
-                  const dayEntries = entriesByDay.get(key) ?? [];
+            <div className="space-y-[2px]">
+              {weeks.map((week, wi) => (
+                <div key={wi} className="flex gap-[2px]">
+                  {week.map(({ date, inMonth, key }) => {
+                    const tss = dayTss.get(key) || 0;
+                    const dayGoals = goalsByDate.get(key);
+                    const hasGoal = !!dayGoals && dayGoals.length > 0;
+                    const isARace = dayGoals?.some((g) => g.racePriority === "A");
 
-                  if (dayEntries.length === 0) {
                     return (
                       <div
                         key={key}
-                        className="flex-1 rounded-sm bg-gray-100"
-                        title={format(day, "d. MMM")}
+                        className={`h-[10px] w-[10px] rounded-[2px] ${!inMonth ? "opacity-0" : ""} ${
+                          hasGoal ? (isARace ? "ring-1 ring-red-500" : "ring-1 ring-amber-500") : ""
+                        }`}
+                        style={{ backgroundColor: inMonth ? heatColor(tss, maxDayTss) : "transparent" }}
+                        title={inMonth ? `${format(date, "d. MMM")}: ${Math.round(tss)} TSS${hasGoal ? " — " + dayGoals![0].title : ""}` : ""}
                       />
                     );
-                  }
-
-                  // Stacked segments by sport
-                  const segments: { sport: string; fraction: number }[] = [];
-                  const total = dayEntries.length;
-                  for (const e of dayEntries) {
-                    const sport = e.type === "completed" ? e.data.sport : e.data.sport;
-                    segments.push({ sport, fraction: 1 / total });
-                  }
-
-                  return (
-                    <div
-                      key={key}
-                      className="flex flex-1 flex-col overflow-hidden rounded-sm"
-                      title={`${format(day, "d. MMM")} — ${dayEntries.length} sessioner`}
-                    >
-                      {segments.map((seg, si) => (
-                        <div
-                          key={si}
-                          className="w-full"
-                          style={{
-                            flex: seg.fraction,
-                            backgroundColor: getSportColor(seg.sport),
-                            opacity: dayEntries[si]?.type === "planned" ? 0.4 : 1,
-                          }}
-                        />
-                      ))}
-                    </div>
-                  );
-                })}
-              </div>
+                  })}
+                </div>
+              ))}
             </div>
-          );
-        })}
+
+            {(() => {
+              const monthGoals = goals.filter((g) => {
+                if (!g.targetDate) return false;
+                const gd = new Date(g.targetDate);
+                return gd.getMonth() === monthIdx && gd.getFullYear() === year;
+              });
+              if (monthGoals.length === 0) return null;
+              return (
+                <div className="mt-1.5 space-y-0.5">
+                  {monthGoals.map((g) => (
+                    <div key={g.id} className="flex items-center gap-1 text-[9px]">
+                      <MapPin size={8} style={{ color: g.racePriority === "A" ? "#EF4444" : g.racePriority === "B" ? "#EAB308" : "#3B82F6" }} />
+                      <span className="truncate text-muted-foreground">{g.title}</span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+          </div>
+        ))}
       </div>
     </div>
   );
