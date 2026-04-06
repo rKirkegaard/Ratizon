@@ -9,7 +9,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { format, parseISO } from "date-fns";
-import { X, Heart, Zap, TrendingUp, Clock, Check } from "lucide-react";
+import { X, Heart, Zap, TrendingUp, Clock, Pencil } from "lucide-react";
 import { SportIcon } from "@/presentation/components/shared/SportIcon";
 import { useAthleteStore } from "@/application/stores/athleteStore";
 import { useSessionDetail, useSessionTimeSeries } from "@/application/hooks/training/useSessions";
@@ -188,12 +188,13 @@ export default function SessionPopup({ session, sessionType, athleteId: propAthl
             ) : (
               <button
                 onClick={() => setEditingType(true)}
-                className={`rounded-lg border px-3 py-1.5 cursor-pointer hover:opacity-80 transition-opacity ${typeColors.bg} ${typeColors.border}`}
-                title="Klik for at aendre traenigstype"
+                className={`group flex items-center gap-1.5 rounded-lg border px-3 py-1.5 cursor-pointer transition-all hover:ring-2 hover:ring-primary/40 ${typeColors.bg} ${typeColors.border}`}
+                title="Klik for at aendre traeningstype"
               >
                 <span className={`text-sm font-bold ${typeColors.text}`}>
                   {SESSION_TYPE_LABELS[s.sessionType] || s.sessionType}
                 </span>
+                <Pencil className={`h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity ${typeColors.text}`} />
               </button>
             )}
           </div>
