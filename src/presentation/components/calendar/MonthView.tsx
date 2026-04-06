@@ -3,7 +3,8 @@ import {
   startOfMonth,
   endOfMonth,
   startOfWeek,
-  addDays,
+  endOfWeek,
+  eachDayOfInterval,
   addMonths,
   subMonths,
   format,
@@ -11,16 +12,12 @@ import {
   isSameDay,
   parseISO,
   getYear,
-  getISOWeek,
 } from "date-fns";
-import { da } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Clock, MapPin } from "lucide-react";
+import { ChevronLeft, ChevronRight, CheckCircle2, Zap, Target } from "lucide-react";
 import { SportIcon } from "@/presentation/components/shared/SportIcon";
 import { useAthleteStore } from "@/application/stores/athleteStore";
 import { formatDuration, formatDistance } from "@/domain/utils/formatters";
-import { getPhaseForDate } from "@/domain/utils/phase-colors";
 import type { Session, PlannedSession } from "@/domain/types/training.types";
-import type { SessionBrick } from "@/domain/types/brick.types";
 import type {
   CalendarEntry,
   CalendarPhase,
@@ -31,7 +28,16 @@ const MONTH_NAMES = [
   "Januar", "Februar", "Marts", "April", "Maj", "Juni",
   "Juli", "August", "September", "Oktober", "November", "December",
 ];
-const DAY_HEADERS = ["Man", "Tir", "Ons", "Tor", "Fre", "Loer", "Soen"];
+const WEEKDAYS = ["Man", "Tir", "Ons", "Tor", "Fre", "Loer", "Soen"];
+
+function getSessionTypeLabel(t: string): string {
+  const map: Record<string, string> = {
+    endurance: "Udholdenhed", tempo: "Tempo", sweet_spot: "Sweet Spot",
+    threshold: "Taerskel", vo2max: "VO2max", recovery: "Restitution",
+    interval: "Interval", race: "Konkurrence", easy: "Let",
+  };
+  return map[t] || t;
+}
 
 interface MonthViewProps {
   currentDate: Date;
@@ -51,32 +57,22 @@ export default function MonthView({
   sportFilter,
   isLoading,
   onDayClick,
-  phases,
-  goals,
 }: MonthViewProps) {
   const getSportColor = useAthleteStore((s) => s.getSportColor);
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
   const calStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+  const calEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
   const year = getYear(currentDate);
   const monthIdx = currentDate.getMonth();
 
-  // Build weeks
   const weeks = useMemo(() => {
+    const allDays = eachDayOfInterval({ start: calStart, end: calEnd });
     const result: Date[][] = [];
-    let day = calStart;
-    for (let w = 0; w < 6; w++) {
-      const week: Date[] = [];
-      for (let d = 0; d < 7; d++) {
-        week.push(day);
-        day = addDays(day, 1);
-      }
-      if (week.some((d) => isSameMonth(d, monthStart))) result.push(week);
-    }
+    for (let i = 0; i < allDays.length; i += 7) result.push(allDays.slice(i, i + 7));
     return result;
-  }, [calStart.toISOString(), monthStart.toISOString()]);
+  }, [calStart.toISOString(), calEnd.toISOString()]);
 
-  // Group entries by day
   const entriesByDay = useMemo(() => {
     const map = new Map<string, CalendarEntry[]>();
     const filtered = sportFilter
@@ -86,7 +82,7 @@ export default function MonthView({
       let dateStr: string;
       if (entry.type === "completed") dateStr = format(parseISO(entry.data.startedAt), "yyyy-MM-dd");
       else if (entry.type === "planned") dateStr = format(parseISO(entry.data.scheduledDate), "yyyy-MM-dd");
-      else dateStr = (entry.data as SessionBrick).startedAt.split("T")[0];
+      else dateStr = entry.data.startedAt.split("T")[0];
       const arr = map.get(dateStr) || [];
       arr.push(entry);
       map.set(dateStr, arr);
@@ -94,58 +90,57 @@ export default function MonthView({
     return map;
   }, [entries, sportFilter]);
 
-  // Goals by date
-  const goalsByDay = useMemo(() => {
-    const m = new Map<string, CalendarGoal[]>();
-    for (const g of goals) {
-      if (!g.targetDate) continue;
-      const key = g.targetDate.split("T")[0];
-      const arr = m.get(key) || [];
-      arr.push(g);
-      m.set(key, arr);
-    }
-    return m;
-  }, [goals]);
+  const getWeeklySummary = (weekDays: Date[]) => {
+    let totalDuration = 0, totalTss = 0, totalSessions = 0;
+    let plannedDuration = 0, plannedTss = 0, plannedSessions = 0;
+    const bySport: Record<string, { count: number; duration: number; distance: number; tss: number }> = {};
+    const plannedBySport: Record<string, { count: number; duration: number; distance: number; tss: number }> = {};
 
-  // Weekly summaries
-  const weekSummaries = useMemo(() => {
-    const map = new Map<number, { tss: number; duration: number; count: number; bySport: Record<string, { count: number; duration: number }> }>();
-    for (const entry of entries) {
-      if (entry.type !== "completed") continue;
-      const s = entry.data as Session;
-      const wn = getISOWeek(parseISO(s.startedAt));
-      if (!map.has(wn)) map.set(wn, { tss: 0, duration: 0, count: 0, bySport: {} });
-      const ws = map.get(wn)!;
-      ws.tss += s.tss ?? 0;
-      ws.duration += s.durationSeconds;
-      ws.count += 1;
-      if (!ws.bySport[s.sport]) ws.bySport[s.sport] = { count: 0, duration: 0 };
-      ws.bySport[s.sport].count += 1;
-      ws.bySport[s.sport].duration += s.durationSeconds;
+    for (const day of weekDays) {
+      const key = format(day, "yyyy-MM-dd");
+      for (const entry of entriesByDay.get(key) ?? []) {
+        if (entry.type === "completed") {
+          const s = entry.data as Session;
+          totalDuration += s.durationSeconds;
+          totalTss += s.tss ?? 0;
+          totalSessions += 1;
+          if (!bySport[s.sport]) bySport[s.sport] = { count: 0, duration: 0, distance: 0, tss: 0 };
+          bySport[s.sport].count += 1;
+          bySport[s.sport].duration += s.durationSeconds;
+          bySport[s.sport].distance += s.distanceMeters ?? 0;
+          bySport[s.sport].tss += s.tss ?? 0;
+        } else if (entry.type === "planned") {
+          const p = entry.data as PlannedSession;
+          plannedDuration += p.targetDurationSeconds ?? 0;
+          plannedTss += p.targetTss ?? 0;
+          plannedSessions += 1;
+          if (!plannedBySport[p.sport]) plannedBySport[p.sport] = { count: 0, duration: 0, distance: 0, tss: 0 };
+          plannedBySport[p.sport].count += 1;
+          plannedBySport[p.sport].duration += p.targetDurationSeconds ?? 0;
+          plannedBySport[p.sport].distance += p.targetDistanceMeters ?? 0;
+          plannedBySport[p.sport].tss += p.targetTss ?? 0;
+        }
+      }
     }
-    return map;
-  }, [entries]);
+    return { totalDuration, totalTss, totalSessions, bySport, plannedDuration, plannedTss, plannedSessions, plannedBySport };
+  };
 
-  // Month summary header
   const monthSummary = useMemo(() => {
-    let totalDuration = 0;
-    let totalTss = 0;
-    let totalCount = 0;
+    let totalDuration = 0, totalTss = 0, totalSessions = 0;
     const bySport: Record<string, { duration: number; distance: number; count: number }> = {};
-
     for (const entry of entries) {
       if (entry.type !== "completed") continue;
       const s = entry.data as Session;
       if (!isSameMonth(parseISO(s.startedAt), monthStart)) continue;
       totalDuration += s.durationSeconds;
       totalTss += s.tss ?? 0;
-      totalCount += 1;
+      totalSessions += 1;
       if (!bySport[s.sport]) bySport[s.sport] = { duration: 0, distance: 0, count: 0 };
       bySport[s.sport].duration += s.durationSeconds;
       bySport[s.sport].distance += s.distanceMeters ?? 0;
       bySport[s.sport].count += 1;
     }
-    return { totalDuration, totalTss, totalCount, bySport };
+    return { totalDuration, totalTss, totalSessions, bySport };
   }, [entries, monthStart]);
 
   if (isLoading) {
@@ -165,178 +160,184 @@ export default function MonthView({
         </button>
       </div>
 
-      {/* Month summary header */}
-      {monthSummary.totalCount > 0 && (
-        <div data-testid="month-summary" className="flex flex-wrap items-center gap-4 rounded-lg border border-border bg-card px-4 py-2 text-sm">
-          <span className="font-medium text-foreground">
-            {monthSummary.totalCount} sessioner
-          </span>
-          <span className="text-muted-foreground">
-            <Clock size={12} className="mr-1 inline" />
-            {formatDuration(monthSummary.totalDuration)}
-          </span>
-          <span className="text-muted-foreground">{Math.round(monthSummary.totalTss)} TSS</span>
-          <span className="mx-1 text-border">|</span>
-          {Object.entries(monthSummary.bySport).map(([sport, data]) => (
-            <span key={sport} className="flex items-center gap-1 text-xs text-muted-foreground">
-              <SportIcon sport={sport} size={12} />
-              {formatDuration(data.duration)}
-              {data.distance > 0 && <span>· {formatDistance(data.distance)}</span>}
-            </span>
-          ))}
-        </div>
-      )}
+      <div className="rounded-lg border border-border bg-card overflow-hidden">
+        {/* Month summary header */}
+        {monthSummary.totalSessions > 0 && (
+          <div className="flex items-start justify-between border-b border-border bg-muted/10 p-3">
+            <div className="text-sm font-medium text-foreground">Maanedssummering</div>
+            <div className="text-xs text-right space-y-0.5">
+              <div className="flex items-center justify-end gap-2 font-medium text-foreground">
+                <CheckCircle2 className="h-3 w-3 text-green-500" />
+                Gennemfoert
+                <span className="text-muted-foreground">{formatDuration(monthSummary.totalDuration)}</span>
+              </div>
+              {monthSummary.totalTss > 0 && (
+                <div className="flex items-center justify-end gap-1 text-muted-foreground">
+                  <Zap className="h-3 w-3 text-amber-400" />
+                  {Math.round(monthSummary.totalTss)} TSS
+                </div>
+              )}
+              {Object.entries(monthSummary.bySport).map(([sport, data]) => (
+                <div key={sport} className="flex items-center justify-end gap-1" style={{ color: getSportColor(sport) }}>
+                  <SportIcon sport={sport} size={12} />
+                  <span>{formatDuration(data.duration)}</span>
+                  {data.distance > 0 && <span className="text-muted-foreground">- {formatDistance(data.distance)}</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
-      {/* Calendar grid: week# + 7 days + weekly summary */}
-      <div className="grid grid-cols-[36px_repeat(7,1fr)_180px] gap-px rounded-lg border border-border overflow-hidden bg-border">
-        {/* Header row */}
-        <div className="bg-muted/50 p-1 text-center text-[9px] font-medium text-muted-foreground">Uge</div>
-        {DAY_HEADERS.map((d) => (
-          <div key={d} className="bg-muted/50 p-1 text-center text-[10px] font-medium text-muted-foreground">{d}</div>
-        ))}
-        <div className="bg-muted/50 p-1 text-center text-[9px] font-medium text-muted-foreground">Oversigt</div>
+        {/* Weekday header */}
+        <div className="grid grid-cols-8 gap-0 border-b border-border">
+          {WEEKDAYS.map((d) => (
+            <div key={d} className="p-3 text-center text-sm font-medium text-muted-foreground bg-muted/30">{d}</div>
+          ))}
+          <div className="p-3 text-center text-sm font-medium text-muted-foreground bg-muted/30">Uge Total</div>
+        </div>
 
         {/* Week rows */}
         {weeks.map((week, wi) => {
-          const wn = getISOWeek(week[3] || week[0]);
-          const ws = weekSummaries.get(wn);
-          const phase = getPhaseForDate(format(week[0], "yyyy-MM-dd"), phases);
+          const summary = getWeeklySummary(week);
+          const weekNum = format(week[3] || week[0], "w");
 
           return (
-            <div key={wi} className="contents">
-              {/* Week number */}
-              <div className="flex flex-col items-center justify-start bg-card p-1 pt-2">
-                <span className="text-[10px] font-bold text-muted-foreground">{wn}</span>
-                {phase && <div className="mt-1 h-1 w-full rounded-full" style={{ backgroundColor: phase.color }} />}
-              </div>
-
+            <div key={wi} className="grid grid-cols-8 gap-0 border-b border-border/50 last:border-b-0">
               {/* Day cells */}
               {week.map((day) => {
                 const key = format(day, "yyyy-MM-dd");
                 const inMonth = isSameMonth(day, monthStart);
                 const isToday = isSameDay(day, new Date());
                 const dayEntries = entriesByDay.get(key) ?? [];
-                const dayGoals = goalsByDay.get(key) ?? [];
-                const MAX_VISIBLE = 2;
 
                 return (
                   <div
                     key={key}
                     data-testid={`month-day-${key}`}
                     onClick={() => onDayClick?.(day)}
-                    className={`min-h-[110px] cursor-pointer p-1.5 transition-colors hover:bg-muted/20 ${
-                      inMonth ? "bg-card" : "bg-muted/10"
-                    } ${isToday ? "ring-1 ring-primary ring-inset" : ""}`}
+                    className={`min-h-[120px] cursor-pointer border-r border-border/30 p-2 transition-colors hover:bg-muted/20 ${
+                      !inMonth ? "bg-muted/5" : ""
+                    } ${isToday ? "bg-primary/5" : ""}`}
                   >
-                    {/* Date + goal */}
-                    <div className="flex items-center justify-between">
-                      <span className={`text-xs ${isToday ? "font-bold text-primary" : inMonth ? "text-foreground" : "text-muted-foreground/30"}`}>
-                        {format(day, "d")}
-                      </span>
-                      {dayGoals.length > 0 && (
-                        <MapPin size={10} style={{ color: dayGoals[0].racePriority === "A" ? "#EF4444" : "#EAB308" }} />
-                      )}
+                    <div className={`mb-1 text-sm ${isToday ? "font-bold text-primary" : inMonth ? "text-foreground" : "text-muted-foreground/30"}`}>
+                      {format(day, "d")}
                     </div>
 
-                    {/* Session bars */}
-                    <div className="mt-0.5 space-y-0.5">
-                      {dayEntries.slice(0, MAX_VISIBLE).map((entry, idx) => {
-                        if (entry.type === "brick") {
-                          const b = entry.data as SessionBrick;
+                    <div className="space-y-1">
+                      {dayEntries.map((entry) => {
+                        if (entry.type === "completed") {
+                          const s = entry.data as Session;
                           return (
-                            <div key={`b-${b.id}`} className="flex items-center gap-1 rounded bg-amber-500/10 px-1.5 py-1 text-[11px]">
-                              {b.segments.map((seg) => <SportIcon key={seg.id} sport={seg.sport} size={9} />)}
-                              <span className="text-muted-foreground">{formatDuration(b.totalDurationSeconds)}</span>
+                            <div
+                              key={`c-${s.id}`}
+                              className="rounded border-l-2 border border-border/50 bg-muted/40 px-1.5 py-1 text-xs text-muted-foreground hover:opacity-80"
+                              style={{ borderLeftColor: getSportColor(s.sport) }}
+                            >
+                              <div className="flex items-center gap-1 mb-0.5">
+                                <SportIcon sport={s.sport} size={12} />
+                                <span className="font-medium text-[10px] uppercase tracking-wide text-foreground">
+                                  {getSessionTypeLabel(s.sessionType)}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 text-[10px]">
+                                <span>{formatDuration(s.durationSeconds)}</span>
+                                {s.distanceMeters != null && s.distanceMeters > 0 && (
+                                  <span>{formatDistance(s.distanceMeters)}</span>
+                                )}
+                                {s.tss != null && (
+                                  <span className="flex items-center gap-0.5">
+                                    <Zap className="h-2.5 w-2.5" />{Math.round(s.tss)}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           );
                         }
-
-                        const isCompleted = entry.type === "completed";
-                        const sport = entry.data.sport;
-                        const color = getSportColor(sport);
-                        const duration = isCompleted
-                          ? (entry.data as Session).durationSeconds
-                          : (entry.data as PlannedSession).targetDurationSeconds ?? 0;
-                        const distance = isCompleted ? (entry.data as Session).distanceMeters : null;
-                        const tss = isCompleted ? (entry.data as Session).tss : (entry.data as PlannedSession).targetTss;
-
-                        return (
-                          <div
-                            key={`${entry.type[0]}-${entry.data.id}`}
-                            className={`flex items-center gap-1 rounded border-l-2 px-1.5 py-1 text-[11px] ${
-                              isCompleted ? "bg-card" : "bg-muted/20 opacity-50"
-                            }`}
-                            style={{ borderLeftColor: color }}
-                          >
-                            <SportIcon sport={sport} size={12} />
-                            <span className="text-muted-foreground">
-                              {formatDuration(duration)}
-                            </span>
-                            {distance != null && distance > 0 && (
-                              <span className="text-muted-foreground/60">{formatDistance(distance)}</span>
-                            )}
-                            {tss != null && (
-                              <span className="ml-auto font-medium text-muted-foreground">{Math.round(tss)}</span>
-                            )}
-                          </div>
-                        );
+                        if (entry.type === "planned") {
+                          const p = entry.data as PlannedSession;
+                          return (
+                            <div
+                              key={`p-${p.id}`}
+                              className="rounded border border-dashed border-border/50 bg-muted/20 px-1.5 py-1 text-xs text-muted-foreground/60 opacity-60"
+                              style={{ borderLeftColor: getSportColor(p.sport), borderLeftWidth: 2, borderLeftStyle: "solid" }}
+                            >
+                              <div className="flex items-center gap-1 mb-0.5">
+                                <SportIcon sport={p.sport} size={12} />
+                                <span className="font-medium text-[10px] italic">{p.title}</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-[10px]">
+                                {p.targetDurationSeconds && <span>{formatDuration(p.targetDurationSeconds)}</span>}
+                                {p.targetTss != null && (
+                                  <span className="flex items-center gap-0.5">
+                                    <Target className="h-2.5 w-2.5" />{Math.round(p.targetTss)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        }
+                        return null;
                       })}
-                      {dayEntries.length > MAX_VISIBLE && (
-                        <div className="text-center text-[10px] text-muted-foreground/50">
-                          +{dayEntries.length - MAX_VISIBLE} flere
-                        </div>
-                      )}
                     </div>
                   </div>
                 );
               })}
 
-              {/* Weekly summary — matches WeekView ugeoversigt style */}
-              <div className="bg-muted/10 p-2">
-                {ws ? (
-                  <div className="space-y-2 text-[11px]">
-                    <div>
-                      <div className="text-[9px] text-muted-foreground">Sessioner</div>
-                      <div className="text-base font-bold text-foreground">{ws.count}</div>
-                    </div>
-                    <div>
-                      <div className="text-[9px] text-muted-foreground">Total tid</div>
-                      <div className="text-sm font-semibold text-foreground">{formatDuration(ws.duration)}</div>
-                    </div>
-                    <div>
-                      <div className="text-[9px] text-muted-foreground">Total TSS</div>
-                      <div className="text-sm font-bold text-foreground">{Math.round(ws.tss)}</div>
-                    </div>
-
-                    {/* TSS stacked bar */}
-                    {ws.tss > 0 && (
-                      <div>
-                        <div className="text-[9px] text-muted-foreground mb-0.5">Fordeling</div>
-                        <div className="flex h-2.5 w-full overflow-hidden rounded-full">
-                          {Object.entries(ws.bySport).map(([sport, data]) => {
-                            const pct = ws.duration > 0 ? (data.duration / ws.duration) * 100 : 0;
-                            if (pct <= 0) return null;
-                            return (
-                              <div key={sport} style={{ width: `${pct}%`, backgroundColor: getSportColor(sport) }} />
-                            );
-                          })}
+              {/* Uge Total — IronCoach-style with TSS per discipline */}
+              <div className="min-h-[120px] bg-muted/10 border-l border-border p-3">
+                <div className="text-xs font-semibold text-foreground mb-2">Uge {weekNum}</div>
+                {(summary.totalSessions > 0 || summary.plannedSessions > 0) ? (
+                  <div className="space-y-2">
+                    {summary.totalSessions > 0 && (
+                      <div className="text-xs space-y-1">
+                        <div className="flex items-center gap-2 font-medium text-foreground mb-1">
+                          <CheckCircle2 className="h-3 w-3 text-green-500" />
+                          Gennemfoert
+                          <span className="text-muted-foreground">{formatDuration(summary.totalDuration)}</span>
                         </div>
+                        {summary.totalTss > 0 && (
+                          <div className="flex items-center gap-1 text-muted-foreground">
+                            <Zap className="h-3 w-3 text-amber-400" />
+                            {Math.ceil(summary.totalTss)} TSS
+                          </div>
+                        )}
+                        {Object.entries(summary.bySport).map(([sport, data]) => (
+                          <div key={sport} className="flex items-center gap-1 pl-2" style={{ color: getSportColor(sport) }}>
+                            <SportIcon sport={sport} size={12} />
+                            <span>{formatDuration(data.duration)}</span>
+                            {data.distance > 0 && (
+                              <span className="text-muted-foreground">- {formatDistance(data.distance)}</span>
+                            )}
+                            <span className="text-muted-foreground ml-auto text-[10px]">{Math.round(data.tss)} TSS</span>
+                          </div>
+                        ))}
                       </div>
                     )}
-
-                    {/* Per-sport breakdown */}
-                    <div className="border-t border-border pt-1.5 space-y-1">
-                      {Object.entries(ws.bySport).map(([sport, data]) => (
-                        <div key={sport} className="flex items-center gap-1">
-                          <SportIcon sport={sport} size={11} />
-                          <span className="font-medium text-foreground">{data.count}x</span>
-                          <span className="text-muted-foreground">{formatDuration(data.duration)}</span>
+                    {summary.plannedSessions > 0 && (
+                      <div className="text-xs space-y-1 text-muted-foreground">
+                        <div className="flex items-center gap-2 font-medium mb-1">
+                          <Target className="h-3 w-3 text-blue-500" />
+                          Planlagt
+                          <span className="text-muted-foreground">{formatDuration(summary.plannedDuration)}</span>
                         </div>
-                      ))}
-                    </div>
+                        {summary.plannedTss > 0 && (
+                          <div className="flex items-center gap-1 text-muted-foreground">
+                            <Zap className="h-3 w-3 text-amber-400" />
+                            {Math.ceil(summary.plannedTss)} TSS
+                          </div>
+                        )}
+                        {Object.entries(summary.plannedBySport).map(([sport, data]) => (
+                          <div key={sport} className="flex items-center gap-1 pl-2" style={{ color: getSportColor(sport) }}>
+                            <SportIcon sport={sport} size={12} />
+                            <span>{formatDuration(data.duration)}</span>
+                            <span className="text-muted-foreground ml-auto text-[10px]">{Math.round(data.tss)} TSS</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ) : (
-                  <span className="text-muted-foreground/30">—</span>
+                  <div className="text-xs text-muted-foreground/40">Ingen traeninger</div>
                 )}
               </div>
             </div>
