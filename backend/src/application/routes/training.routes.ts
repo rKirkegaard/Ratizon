@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import multer from "multer";
+import Busboy from "busboy";
 import AdmZip from "adm-zip";
 import {
   listSessions,
@@ -20,11 +20,29 @@ import { uploadSession } from "../use-cases/UploadSession.js";
 
 export const trainingRouter = Router();
 
-// Multer config: accept up to 50MB files in memory
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 50 * 1024 * 1024 },
-});
+// Parse multipart upload using busboy (multer has Express 5 compat issues)
+function parseUpload(req: Request): Promise<{ buffer: Buffer; filename: string }> {
+  return new Promise((resolve, reject) => {
+    const busboy = Busboy({ headers: req.headers, limits: { fileSize: 50 * 1024 * 1024 } });
+    let fileBuffer: Buffer | null = null;
+    let filename = "";
+
+    busboy.on("file", (_fieldname: string, stream: any, info: any) => {
+      filename = info.filename || "";
+      const chunks: Buffer[] = [];
+      stream.on("data", (chunk: Buffer) => chunks.push(chunk));
+      stream.on("end", () => { fileBuffer = Buffer.concat(chunks); });
+    });
+
+    busboy.on("finish", () => {
+      if (!fileBuffer) reject(new Error("Ingen fil modtaget"));
+      else resolve({ buffer: fileBuffer, filename });
+    });
+
+    busboy.on("error", reject);
+    req.pipe(busboy);
+  });
+}
 
 // Session endpoints mounted under /api/training
 trainingRouter.get("/sessions/:athleteId", listSessions);
@@ -45,37 +63,21 @@ trainingRouter.get("/bricks/:athleteId/:brickId/transition", getBrickTransition)
 trainingRouter.post(
   "/upload/:athleteId",
   async (req: Request, res: Response) => {
-    // Manually invoke multer to avoid Express 5 callback issues
-    await new Promise<void>((resolve, reject) => {
-      (upload.single("file") as any)(req, res, (err: any) => {
-        if (err) reject(err);
-        else resolve();
-      });
-    }).catch((err) => {
-      res.status(400).json({ error: { message: err.message || "Upload fejl" } });
-      return;
-    });
-    if (res.headersSent) return;
-
-    // Original handler continues here
     try {
       const { athleteId } = req.params;
-      const file = req.file;
 
-      if (!file) {
-        res.status(400).json({ error: { message: "Ingen fil uploadet. Send en .fit, .tcx eller .zip fil." } });
-        return;
-      }
+      // Parse multipart form data
+      const { buffer: rawBuffer, filename: rawFilename } = await parseUpload(req);
 
       // Validate file extension
-      const uploadExt = file.originalname.toLowerCase().split(".").pop();
+      const uploadExt = rawFilename.toLowerCase().split(".").pop();
       if (uploadExt !== "fit" && uploadExt !== "tcx" && uploadExt !== "zip") {
         res.status(400).json({ error: { message: "Kun .fit, .tcx og .zip filer er tilladt." } });
         return;
       }
 
-      let fileBuffer = file.buffer;
-      let filename = file.originalname;
+      let fileBuffer = rawBuffer;
+      let filename = rawFilename;
 
       // If zip, validate contents and extract .fit/.tcx
       const ext = filename.toLowerCase().split(".").pop();
