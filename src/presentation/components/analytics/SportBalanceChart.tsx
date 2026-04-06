@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   AreaChart,
   Area,
@@ -18,6 +19,7 @@ interface SportBalanceChartProps {
 
 export default function SportBalanceChart({ points, sports }: SportBalanceChartProps) {
   const getSportColor = useAthleteStore((s) => s.getSportColor);
+  const [hoveredSport, setHoveredSport] = useState<string | null>(null);
 
   if (points.length === 0 || sports.length === 0) {
     return (
@@ -69,9 +71,15 @@ export default function SportBalanceChart({ points, sports }: SportBalanceChartP
                 border: "1px solid hsl(var(--border))",
                 borderRadius: 8,
                 fontSize: 12,
+                color: "hsl(var(--foreground))",
               }}
+              itemStyle={{ color: "hsl(var(--foreground))" }}
             />
-            <Legend />
+            <Legend
+              wrapperStyle={{ color: "hsl(var(--muted-foreground))", fontSize: 12 }}
+              onMouseEnter={(e: any) => setHoveredSport(e.dataKey || e.value)}
+              onMouseLeave={() => setHoveredSport(null)}
+            />
             {sports.map((sport) => (
               <Area
                 key={sport}
@@ -80,7 +88,9 @@ export default function SportBalanceChart({ points, sports }: SportBalanceChartP
                 stackId="1"
                 fill={getSportColor(sport)}
                 stroke={getSportColor(sport)}
-                fillOpacity={0.7}
+                fillOpacity={hoveredSport === null ? 0.7 : hoveredSport === sport ? 0.9 : 0.15}
+                strokeOpacity={hoveredSport === null ? 1 : hoveredSport === sport ? 1 : 0.2}
+                strokeWidth={hoveredSport === sport ? 2 : 1}
                 name={sport}
               />
             ))}
