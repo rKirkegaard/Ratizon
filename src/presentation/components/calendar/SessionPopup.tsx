@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   AreaChart,
   Area,
@@ -70,6 +71,7 @@ export default function SessionPopup({ session, sessionType, athleteId: propAthl
   const storeAthleteId = useAthleteStore((s) => s.selectedAthleteId);
   const athleteId = propAthleteId || storeAthleteId || "";
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [editingType, setEditingType] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -143,9 +145,14 @@ export default function SessionPopup({ session, sessionType, athleteId: propAthl
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
         <div className="relative mx-4 max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg border border-border bg-card p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-          <button onClick={onClose} className="absolute right-4 top-4 rounded-md p-1 text-muted-foreground hover:text-foreground">
-            <X size={18} />
-          </button>
+          <div className="absolute right-4 top-4 flex items-center gap-2">
+            <button onClick={() => { onClose(); navigate(`/sessions/${s.id}`); }} className="rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-[10px] font-medium text-primary hover:bg-primary/20">
+              Fuld analyse
+            </button>
+            <button onClick={onClose} className="rounded-md p-1 text-muted-foreground hover:text-foreground">
+              <X size={18} />
+            </button>
+          </div>
 
           {/* Header */}
           <div className="flex items-center gap-3 mb-4">
