@@ -24,14 +24,6 @@ export const trainingRouter = Router();
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 50 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    const ext = file.originalname.toLowerCase().split(".").pop();
-    if (ext === "fit" || ext === "tcx" || ext === "zip") {
-      cb(null, true);
-    } else {
-      cb(new Error("Kun .fit, .tcx og .zip filer er tilladt") as any, false);
-    }
-  },
 });
 
 // Session endpoints mounted under /api/training
@@ -60,6 +52,13 @@ trainingRouter.post(
 
       if (!file) {
         res.status(400).json({ error: { message: "Ingen fil uploadet. Send en .fit, .tcx eller .zip fil." } });
+        return;
+      }
+
+      // Validate file extension
+      const uploadExt = file.originalname.toLowerCase().split(".").pop();
+      if (uploadExt !== "fit" && uploadExt !== "tcx" && uploadExt !== "zip") {
+        res.status(400).json({ error: { message: "Kun .fit, .tcx og .zip filer er tilladt." } });
         return;
       }
 
