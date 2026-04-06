@@ -29,7 +29,7 @@ const upload = multer({
     if (ext === "fit" || ext === "tcx" || ext === "zip") {
       cb(null, true);
     } else {
-      cb(new Error("Kun .fit, .tcx og .zip filer er tilladt"));
+      cb(null, false);
     }
   },
 });
