@@ -105,7 +105,7 @@ export default function WeeklyZoneChart({
               itemStyle={{ color: "hsl(var(--foreground))" }}
             />
             <Legend wrapperStyle={{ color: "hsl(var(--muted-foreground))", fontSize: 12 }} />
-            <Bar dataKey="minutter" name="Minutter" radius={[4, 4, 0, 0]}>
+            <Bar activeBar={{ fillOpacity: 0.7, stroke: "hsl(var(--foreground))", strokeWidth: 1 }} dataKey="minutter" name="Minutter" radius={[4, 4, 0, 0]}>
               {chartData.map((_, index) => (
                 <Cell key={index} fill={ZONE_COLORS[index]} />
               ))}

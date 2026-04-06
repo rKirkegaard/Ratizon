@@ -92,7 +92,7 @@ export default function RampRateChart({ points }: RampRateChartProps) {
                 fontSize: 12,
               }}
             />
-            <Bar dataKey="rampRatePct" name="Ramp Rate" radius={[4, 4, 0, 0]}>
+            <Bar activeBar={{ fillOpacity: 0.7, stroke: "hsl(var(--foreground))", strokeWidth: 1 }} dataKey="rampRatePct" name="Ramp Rate" radius={[4, 4, 0, 0]}>
               {points.map((entry, index) => (
                 <Cell key={index} fill={getRampColor(entry.rampRatePct)} />
               ))}

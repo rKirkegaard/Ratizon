@@ -121,10 +121,10 @@ export default function VolumeDistribution({
               }}
               wrapperStyle={{ fontSize: "11px" }}
             />
-            <Bar dataKey="swim" stackId="sports" fill={swimColor} radius={[0, 0, 0, 0]} />
-            <Bar dataKey="bike" stackId="sports" fill={bikeColor} radius={[0, 0, 0, 0]} />
-            <Bar dataKey="run" stackId="sports" fill={runColor} radius={[0, 0, 0, 0]} />
-            <Bar dataKey="strength" stackId="sports" fill={strengthColor} radius={[2, 2, 0, 0]} />
+            <Bar activeBar={{ fillOpacity: 0.7, stroke: "hsl(var(--foreground))", strokeWidth: 1 }} dataKey="swim" stackId="sports" fill={swimColor} radius={[0, 0, 0, 0]} />
+            <Bar activeBar={{ fillOpacity: 0.7, stroke: "hsl(var(--foreground))", strokeWidth: 1 }} dataKey="bike" stackId="sports" fill={bikeColor} radius={[0, 0, 0, 0]} />
+            <Bar activeBar={{ fillOpacity: 0.7, stroke: "hsl(var(--foreground))", strokeWidth: 1 }} dataKey="run" stackId="sports" fill={runColor} radius={[0, 0, 0, 0]} />
+            <Bar activeBar={{ fillOpacity: 0.7, stroke: "hsl(var(--foreground))", strokeWidth: 1 }} dataKey="strength" stackId="sports" fill={strengthColor} radius={[2, 2, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>

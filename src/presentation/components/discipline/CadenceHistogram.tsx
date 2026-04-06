@@ -89,7 +89,7 @@ export default function CadenceHistogram({ data }: CadenceHistogramProps) {
                 fill: "#22c55e",
               }}
             />
-            <Bar dataKey="pctTime" fill={runColor} radius={[2, 2, 0, 0]} />
+            <Bar activeBar={{ fillOpacity: 0.7, stroke: "hsl(var(--foreground))", strokeWidth: 1 }} dataKey="pctTime" fill={runColor} radius={[2, 2, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>

@@ -299,7 +299,7 @@ export default function SessionDetail({ athleteId, sessionId }: SessionDetailPro
                       }}
                       formatter={(val: number) => [`${val}%`, "Tid"]}
                     />
-                    <Bar dataKey="pct" radius={[0, 4, 4, 0]}>
+                    <Bar activeBar={{ fillOpacity: 0.7, stroke: "hsl(var(--foreground))", strokeWidth: 1 }} dataKey="pct" radius={[0, 4, 4, 0]}>
                       {zoneBarChartData.map((entry, i) => (
                         <Cell key={i} fill={entry.fill} />
                       ))}

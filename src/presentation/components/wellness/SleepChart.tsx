@@ -107,7 +107,7 @@ export default function SleepChart({ history, isLoading }: SleepChartProps) {
                 fontSize: 10,
               }}
             />
-            <Bar dataKey="hours" radius={[3, 3, 0, 0]} maxBarSize={20}>
+            <Bar activeBar={{ fillOpacity: 0.7, stroke: "hsl(var(--foreground))", strokeWidth: 1 }} dataKey="hours" radius={[3, 3, 0, 0]} maxBarSize={20}>
               {data.map((entry, i) => (
                 <Cell key={i} fill={entry.color} />
               ))}
