@@ -29,7 +29,7 @@ const upload = multer({
     if (ext === "fit" || ext === "tcx" || ext === "zip") {
       cb(null, true);
     } else {
-      cb(null, false);
+      cb(new Error("Kun .fit, .tcx og .zip filer er tilladt") as any, false);
     }
   },
 });
@@ -52,7 +52,7 @@ trainingRouter.get("/bricks/:athleteId/:brickId/transition", getBrickTransition)
 // File upload endpoint
 trainingRouter.post(
   "/upload/:athleteId",
-  upload.single("file"),
+  upload.single("file") as any,
   async (req: Request, res: Response) => {
     try {
       const { athleteId } = req.params;
