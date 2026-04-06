@@ -144,13 +144,28 @@ export function useWeeklyReport(athleteId: string | null, date: string) {
         totalSessions: summary.sessionCount ?? 0,
         compliancePct: summary.compliancePct ?? 0,
         ctlDelta: pmc.ctlChange7d ?? 0,
-        disciplines: disciplineBalance.map((d: any) => ({
-          sport: d.sport,
-          durationSeconds: d.duration ?? 0,
-          tss: d.tss ?? 0,
-          sessions: d.sessions ?? 0,
-          zones: [],
-        })),
+        disciplines: disciplineBalance.map((d: any) => {
+          // Compute zone distribution from sessions for this sport
+          const sportSessions = (raw.sessions || []).filter((s: any) => s.sport === d.sport);
+          const zoneAgg = [0, 0, 0, 0, 0];
+          for (const s of sportSessions) {
+            zoneAgg[0] += s.zone1Pct ?? 0;
+            zoneAgg[1] += s.zone2Pct ?? 0;
+            zoneAgg[2] += s.zone3Pct ?? 0;
+            zoneAgg[3] += s.zone4Pct ?? 0;
+            zoneAgg[4] += s.zone5Pct ?? 0;
+          }
+          const total = zoneAgg.reduce((a, b) => a + b, 0);
+          return {
+            sport: d.sport,
+            durationSeconds: d.duration ?? 0,
+            tss: d.tss ?? 0,
+            sessions: d.sessions ?? 0,
+            zones: total > 0
+              ? zoneAgg.map((v, i) => ({ zone: i + 1, pct: Math.round((v / total) * 100) }))
+              : [1, 2, 3, 4, 5].map((z) => ({ zone: z, pct: 0 })),
+          };
+        }),
         zones: [1, 2, 3, 4, 5].map((z) => ({
           zone: z,
           pct: zoneDist[`zone${z}Pct`] ?? 0,
