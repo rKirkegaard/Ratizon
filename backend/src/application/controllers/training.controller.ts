@@ -270,3 +270,41 @@ export async function createSession(req: Request, res: Response) {
     res.status(500).json({ error: error.message || "Intern serverfejl" });
   }
 }
+
+/**
+ * PATCH /api/training/sessions/:athleteId/:sessionId
+ * Update session fields (sessionType, notes, rpe, etc.)
+ */
+export async function updateSession(req: Request, res: Response) {
+  try {
+    const { athleteId, sessionId } = req.params;
+    const body = req.body;
+
+    const updates: Record<string, unknown> = {};
+    if (body.sessionType !== undefined) updates.sessionType = body.sessionType;
+    if (body.notes !== undefined) updates.notes = body.notes;
+    if (body.rpe !== undefined) updates.rpe = body.rpe;
+    if (body.sessionQuality !== undefined) updates.sessionQuality = body.sessionQuality;
+    if (body.title !== undefined) updates.title = body.title;
+
+    if (Object.keys(updates).length === 0) {
+      res.status(400).json({ error: "Ingen felter at opdatere" });
+      return;
+    }
+
+    const [updated] = await db
+      .update(sessions)
+      .set(updates)
+      .where(and(eq(sessions.id, BigInt(sessionId)), eq(sessions.athleteId, athleteId)))
+      .returning();
+
+    if (!updated) {
+      res.status(404).json({ error: "Session ikke fundet" });
+      return;
+    }
+
+    res.json({ data: { ...updated, id: updated.id.toString() } });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || "Intern serverfejl" });
+  }
+}

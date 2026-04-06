@@ -5,6 +5,7 @@ import {
   getSession,
   getSessionTimeseries,
   createSession,
+  updateSession,
 } from "../controllers/training.controller.js";
 import {
   listBricks,
@@ -37,6 +38,7 @@ trainingRouter.get("/sessions/:athleteId", listSessions);
 trainingRouter.get("/sessions/:athleteId/:sessionId", getSession);
 trainingRouter.get("/sessions/:athleteId/:sessionId/timeseries", getSessionTimeseries);
 trainingRouter.post("/sessions/:athleteId", createSession);
+trainingRouter.patch("/sessions/:athleteId/:sessionId", updateSession);
 
 // Brick endpoints
 trainingRouter.get("/bricks/:athleteId", listBricks);

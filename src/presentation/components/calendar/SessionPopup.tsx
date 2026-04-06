@@ -1,11 +1,7 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   AreaChart,
   Area,
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -13,10 +9,12 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { format, parseISO } from "date-fns";
-import { X, Heart, Zap, TrendingUp, Clock } from "lucide-react";
+import { X, Heart, Zap, TrendingUp, Clock, Check } from "lucide-react";
 import { SportIcon } from "@/presentation/components/shared/SportIcon";
 import { useAthleteStore } from "@/application/stores/athleteStore";
 import { useSessionDetail, useSessionTimeSeries } from "@/application/hooks/training/useSessions";
+import { apiClient } from "@/application/api/client";
+import { useQueryClient } from "@tanstack/react-query";
 import { formatDuration, formatDistance } from "@/domain/utils/formatters";
 import type { Session, PlannedSession } from "@/domain/types/training.types";
 
@@ -52,10 +50,28 @@ interface SessionPopupProps {
   onClose: () => void;
 }
 
+const SESSION_TYPE_OPTIONS = [
+  { value: "recovery", label: "Restitution" },
+  { value: "easy", label: "Let" },
+  { value: "endurance", label: "Udholdenhed" },
+  { value: "base", label: "Base" },
+  { value: "long", label: "Lang" },
+  { value: "tempo", label: "Tempo" },
+  { value: "sweet_spot", label: "Sweet Spot" },
+  { value: "threshold", label: "Taerskel" },
+  { value: "interval", label: "Interval" },
+  { value: "vo2max", label: "VO2max" },
+  { value: "race", label: "Konkurrence" },
+  { value: "hard", label: "Haardt" },
+];
+
 export default function SessionPopup({ session, sessionType, athleteId: propAthleteId, onClose }: SessionPopupProps) {
   const getSportColor = useAthleteStore((s) => s.getSportColor);
   const storeAthleteId = useAthleteStore((s) => s.selectedAthleteId);
   const athleteId = propAthleteId || storeAthleteId || "";
+  const queryClient = useQueryClient();
+  const [editingType, setEditingType] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const sessionId = sessionType === "completed" ? String((session as Session).id) : null;
   const { data: detail } = useSessionDetail(athleteId, sessionId);
@@ -105,7 +121,7 @@ export default function SessionPopup({ session, sessionType, athleteId: propAthl
     const s = session as Session;
     const sportColor = getSportColor(s.sport);
     const typeColors = SESSION_TYPE_COLORS[s.sessionType] ?? { bg: "bg-muted", text: "text-foreground", border: "border-border" };
-    const hasPower = s.sport === "bike" && s.avgPower != null;
+    const hasPower = s.avgPower != null || chartData.some((d) => d.power != null && d.power > 0);
     const hasSpeed = chartData.some((d) => d.speed != null && d.speed > 0);
 
     return (
@@ -126,12 +142,44 @@ export default function SessionPopup({ session, sessionType, athleteId: propAthl
                 {format(parseISO(s.startedAt), "EEEE d. MMMM yyyy 'kl.' HH:mm")}
               </div>
             </div>
-            {/* Session type badge — prominent */}
-            <div className={`rounded-lg border px-3 py-1.5 ${typeColors.bg} ${typeColors.border}`}>
-              <span className={`text-sm font-bold ${typeColors.text}`}>
-                {SESSION_TYPE_LABELS[s.sessionType] || s.sessionType}
-              </span>
-            </div>
+            {/* Session type — editable */}
+            {editingType ? (
+              <select
+                autoFocus
+                value={s.sessionType}
+                onChange={async (e) => {
+                  const newType = e.target.value;
+                  setSaving(true);
+                  try {
+                    await apiClient.patch(`/training/sessions/${athleteId}/${s.id}`, { sessionType: newType });
+                    (s as any).sessionType = newType;
+                    queryClient.invalidateQueries({ queryKey: ["calendar-sessions"] });
+                    queryClient.invalidateQueries({ queryKey: ["sessions"] });
+                  } catch (err) {
+                    console.error("Failed to update session type:", err);
+                  } finally {
+                    setSaving(false);
+                    setEditingType(false);
+                  }
+                }}
+                onBlur={() => setEditingType(false)}
+                className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm font-bold text-foreground"
+              >
+                {SESSION_TYPE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            ) : (
+              <button
+                onClick={() => setEditingType(true)}
+                className={`rounded-lg border px-3 py-1.5 cursor-pointer hover:opacity-80 transition-opacity ${typeColors.bg} ${typeColors.border}`}
+                title="Klik for at aendre traenigstype"
+              >
+                <span className={`text-sm font-bold ${typeColors.text}`}>
+                  {SESSION_TYPE_LABELS[s.sessionType] || s.sessionType}
+                </span>
+              </button>
+            )}
           </div>
 
           {/* Quick stats */}
