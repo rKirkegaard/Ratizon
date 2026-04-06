@@ -105,13 +105,14 @@ export function useSessionTimeSeries(
   return useQuery<SessionTimeSeriesResponse>({
     queryKey: ["session-timeseries", athleteId, sessionId],
     queryFn: async () => {
-      const raw = await apiClient.get<TimeSeriesPoint[] | SessionTimeSeriesResponse>(
+      const raw: any = await apiClient.get(
         `/training/sessions/${athleteId}/${sessionId}/timeseries?downsample=500`
       );
-      if (Array.isArray(raw)) {
-        return { points: raw };
-      }
-      return raw as SessionTimeSeriesResponse;
+      // Backend returns { data: [...], totalPoints: N } — apiClient may not unwrap (2 keys)
+      if (Array.isArray(raw)) return { points: raw };
+      if (raw?.data && Array.isArray(raw.data)) return { points: raw.data };
+      if (raw?.points && Array.isArray(raw.points)) return raw as SessionTimeSeriesResponse;
+      return { points: [] };
     },
     enabled: !!athleteId && !!sessionId,
     staleTime: 10 * 60 * 1000,

@@ -52,10 +52,12 @@ interface SessionPopupProps {
   onClose: () => void;
 }
 
-export default function SessionPopup({ session, sessionType, athleteId, onClose }: SessionPopupProps) {
+export default function SessionPopup({ session, sessionType, athleteId: propAthleteId, onClose }: SessionPopupProps) {
   const getSportColor = useAthleteStore((s) => s.getSportColor);
+  const storeAthleteId = useAthleteStore((s) => s.selectedAthleteId);
+  const athleteId = propAthleteId || storeAthleteId || "";
 
-  const sessionId = sessionType === "completed" ? (session as Session).id : null;
+  const sessionId = sessionType === "completed" ? String((session as Session).id) : null;
   const { data: detail } = useSessionDetail(athleteId, sessionId);
   const { data: timeSeries } = useSessionTimeSeries(athleteId, sessionId);
 
