@@ -1,6 +1,7 @@
 import {
   BarChart,
   Bar,
+  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -98,12 +99,15 @@ export default function WeeklyZoneChart({
                 border: "1px solid hsl(var(--border))",
                 borderRadius: 8,
                 fontSize: 12,
+                color: "hsl(var(--foreground))",
               }}
+              labelStyle={{ color: "hsl(var(--foreground))" }}
+              itemStyle={{ color: "hsl(var(--foreground))" }}
             />
-            <Legend />
+            <Legend wrapperStyle={{ color: "hsl(var(--muted-foreground))", fontSize: 12 }} />
             <Bar dataKey="minutter" name="Minutter" radius={[4, 4, 0, 0]}>
               {chartData.map((_, index) => (
-                <rect key={index} fill={ZONE_COLORS[index]} />
+                <Cell key={index} fill={ZONE_COLORS[index]} />
               ))}
             </Bar>
           </BarChart>
