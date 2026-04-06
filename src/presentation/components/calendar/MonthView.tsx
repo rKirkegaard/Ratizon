@@ -192,7 +192,7 @@ export default function MonthView({
         )}
 
         {/* Weekday header */}
-        <div className="grid grid-cols-8 gap-0 border-b border-border">
+        <div className="grid gap-0 border-b border-border" style={{ gridTemplateColumns: "repeat(7, 1fr) 200px" }}>
           {WEEKDAYS.map((d) => (
             <div key={d} className="p-3 text-center text-sm font-medium text-muted-foreground bg-muted/30">{d}</div>
           ))}
@@ -205,7 +205,7 @@ export default function MonthView({
           const weekNum = format(week[3] || week[0], "w");
 
           return (
-            <div key={wi} className="grid grid-cols-8 gap-0 border-b border-border/50 last:border-b-0">
+            <div key={wi} className="grid gap-0 border-b border-border/50 last:border-b-0" style={{ gridTemplateColumns: "repeat(7, 1fr) 200px" }}
               {/* Day cells */}
               {week.map((day) => {
                 const key = format(day, "yyyy-MM-dd");
