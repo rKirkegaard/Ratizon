@@ -1,5 +1,4 @@
-import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useMemo, lazy, Suspense } from "react";
 import { useAthleteStore } from "@/application/stores/athleteStore";
 import {
   useSessions,
@@ -8,8 +7,9 @@ import {
 import { useBricks, useDetectBricks } from "@/application/hooks/training/useBricks";
 import { SportIcon } from "@/presentation/components/shared/SportIcon";
 import BrickDetail from "@/presentation/components/training/BrickDetail";
+import SessionAnalysisPage from "@/presentation/pages/SessionAnalysisPage";
 import { formatDuration, formatDistance } from "@/domain/utils/formatters";
-import { Search, Loader2, Zap, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
+import { Search, Loader2, Zap, ChevronDown, ChevronUp, ExternalLink, X } from "lucide-react";
 
 const RANGE_OPTIONS: { value: SessionRange; label: string }[] = [
   { value: "30d", label: "30 dage" },
@@ -39,7 +39,7 @@ export default function SessionsPage() {
   const [sportFilter, setSportFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedBrick, setExpandedBrick] = useState<string | null>(null);
-  const navigate = useNavigate();
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
 
   const { data, isLoading, isError } = useSessions(athleteId, range, sportFilter === "all" ? undefined : sportFilter);
   const { data: bricks } = useBricks(athleteId);
@@ -223,10 +223,12 @@ export default function SessionsPage() {
 
                 {/* Details button */}
                 <button
-                  onClick={() => navigate(`/sessions/${session.id}`)}
-                  className="flex items-center gap-1 rounded-md border border-border px-3 py-1 text-xs font-medium text-foreground hover:bg-muted transition-colors"
+                  onClick={() => setSelectedSessionId(selectedSessionId === session.id ? null : session.id)}
+                  className={`flex items-center gap-1 rounded-md border px-3 py-1 text-xs font-medium transition-colors ${
+                    selectedSessionId === session.id ? "border-primary bg-primary/10 text-primary" : "border-border text-foreground hover:bg-muted"
+                  }`}
                 >
-                  Detaljer <ExternalLink className="h-3 w-3" />
+                  {selectedSessionId === session.id ? "Luk" : "Detaljer"} <ExternalLink className="h-3 w-3" />
                 </button>
               </div>
             </div>
@@ -234,6 +236,18 @@ export default function SessionsPage() {
         </div>
       )}
 
+      {/* Right-side sheet panel for session analysis — IronCoach style */}
+      {selectedSessionId && (
+        <div className="fixed inset-y-0 right-0 z-40 w-full sm:w-[600px] lg:w-[800px] overflow-y-auto border-l border-border bg-card shadow-2xl">
+          <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card/90 backdrop-blur-sm px-4 py-3">
+            <h2 className="text-sm font-semibold text-foreground">Sessionsanalyse</h2>
+            <button onClick={() => setSelectedSessionId(null)} className="rounded-md p-1 text-muted-foreground hover:text-foreground">
+              <X size={18} />
+            </button>
+          </div>
+          <SessionAnalysisPage sessionIdProp={selectedSessionId} />
+        </div>
+      )}
     </div>
   );
 }

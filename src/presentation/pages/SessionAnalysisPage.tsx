@@ -48,8 +48,9 @@ function fmtPace(secPerKm: number): string {
   return `${m}:${String(s).padStart(2, "0")}/km`;
 }
 
-export default function SessionAnalysisPage() {
-  const { sessionId } = useParams<{ sessionId: string }>();
+export default function SessionAnalysisPage({ sessionIdProp }: { sessionIdProp?: string } = {}) {
+  const params = useParams<{ sessionId: string }>();
+  const sessionId = sessionIdProp || params.sessionId;
   const navigate = useNavigate();
   const athleteId = useAthleteStore((s) => s.selectedAthleteId);
   const getSportColor = useAthleteStore((s) => s.getSportColor);
