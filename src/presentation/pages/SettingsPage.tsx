@@ -8,6 +8,7 @@ import ZoneColorPicker from "@/presentation/components/settings/ZoneColorPicker"
 import SportConfigEditor from "@/presentation/components/settings/SportConfigEditor";
 import GarminConnection from "@/presentation/components/settings/GarminConnection";
 import LLMSettings from "@/presentation/components/settings/LLMSettings";
+import TrainingZones from "@/presentation/components/settings/TrainingZones";
 
 export default function SettingsPage() {
   const athleteId = useAthleteStore((s) => s.selectedAthleteId);
@@ -45,6 +46,9 @@ export default function SettingsPage() {
         isSaving={updateProfileMutation.isPending}
         onSave={(payload) => updateProfileMutation.mutate(payload)}
       />
+
+      {/* Auto-calculated training zones */}
+      <TrainingZones athleteId={athleteId} />
 
       {/* Zone colors section */}
       <ZoneColorPicker />

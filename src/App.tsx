@@ -17,6 +17,8 @@ import ComparisonPage from "@/presentation/pages/ComparisonPage";
 import TestBaselinesPage from "@/presentation/pages/TestBaselinesPage";
 import UXTestPage from "@/presentation/pages/UXTestPage";
 import SessionAnalysisPage from "@/presentation/pages/SessionAnalysisPage";
+import AdminUsersPage from "@/presentation/pages/AdminUsersPage";
+import AdminAssignmentsPage from "@/presentation/pages/AdminAssignmentsPage";
 import LoginPage from "@/presentation/pages/LoginPage";
 import DevLoginPage from "@/presentation/pages/DevLoginPage";
 
@@ -44,6 +46,8 @@ export default function App() {
         <Route path="/indstillinger" element={<SettingsPage />} />
         <Route path="/ux-test" element={<UXTestPage />} />
         <Route path="/sessions/:sessionId" element={<SessionAnalysisPage />} />
+        <Route path="/admin/brugere" element={<AdminUsersPage />} />
+        <Route path="/admin/tilknytninger" element={<AdminAssignmentsPage />} />
       </Route>
     </Routes>
   );

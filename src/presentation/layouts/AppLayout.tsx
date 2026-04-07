@@ -101,6 +101,14 @@ const STATIC_SECTIONS_AFTER: NavSection[] = [
   },
 ];
 
+const ADMIN_SECTION: NavSection = {
+  title: "ADMIN",
+  items: [
+    { label: "Brugere", path: "/admin/brugere", icon: <Settings size={18} /> },
+    { label: "Tilknytninger", path: "/admin/tilknytninger", icon: <Activity size={18} /> },
+  ],
+};
+
 // Fallback discipline items when no sport configs are loaded
 const FALLBACK_DISCIPLINE_ITEMS: NavItem[] = [
   { label: "Lob", path: "/disciplin/run", icon: <Footprints size={18} /> },
@@ -133,7 +141,18 @@ export default function AppLayout() {
       items: disciplineItems,
     };
 
-    return [...STATIC_SECTIONS_BEFORE, disciplineSection, ...STATIC_SECTIONS_AFTER];
+    const sections = [...STATIC_SECTIONS_BEFORE, disciplineSection, ...STATIC_SECTIONS_AFTER];
+
+    // Add ADMIN section for admin users
+    try {
+      const stored = localStorage.getItem("ratizon-auth");
+      if (stored) {
+        const role = JSON.parse(stored)?.state?.user?.role;
+        if (role === "admin") sections.push(ADMIN_SECTION);
+      }
+    } catch { /* ignore */ }
+
+    return sections;
   }, [getSportsWithPages]);
 
   return (
