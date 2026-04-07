@@ -236,23 +236,24 @@ export default function SessionsPage() {
         </div>
       )}
 
-      {/* Right-side sheet panel — IronCoach Sheet style */}
+      {/* Sheet panel — slides in from right like IronCoach */}
       {selectedSessionId && (
         <>
-          {/* Backdrop overlay */}
-          <div className="fixed inset-0 z-40 bg-black/30" onClick={() => setSelectedSessionId(null)} />
-          {/* Sheet panel */}
-          <div className="fixed inset-y-0 right-0 z-50 w-full sm:max-w-2xl lg:max-w-4xl overflow-y-auto border-l border-border bg-card shadow-2xl">
-            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card/90 backdrop-blur-sm px-4 py-3">
-              <h2 className="text-sm font-semibold text-foreground">
+          <div className="fixed inset-0 z-40 bg-black/50 transition-opacity duration-300" onClick={() => setSelectedSessionId(null)} />
+          <div className="fixed inset-y-0 right-0 z-50 h-full w-full sm:max-w-2xl lg:max-w-4xl overflow-y-auto border-l border-border bg-background p-6 shadow-lg transition-transform duration-500 ease-in-out">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
                 {(() => {
                   const s = filteredSessions.find(s => s.id === selectedSessionId);
                   if (!s) return "Sessionsanalyse";
-                  return `${getSessionTypeLabel(s.sessionType)} — ${formatDate(s.startedAt)}`;
+                  return (<>
+                    <SportIcon sport={s.sport} size={20} />
+                    {getSessionTypeLabel(s.sessionType)} — {formatDate(s.startedAt)}
+                  </>);
                 })()}
               </h2>
-              <button onClick={() => setSelectedSessionId(null)} className="rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted">
-                <X size={18} />
+              <button onClick={() => setSelectedSessionId(null)} className="absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100">
+                <X size={16} />
               </button>
             </div>
             <SessionAnalysisPage sessionIdProp={selectedSessionId} />
