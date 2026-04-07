@@ -33,9 +33,9 @@ const WEEKDAYS = ["Man", "Tir", "Ons", "Tor", "Fre", "Loer", "Soen"];
 
 function getSessionTypeLabel(t: string): string {
   const map: Record<string, string> = {
-    endurance: "Udholdenhed", tempo: "Tempo", sweet_spot: "Sweet Spot",
-    threshold: "Taerskel", vo2max: "VO2max", recovery: "Restitution",
-    interval: "Interval", race: "Konkurrence", easy: "Let",
+    recovery: "Restitution", endurance: "Udholdenhed", tempo: "Tempo",
+    sweet_spot: "Sweet Spot", threshold: "Threshold", vo2max: "VO2Max",
+    anaerobic: "Anaerobic",
   };
   return map[t] || t;
 }

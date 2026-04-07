@@ -35,10 +35,9 @@ const DAY_NAMES = ["Man", "Tir", "Ons", "Tor", "Fre", "Loer", "Soen"];
 
 function getSessionTypeLabel(t: string): string {
   const map: Record<string, string> = {
-    endurance: "Udholdenhed", tempo: "Tempo", sweet_spot: "Sweet Spot",
-    threshold: "Taerskel", vo2max: "VO2max", recovery: "Restitution",
-    interval: "Interval", race: "Konkurrence", easy: "Let",
-    long: "Lang", base: "Base", hard: "Haardt",
+    recovery: "Restitution", endurance: "Udholdenhed", tempo: "Tempo",
+    sweet_spot: "Sweet Spot", threshold: "Threshold", vo2max: "VO2Max",
+    anaerobic: "Anaerobic",
   };
   return map[t] || t;
 }
@@ -138,13 +137,12 @@ function WeekSessionCharts({ athleteId, sessionId, sport }: { athleteId: string 
 // Zone-based border color: Z1-2=blue, Z3=yellow, Z4+=red
 function getIntensityColor(sessionType: string | undefined): string {
   if (!sessionType) return "#6B7280";
-  const lower = sessionType.toLowerCase();
-  if (lower.includes("recovery") || lower.includes("easy") || lower.includes("endurance") || lower.includes("base"))
-    return "#3B82F6"; // blue = Z1-2
-  if (lower.includes("tempo") || lower.includes("sweet") || lower.includes("threshold"))
-    return "#EAB308"; // yellow = Z3
-  if (lower.includes("interval") || lower.includes("vo2") || lower.includes("race") || lower.includes("sprint") || lower.includes("hard"))
-    return "#EF4444"; // red = Z4+
+  const t = sessionType.toLowerCase();
+  if (t === "recovery") return "#3B82F6";           // blue = Z1
+  if (t === "endurance") return "#22C55E";           // green = Z2
+  if (t === "tempo") return "#EAB308";               // yellow = Z3
+  if (t === "sweet_spot" || t === "threshold") return "#F97316"; // orange = Z3-4
+  if (t === "vo2max" || t === "anaerobic") return "#EF4444";     // red = Z4-5
   return "#3B82F6"; // default blue
 }
 

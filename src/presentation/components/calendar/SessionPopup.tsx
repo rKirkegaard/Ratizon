@@ -20,25 +20,19 @@ import { formatDuration, formatDistance } from "@/domain/utils/formatters";
 import type { Session, PlannedSession } from "@/domain/types/training.types";
 
 const SESSION_TYPE_LABELS: Record<string, string> = {
-  endurance: "Udholdenhed", tempo: "Tempo", sweet_spot: "Sweet Spot",
-  threshold: "Taerskel", vo2max: "VO2max", recovery: "Restitution",
-  interval: "Interval", race: "Konkurrence", easy: "Let",
-  long: "Lang", base: "Base", hard: "Haardt",
+  recovery: "Restitution", endurance: "Udholdenhed", tempo: "Tempo",
+  sweet_spot: "Sweet Spot", threshold: "Threshold", vo2max: "VO2Max",
+  anaerobic: "Anaerobic",
 };
 
 const SESSION_TYPE_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  recovery:  { bg: "bg-blue-500/20",   text: "text-blue-400",   border: "border-blue-500/30" },
-  easy:      { bg: "bg-blue-500/20",   text: "text-blue-400",   border: "border-blue-500/30" },
-  endurance: { bg: "bg-green-500/20",  text: "text-green-400",  border: "border-green-500/30" },
-  base:      { bg: "bg-green-500/20",  text: "text-green-400",  border: "border-green-500/30" },
-  long:      { bg: "bg-green-500/20",  text: "text-green-400",  border: "border-green-500/30" },
-  tempo:     { bg: "bg-yellow-500/20", text: "text-yellow-400", border: "border-yellow-500/30" },
-  sweet_spot:{ bg: "bg-orange-500/20", text: "text-orange-400", border: "border-orange-500/30" },
-  threshold: { bg: "bg-orange-500/20", text: "text-orange-400", border: "border-orange-500/30" },
-  interval:  { bg: "bg-red-500/20",    text: "text-red-400",    border: "border-red-500/30" },
-  vo2max:    { bg: "bg-red-500/20",    text: "text-red-400",    border: "border-red-500/30" },
-  race:      { bg: "bg-purple-500/20", text: "text-purple-400", border: "border-purple-500/30" },
-  hard:      { bg: "bg-red-500/20",    text: "text-red-400",    border: "border-red-500/30" },
+  recovery:   { bg: "bg-blue-500/20",   text: "text-blue-400",   border: "border-blue-500/30" },
+  endurance:  { bg: "bg-green-500/20",  text: "text-green-400",  border: "border-green-500/30" },
+  tempo:      { bg: "bg-yellow-500/20", text: "text-yellow-400", border: "border-yellow-500/30" },
+  sweet_spot: { bg: "bg-orange-500/20", text: "text-orange-400", border: "border-orange-500/30" },
+  threshold:  { bg: "bg-orange-500/20", text: "text-orange-400", border: "border-orange-500/30" },
+  vo2max:     { bg: "bg-red-500/20",    text: "text-red-400",    border: "border-red-500/30" },
+  anaerobic:  { bg: "bg-red-500/20",    text: "text-red-400",    border: "border-red-500/30" },
 };
 
 const ZONE_COLORS = ["#3B82F6", "#22C55E", "#EAB308", "#F97316", "#EF4444"];
@@ -53,17 +47,12 @@ interface SessionPopupProps {
 
 const SESSION_TYPE_OPTIONS = [
   { value: "recovery", label: "Restitution" },
-  { value: "easy", label: "Let" },
   { value: "endurance", label: "Udholdenhed" },
-  { value: "base", label: "Base" },
-  { value: "long", label: "Lang" },
   { value: "tempo", label: "Tempo" },
   { value: "sweet_spot", label: "Sweet Spot" },
-  { value: "threshold", label: "Taerskel" },
-  { value: "interval", label: "Interval" },
-  { value: "vo2max", label: "VO2max" },
-  { value: "race", label: "Konkurrence" },
-  { value: "hard", label: "Haardt" },
+  { value: "threshold", label: "Threshold" },
+  { value: "vo2max", label: "VO2Max" },
+  { value: "anaerobic", label: "Anaerobic" },
 ];
 
 export default function SessionPopup({ session, sessionType, athleteId: propAthleteId, onClose }: SessionPopupProps) {

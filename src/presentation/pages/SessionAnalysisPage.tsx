@@ -20,22 +20,19 @@ const ZONE_COLORS = ["#3B82F6", "#22C55E", "#EAB308", "#F97316", "#EF4444"];
 const ZONE_LABELS = ["Zone 1", "Zone 2", "Zone 3", "Zone 4", "Zone 5"];
 
 const SESSION_TYPE_LABELS: Record<string, string> = {
-  endurance: "Udholdenhed", tempo: "Tempo", sweet_spot: "Sweet Spot",
-  threshold: "Taerskel", vo2max: "VO2max", recovery: "Restitution",
-  interval: "Interval", race: "Konkurrence", easy: "Let",
-  long: "Lang", base: "Base", hard: "Haardt", training: "Traening",
+  recovery: "Restitution", endurance: "Udholdenhed", tempo: "Tempo",
+  sweet_spot: "Sweet Spot", threshold: "Threshold", vo2max: "VO2Max",
+  anaerobic: "Anaerobic",
 };
 
 const SESSION_TYPE_COLORS: Record<string, string> = {
-  recovery: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-  easy: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-  endurance: "bg-green-500/20 text-green-400 border-green-500/30",
-  tempo: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
+  recovery:   "bg-blue-500/20 text-blue-400 border-blue-500/30",
+  endurance:  "bg-green-500/20 text-green-400 border-green-500/30",
+  tempo:      "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
   sweet_spot: "bg-orange-500/20 text-orange-400 border-orange-500/30",
-  threshold: "bg-orange-500/20 text-orange-400 border-orange-500/30",
-  interval: "bg-red-500/20 text-red-400 border-red-500/30",
-  vo2max: "bg-red-500/20 text-red-400 border-red-500/30",
-  race: "bg-purple-500/20 text-purple-400 border-purple-500/30",
+  threshold:  "bg-orange-500/20 text-orange-400 border-orange-500/30",
+  vo2max:     "bg-red-500/20 text-red-400 border-red-500/30",
+  anaerobic:  "bg-red-500/20 text-red-400 border-red-500/30",
 };
 
 function fmtTime(sec: number): string {

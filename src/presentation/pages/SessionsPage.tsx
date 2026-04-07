@@ -24,10 +24,9 @@ function formatDate(dateStr: string): string {
 
 function getSessionTypeLabel(t: string): string {
   const map: Record<string, string> = {
-    endurance: "Udholdenhed", tempo: "Tempo", sweet_spot: "Sweet Spot",
-    threshold: "Taerskel", vo2max: "VO2max", recovery: "Restitution",
-    interval: "Interval", race: "Konkurrence", easy: "Let",
-    long: "Lang", base: "Base", hard: "Haardt", training: "Traening",
+    recovery: "Restitution", endurance: "Udholdenhed", tempo: "Tempo",
+    sweet_spot: "Sweet Spot", threshold: "Threshold", vo2max: "VO2Max",
+    anaerobic: "Anaerobic",
   };
   return map[t] || t;
 }

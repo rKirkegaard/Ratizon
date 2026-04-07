@@ -84,16 +84,16 @@ function mapSport(fitSport: string | undefined): string {
 }
 
 function mapSessionType(fitType: string | undefined, sport: string): string {
-  if (!fitType) return sport;
+  if (!fitType) return "endurance"; // default
   const n = fitType.toLowerCase();
-  if (n.includes("recovery") || n.includes("easy")) return "recovery";
-  if (n.includes("interval") || n.includes("speed")) return "interval";
+  if (n.includes("recovery") || n.includes("easy") || n.includes("warm")) return "recovery";
+  if (n.includes("endurance") || n.includes("long") || n.includes("base")) return "endurance";
   if (n.includes("tempo")) return "tempo";
-  if (n.includes("threshold") || n.includes("lactate")) return "threshold";
-  if (n.includes("long") || n.includes("endurance")) return "endurance";
-  if (n.includes("race") || n.includes("competition")) return "race";
-  if (n.includes("warm")) return "recovery";
-  return sport;
+  if (n.includes("sweet") || n.includes("ss")) return "sweet_spot";
+  if (n.includes("threshold") || n.includes("lactate") || n.includes("ftp")) return "threshold";
+  if (n.includes("vo2") || n.includes("interval") || n.includes("speed")) return "vo2max";
+  if (n.includes("anaerobic") || n.includes("sprint") || n.includes("race") || n.includes("competition")) return "anaerobic";
+  return "endurance";
 }
 
 function round2(v: number | null | undefined): number | null {
