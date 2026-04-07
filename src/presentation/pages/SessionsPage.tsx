@@ -9,7 +9,7 @@ import { SportIcon } from "@/presentation/components/shared/SportIcon";
 import BrickDetail from "@/presentation/components/training/BrickDetail";
 import SessionAnalysisPage from "@/presentation/pages/SessionAnalysisPage";
 import { formatDuration, formatDistance } from "@/domain/utils/formatters";
-import { Search, Loader2, Zap, ChevronDown, ChevronUp, ExternalLink, X } from "lucide-react";
+import { Search, Loader2, Zap, ChevronDown, ChevronUp } from "lucide-react";
 
 const RANGE_OPTIONS: { value: SessionRange; label: string }[] = [
   { value: "30d", label: "30 dage" },
@@ -177,88 +177,64 @@ export default function SessionsPage() {
       ) : (
         <div className="space-y-2">
           {filteredSessions.map((session) => (
-            <div
-              key={session.id}
-              data-testid={`session-row-${session.id}`}
-              className="flex items-center justify-between rounded-lg border border-border/40 p-3 hover:bg-muted/10 transition-colors"
-            >
-              {/* Left: Sport icon + info */}
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: `${getSportColor(session.sport)}20` }}>
-                  <SportIcon sport={session.sport} size={18} />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-sm font-medium text-foreground truncate">
-                    {getSessionTypeLabel(session.sessionType)} {session.title !== session.sessionType ? `— ${session.title}` : ""}
+            <div key={session.id} data-testid={`session-row-${session.id}`}>
+              {/* Session row */}
+              <div className={`flex items-center justify-between rounded-lg border p-3 transition-colors ${
+                selectedSessionId === session.id ? "border-primary/50 bg-primary/5" : "border-border/40 hover:bg-muted/10"
+              }`}>
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: `${getSportColor(session.sport)}20` }}>
+                    <SportIcon sport={session.sport} size={18} />
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <span className="text-muted-foreground/50">#{session.id}</span>
-                    <span>{formatDate(session.startedAt)}</span>
-                    <span>·</span>
-                    <span>{formatDuration(session.durationSeconds)}</span>
-                    {session.distanceMeters != null && session.distanceMeters > 0 && (
-                      <><span>·</span><span>{formatDistance(session.distanceMeters)}</span></>
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-foreground truncate">
+                      {getSessionTypeLabel(session.sessionType)} {session.title !== session.sessionType ? `— ${session.title}` : ""}
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span className="text-muted-foreground/50">#{session.id}</span>
+                      <span>{formatDate(session.startedAt)}</span>
+                      <span>·</span>
+                      <span>{formatDuration(session.durationSeconds)}</span>
+                      {session.distanceMeters != null && session.distanceMeters > 0 && (
+                        <><span>·</span><span>{formatDistance(session.distanceMeters)}</span></>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <div className="hidden md:flex items-center gap-3 text-xs text-muted-foreground">
+                    {session.avgHr != null && <span>HR {session.avgHr}</span>}
+                    {session.avgPower != null && <span>{session.avgPower}W</span>}
+                    {session.tss != null && (
+                      <span className="flex items-center gap-0.5 font-medium text-foreground">
+                        <Zap className="h-3 w-3 text-amber-400" /> {Math.round(session.tss)}
+                      </span>
                     )}
                   </div>
+                  <span className="rounded-md border border-border px-2 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground">
+                    {session.sport}
+                  </span>
+                  <button
+                    onClick={() => setSelectedSessionId(selectedSessionId === session.id ? null : session.id)}
+                    className={`flex items-center gap-1 rounded-md border px-3 py-1 text-xs font-medium transition-colors ${
+                      selectedSessionId === session.id ? "border-primary bg-primary/10 text-primary" : "border-border text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    {selectedSessionId === session.id ? "Luk" : "Detaljer"}
+                  </button>
                 </div>
               </div>
 
-              {/* Right: Metrics + badge + button */}
-              <div className="flex items-center gap-3 flex-shrink-0">
-                {/* Key metrics */}
-                <div className="hidden md:flex items-center gap-3 text-xs text-muted-foreground">
-                  {session.avgHr != null && <span>HR {session.avgHr}</span>}
-                  {session.avgPower != null && <span>{session.avgPower}W</span>}
-                  {session.tss != null && (
-                    <span className="flex items-center gap-0.5 font-medium text-foreground">
-                      <Zap className="h-3 w-3 text-amber-400" /> {Math.round(session.tss)}
-                    </span>
-                  )}
+              {/* Inline session analysis — shown below the row */}
+              {selectedSessionId === session.id && (
+                <div className="mt-1 rounded-lg border border-border bg-card">
+                  <SessionAnalysisPage sessionIdProp={session.id} />
                 </div>
-
-                {/* Sport badge */}
-                <span className="rounded-md border border-border px-2 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground">
-                  {session.sport}
-                </span>
-
-                {/* Details button */}
-                <button
-                  onClick={() => setSelectedSessionId(selectedSessionId === session.id ? null : session.id)}
-                  className={`flex items-center gap-1 rounded-md border px-3 py-1 text-xs font-medium transition-colors ${
-                    selectedSessionId === session.id ? "border-primary bg-primary/10 text-primary" : "border-border text-foreground hover:bg-muted"
-                  }`}
-                >
-                  {selectedSessionId === session.id ? "Luk" : "Detaljer"} <ExternalLink className="h-3 w-3" />
-                </button>
-              </div>
+              )}
             </div>
           ))}
         </div>
-      )}
-
-      {/* Sheet panel — slides in from right like IronCoach */}
-      {selectedSessionId && (
-        <>
-          <div className="fixed inset-0 z-40 bg-black/50 transition-opacity duration-300" onClick={() => setSelectedSessionId(null)} />
-          <div className="fixed inset-y-0 right-0 z-50 h-full w-full sm:max-w-2xl lg:max-w-4xl overflow-y-auto border-l border-border bg-background p-6 shadow-lg transition-transform duration-500 ease-in-out">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
-                {(() => {
-                  const s = filteredSessions.find(s => s.id === selectedSessionId);
-                  if (!s) return "Sessionsanalyse";
-                  return (<>
-                    <SportIcon sport={s.sport} size={20} />
-                    {getSessionTypeLabel(s.sessionType)} — {formatDate(s.startedAt)}
-                  </>);
-                })()}
-              </h2>
-              <button onClick={() => setSelectedSessionId(null)} className="absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100">
-                <X size={16} />
-              </button>
-            </div>
-            <SessionAnalysisPage sessionIdProp={selectedSessionId} />
-          </div>
-        </>
       )}
     </div>
   );
