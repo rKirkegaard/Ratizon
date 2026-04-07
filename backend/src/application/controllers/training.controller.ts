@@ -23,7 +23,10 @@ export async function listSessions(req: Request, res: Response) {
       conditions.push(gte(sessions.startedAt, new Date(startDate as string)));
     }
     if (endDate) {
-      conditions.push(lte(sessions.startedAt, new Date(endDate as string)));
+      // Set end of day to include sessions on the end date
+      const endOfDay = new Date(endDate as string);
+      endOfDay.setHours(23, 59, 59, 999);
+      conditions.push(lte(sessions.startedAt, endOfDay));
     }
     if (sport) {
       conditions.push(eq(sessions.sport, sport as string));
