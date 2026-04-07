@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAthleteStore } from "@/application/stores/athleteStore";
 import {
   useSessions,
@@ -6,11 +7,9 @@ import {
 } from "@/application/hooks/training/useSessions";
 import { useBricks, useDetectBricks } from "@/application/hooks/training/useBricks";
 import { SportIcon } from "@/presentation/components/shared/SportIcon";
-import SessionPopup from "@/presentation/components/calendar/SessionPopup";
 import BrickDetail from "@/presentation/components/training/BrickDetail";
 import { formatDuration, formatDistance } from "@/domain/utils/formatters";
 import { Search, Loader2, Zap, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
-import type { Session, PlannedSession } from "@/domain/types/training.types";
 
 const RANGE_OPTIONS: { value: SessionRange; label: string }[] = [
   { value: "30d", label: "30 dage" },
@@ -39,8 +38,8 @@ export default function SessionsPage() {
   const [range, setRange] = useState<SessionRange>("30d");
   const [sportFilter, setSportFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [expandedBrick, setExpandedBrick] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const { data, isLoading, isError } = useSessions(athleteId, range, sportFilter === "all" ? undefined : sportFilter);
   const { data: bricks } = useBricks(athleteId);
@@ -224,7 +223,7 @@ export default function SessionsPage() {
 
                 {/* Details button */}
                 <button
-                  onClick={() => setSelectedSession(session)}
+                  onClick={() => navigate(`/sessions/${session.id}`)}
                   className="flex items-center gap-1 rounded-md border border-border px-3 py-1 text-xs font-medium text-foreground hover:bg-muted transition-colors"
                 >
                   Detaljer <ExternalLink className="h-3 w-3" />
@@ -235,15 +234,6 @@ export default function SessionsPage() {
         </div>
       )}
 
-      {/* Session detail popup */}
-      {selectedSession && (
-        <SessionPopup
-          session={selectedSession}
-          sessionType="completed"
-          athleteId={athleteId}
-          onClose={() => setSelectedSession(null)}
-        />
-      )}
     </div>
   );
 }
