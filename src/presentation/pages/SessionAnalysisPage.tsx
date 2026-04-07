@@ -9,14 +9,15 @@ import { apiClient } from "@/application/api/client";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   AreaChart, Area, LineChart, Line, BarChart, Bar, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ReferenceArea,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine,
 } from "recharts";
 import {
   ArrowLeft, Heart, Zap, TrendingUp, TrendingDown, Minus, Clock, Activity, Mountain, Pencil,
   ChevronDown, ChevronUp, Info,
 } from "lucide-react";
 
-const ZONE_COLORS = ["#3B82F6", "#22C55E", "#EAB308", "#F97316", "#EF4444"];
+// IronCoach exact zone colors
+const ZONE_COLORS = ["#3A7BFF", "#28CF59", "#F6D74A", "#F57C00", "#D32F2F"];
 const ZONE_LABELS = ["Zone 1", "Zone 2", "Zone 3", "Zone 4", "Zone 5"];
 
 const SESSION_TYPE_LABELS: Record<string, string> = {
@@ -45,11 +46,11 @@ function fmtTime(sec: number): string {
 function getHrZone(hr: number | null, lthrVal: number | null): { zone: number; label: string; color: string } | null {
   if (!hr || !lthrVal) return null;
   const pct = hr / lthrVal;
-  if (pct < 0.81) return { zone: 1, label: "Z1", color: "#3B82F6" };
-  if (pct < 0.90) return { zone: 2, label: "Z2", color: "#22C55E" };
-  if (pct < 0.94) return { zone: 3, label: "Z3", color: "#EAB308" };
-  if (pct < 1.00) return { zone: 4, label: "Z4", color: "#F97316" };
-  return { zone: 5, label: "Z5", color: "#EF4444" };
+  if (pct < 0.81) return { zone: 1, label: "Z1", color: "#3A7BFF" };
+  if (pct < 0.90) return { zone: 2, label: "Z2", color: "#28CF59" };
+  if (pct < 0.94) return { zone: 3, label: "Z3", color: "#F6D74A" };
+  if (pct < 1.00) return { zone: 4, label: "Z4", color: "#F57C00" };
+  return { zone: 5, label: "Z5", color: "#D32F2F" };
 }
 
 function fmtPace(secPerKm: number): string {
@@ -273,21 +274,6 @@ export default function SessionAnalysisPage({ sessionIdProp }: { sessionIdProp?:
                   <linearGradient id="tsGrad1" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={tsMode === "power" ? "#EAB308" : tsMode === "pace" ? "#3B82F6" : tsMode === "cadence" ? "#22C55E" : "#8B5CF6"} stopOpacity={0.3} /><stop offset="95%" stopColor={tsMode === "power" ? "#EAB308" : tsMode === "pace" ? "#3B82F6" : tsMode === "cadence" ? "#22C55E" : "#8B5CF6"} stopOpacity={0} /></linearGradient>
                   <linearGradient id="tsGradHr" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#EF4444" stopOpacity={0.2} /><stop offset="95%" stopColor="#EF4444" stopOpacity={0} /></linearGradient>
                 </defs>
-                {/* Zone background bands for intensity context */}
-                {tsMode === "power" && ftp && <>
-                  <ReferenceArea yAxisId="main" y1={0} y2={ftp * 0.55} fill="#3B82F6" fillOpacity={0.04} />
-                  <ReferenceArea yAxisId="main" y1={ftp * 0.55} y2={ftp * 0.75} fill="#22C55E" fillOpacity={0.04} />
-                  <ReferenceArea yAxisId="main" y1={ftp * 0.75} y2={ftp * 0.90} fill="#EAB308" fillOpacity={0.04} />
-                  <ReferenceArea yAxisId="main" y1={ftp * 0.90} y2={ftp * 1.05} fill="#F97316" fillOpacity={0.04} />
-                  <ReferenceArea yAxisId="main" y1={ftp * 1.05} y2={ftp * 1.5} fill="#EF4444" fillOpacity={0.04} />
-                </>}
-                {tsMode === "pace" && lthr && <>
-                  <ReferenceArea yAxisId="hr" y1={0} y2={lthr * 0.81} fill="#3B82F6" fillOpacity={0.04} />
-                  <ReferenceArea yAxisId="hr" y1={lthr * 0.81} y2={lthr * 0.90} fill="#22C55E" fillOpacity={0.04} />
-                  <ReferenceArea yAxisId="hr" y1={lthr * 0.90} y2={lthr * 0.94} fill="#EAB308" fillOpacity={0.04} />
-                  <ReferenceArea yAxisId="hr" y1={lthr * 0.94} y2={lthr} fill="#F97316" fillOpacity={0.04} />
-                  <ReferenceArea yAxisId="hr" y1={lthr} y2={lthr * 1.2} fill="#EF4444" fillOpacity={0.04} />
-                </>}
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                 <XAxis dataKey="sec" tickFormatter={fmtTime} tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} interval="preserveStartEnd" minTickGap={30} />
                 <YAxis yAxisId="main" tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} width={40} reversed={tsMode === "pace"} />
@@ -297,8 +283,8 @@ export default function SessionAnalysisPage({ sessionIdProp }: { sessionIdProp?:
                 {tsMode === "power" && <>
                   <Area yAxisId="main" type="monotone" dataKey="power" stroke="#EAB308" strokeWidth={1.5} fill="url(#tsGrad1)" connectNulls name="Power (W)" />
                   <Area yAxisId="hr" type="monotone" dataKey="hr" stroke="#EF4444" strokeWidth={1} fill="url(#tsGradHr)" connectNulls name="HR (bpm)" />
-                  {ftp && <ReferenceLine yAxisId="main" y={ftp} stroke="#EAB308" strokeDasharray="4 2" label={{ value: `FTP ${ftp}`, fill: "#EAB308", fontSize: 9, position: "insideTopRight" }} />}
-                  {lthr && <ReferenceLine yAxisId="hr" y={lthr} stroke="#EF4444" strokeDasharray="4 2" label={{ value: `LTHR ${lthr}`, fill: "#EF4444", fontSize: 9, position: "insideBottomRight" }} />}
+                  {ftp && <ReferenceLine yAxisId="main" y={ftp} stroke="#22c55e" strokeDasharray="3 3" label={{ value: `FTP ${ftp}`, fill: "#22c55e", fontSize: 9, position: "insideTopRight" }} />}
+                  {lthr && <ReferenceLine yAxisId="hr" y={lthr} stroke="#f97316" strokeDasharray="3 3" label={{ value: `LTHR ${lthr}`, fill: "#f97316", fontSize: 9, position: "insideBottomRight" }} />}
                 </>}
                 {tsMode === "pace" && <>
                   <Area yAxisId="main" type="monotone" dataKey="paceMinKm" stroke="#3B82F6" strokeWidth={1.5} fill="url(#tsGrad1)" connectNulls name="Pace (min/km)" />
