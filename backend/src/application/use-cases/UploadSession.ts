@@ -148,12 +148,20 @@ export async function uploadSession(
     const lthr = athlete?.lthr ?? (athlete?.maxHr ? Math.round(athlete.maxHr * 0.89) : null);
 
     // Calculate TSS if not from file
-    // Power-TSS only for bike (FTP is cycling-specific). All others use HR-TSS.
+    // Bike: power-TSS using FTP
+    // Run: rTSS = (duration * pace * IF) / (threshold * 3600) * 100
+    // Fallback: HR-based hrTSS
+    const runThresholdPace = athlete?.runThresholdPace; // s/km
     if (tss == null && durationSec > 0) {
       if (parsed.session.sport === "bike" && avgPower && ftp && ftp > 0) {
         const np = parsed.session.normalizedPower ?? avgPower;
         const intensityFactor = np / ftp;
         tss = Math.round((durationSec * np * intensityFactor) / (ftp * 36));
+      } else if (parsed.session.sport === "run" && parsed.session.distanceMeters && parsed.session.distanceMeters > 0 && runThresholdPace && runThresholdPace > 0) {
+        // rTSS = (duration * pace * IF) / (threshold * 3600) * 100
+        const pace = durationSec / (parsed.session.distanceMeters / 1000); // s/km
+        const intensityFactor = runThresholdPace / pace; // faster pace (lower s/km) = higher IF
+        tss = Math.round((durationSec * pace * intensityFactor) / (runThresholdPace * 3600) * 100);
       } else if (avgHr && lthr && lthr > 0) {
         const hrRatio = avgHr / lthr;
         tss = Math.round((durationSec / 3600) * hrRatio * hrRatio * 100);
