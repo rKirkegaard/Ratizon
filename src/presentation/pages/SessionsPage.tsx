@@ -236,17 +236,28 @@ export default function SessionsPage() {
         </div>
       )}
 
-      {/* Right-side sheet panel for session analysis — IronCoach style */}
+      {/* Right-side sheet panel — IronCoach Sheet style */}
       {selectedSessionId && (
-        <div className="fixed inset-y-0 right-0 z-40 w-full sm:w-[600px] lg:w-[800px] overflow-y-auto border-l border-border bg-card shadow-2xl">
-          <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card/90 backdrop-blur-sm px-4 py-3">
-            <h2 className="text-sm font-semibold text-foreground">Sessionsanalyse</h2>
-            <button onClick={() => setSelectedSessionId(null)} className="rounded-md p-1 text-muted-foreground hover:text-foreground">
-              <X size={18} />
-            </button>
+        <>
+          {/* Backdrop overlay */}
+          <div className="fixed inset-0 z-40 bg-black/30" onClick={() => setSelectedSessionId(null)} />
+          {/* Sheet panel */}
+          <div className="fixed inset-y-0 right-0 z-50 w-full sm:max-w-2xl lg:max-w-4xl overflow-y-auto border-l border-border bg-card shadow-2xl">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card/90 backdrop-blur-sm px-4 py-3">
+              <h2 className="text-sm font-semibold text-foreground">
+                {(() => {
+                  const s = filteredSessions.find(s => s.id === selectedSessionId);
+                  if (!s) return "Sessionsanalyse";
+                  return `${getSessionTypeLabel(s.sessionType)} — ${formatDate(s.startedAt)}`;
+                })()}
+              </h2>
+              <button onClick={() => setSelectedSessionId(null)} className="rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted">
+                <X size={18} />
+              </button>
+            </div>
+            <SessionAnalysisPage sessionIdProp={selectedSessionId} />
           </div>
-          <SessionAnalysisPage sessionIdProp={selectedSessionId} />
-        </div>
+        </>
       )}
     </div>
   );

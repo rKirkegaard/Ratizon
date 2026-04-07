@@ -156,7 +156,7 @@ export default function SessionAnalysisPage({ sessionIdProp }: { sessionIdProp?:
     <div data-testid="session-analysis-page" className="space-y-6 p-4 md:p-6">
       {/* Back button + title */}
       <div className="flex items-center gap-4">
-        <button onClick={() => navigate(-1)} className="rounded-md p-2 text-muted-foreground hover:text-foreground hover:bg-muted"><ArrowLeft size={20} /></button>
+        {!sessionIdProp && <button onClick={() => navigate(-1)} className="rounded-md p-2 text-muted-foreground hover:text-foreground hover:bg-muted"><ArrowLeft size={20} /></button>}
         <div className="flex items-center gap-3 flex-1">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg text-white" style={{ backgroundColor: sportColor }}>
             <SportIcon sport={session.sport} size={20} />
