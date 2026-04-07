@@ -9,10 +9,10 @@ import { apiClient } from "@/application/api/client";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   AreaChart, Area, LineChart, Line, BarChart, Bar, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ReferenceArea,
 } from "recharts";
 import {
-  ArrowLeft, Heart, Zap, TrendingUp, Clock, Activity, Mountain, Pencil,
+  ArrowLeft, Heart, Zap, TrendingUp, TrendingDown, Minus, Clock, Activity, Mountain, Pencil,
   ChevronDown, ChevronUp, Info,
 } from "lucide-react";
 
@@ -40,6 +40,16 @@ function fmtTime(sec: number): string {
   if (m < 60) return `${m}m`;
   const h = Math.floor(m / 60);
   return `${h}h${m % 60 > 0 ? (m % 60) + "m" : ""}`;
+}
+
+function getHrZone(hr: number | null, lthrVal: number | null): { zone: number; label: string; color: string } | null {
+  if (!hr || !lthrVal) return null;
+  const pct = hr / lthrVal;
+  if (pct < 0.81) return { zone: 1, label: "Z1", color: "#3B82F6" };
+  if (pct < 0.90) return { zone: 2, label: "Z2", color: "#22C55E" };
+  if (pct < 0.94) return { zone: 3, label: "Z3", color: "#EAB308" };
+  if (pct < 1.00) return { zone: 4, label: "Z4", color: "#F97316" };
+  return { zone: 5, label: "Z5", color: "#EF4444" };
 }
 
 function fmtPace(secPerKm: number): string {
@@ -263,6 +273,21 @@ export default function SessionAnalysisPage({ sessionIdProp }: { sessionIdProp?:
                   <linearGradient id="tsGrad1" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={tsMode === "power" ? "#EAB308" : tsMode === "pace" ? "#3B82F6" : tsMode === "cadence" ? "#22C55E" : "#8B5CF6"} stopOpacity={0.3} /><stop offset="95%" stopColor={tsMode === "power" ? "#EAB308" : tsMode === "pace" ? "#3B82F6" : tsMode === "cadence" ? "#22C55E" : "#8B5CF6"} stopOpacity={0} /></linearGradient>
                   <linearGradient id="tsGradHr" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#EF4444" stopOpacity={0.2} /><stop offset="95%" stopColor="#EF4444" stopOpacity={0} /></linearGradient>
                 </defs>
+                {/* Zone background bands for intensity context */}
+                {tsMode === "power" && ftp && <>
+                  <ReferenceArea yAxisId="main" y1={0} y2={ftp * 0.55} fill="#3B82F6" fillOpacity={0.04} />
+                  <ReferenceArea yAxisId="main" y1={ftp * 0.55} y2={ftp * 0.75} fill="#22C55E" fillOpacity={0.04} />
+                  <ReferenceArea yAxisId="main" y1={ftp * 0.75} y2={ftp * 0.90} fill="#EAB308" fillOpacity={0.04} />
+                  <ReferenceArea yAxisId="main" y1={ftp * 0.90} y2={ftp * 1.05} fill="#F97316" fillOpacity={0.04} />
+                  <ReferenceArea yAxisId="main" y1={ftp * 1.05} y2={ftp * 1.5} fill="#EF4444" fillOpacity={0.04} />
+                </>}
+                {tsMode === "pace" && lthr && <>
+                  <ReferenceArea yAxisId="hr" y1={0} y2={lthr * 0.81} fill="#3B82F6" fillOpacity={0.04} />
+                  <ReferenceArea yAxisId="hr" y1={lthr * 0.81} y2={lthr * 0.90} fill="#22C55E" fillOpacity={0.04} />
+                  <ReferenceArea yAxisId="hr" y1={lthr * 0.90} y2={lthr * 0.94} fill="#EAB308" fillOpacity={0.04} />
+                  <ReferenceArea yAxisId="hr" y1={lthr * 0.94} y2={lthr} fill="#F97316" fillOpacity={0.04} />
+                  <ReferenceArea yAxisId="hr" y1={lthr} y2={lthr * 1.2} fill="#EF4444" fillOpacity={0.04} />
+                </>}
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                 <XAxis dataKey="sec" tickFormatter={fmtTime} tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} interval="preserveStartEnd" minTickGap={30} />
                 <YAxis yAxisId="main" tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} width={40} reversed={tsMode === "pace"} />
@@ -299,21 +324,41 @@ export default function SessionAnalysisPage({ sessionIdProp }: { sessionIdProp?:
               </div>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-4 gap-4">
             <div className="rounded-lg bg-muted/30 p-3 text-center">
-              <div className="text-xs text-muted-foreground">EF</div>
+              <div className="text-xs text-muted-foreground">EF (samlet)</div>
               <div className="text-xl font-bold text-foreground">{ef?.toFixed(2) ?? "–"}</div>
-              <div className="text-[9px] text-muted-foreground">{session.sport === "bike" ? "W/bpm" : "pace/bpm"}</div>
+              <div className="text-[9px] text-muted-foreground">{session.sport === "bike" ? "NP/HR" : "Pace/HR"}</div>
+            </div>
+            <div className="rounded-lg bg-muted/30 p-3 text-center">
+              <div className="text-xs text-muted-foreground">1. halvdel EF</div>
+              <div className="text-xl font-bold text-foreground">{ef ? (ef * (1 + (decoupling ?? 0) / 200)).toFixed(2) : "–"}</div>
+              <div className="text-[9px] text-muted-foreground">estimat</div>
+            </div>
+            <div className="rounded-lg bg-muted/30 p-3 text-center">
+              <div className="text-xs text-muted-foreground">2. halvdel EF</div>
+              <div className="text-xl font-bold text-foreground">{ef ? (ef * (1 - (decoupling ?? 0) / 200)).toFixed(2) : "–"}</div>
+              <div className="text-[9px] text-muted-foreground">estimat</div>
             </div>
             <div className={`rounded-lg p-3 text-center ${decoupling < 5 ? "bg-green-500/10" : decoupling < 8 ? "bg-amber-500/10" : "bg-red-500/10"}`}>
               <div className="text-xs text-muted-foreground">Afkobling</div>
               <div className={`text-xl font-bold ${decoupling < 5 ? "text-green-400" : decoupling < 8 ? "text-amber-400" : "text-red-400"}`}>{decoupling.toFixed(1)}%</div>
               <div className="text-[9px] text-muted-foreground">{decoupling < 5 ? "God aerob kapacitet" : decoupling < 8 ? "Acceptabel" : "Behoever mere Z2"}</div>
             </div>
-            <div className="rounded-lg bg-muted/30 p-3 text-center">
-              <div className="text-xs text-muted-foreground">Status</div>
-              <div className="text-3xl">{decoupling < 5 ? "✅" : decoupling < 8 ? "⚠️" : "❌"}</div>
-            </div>
+          </div>
+          {/* Interpretation */}
+          <div className={`mt-3 rounded-lg border p-3 text-xs ${decoupling < 5 ? "border-green-500/30 bg-green-500/5 text-green-400" : decoupling < 8 ? "border-amber-500/30 bg-amber-500/5 text-amber-400" : "border-red-500/30 bg-red-500/5 text-red-400"}`}>
+            {decoupling < 5 ? (
+              <p><strong>God aerob kapacitet.</strong> EF-driften er under 5%, hvilket indikerer at din aerobe base er staerk nok til denne intensitet og varighed.</p>
+            ) : decoupling < 8 ? (
+              <p><strong>Acceptabel afkobling.</strong> EF-driften er 5-8%. Din aerobe kapacitet er tilstraekkelig, men mere Zone 2-arbejde vil forbedre effektiviteten.</p>
+            ) : (
+              <p><strong>Hoej afkobling — behoever mere Zone 2.</strong> EF-driften er over 8%, hvilket tyder paa at din aerobe base ikke er staerk nok til denne intensitet. Fokuser paa laengere Zone 2-traening.</p>
+            )}
+          </div>
+          {/* EF tooltip */}
+          <div className="mt-2 text-[10px] text-muted-foreground">
+            <strong>Efficiency Factor (EF)</strong> = {session.sport === "bike" ? "Normaliseret Power / Gns. HR" : "Pace / Gns. HR"}. Hoejere EF ved samme intensitet = forbedret aerob kapacitet over tid.
           </div>
         </div>
       )}
@@ -328,7 +373,7 @@ export default function SessionAnalysisPage({ sessionIdProp }: { sessionIdProp?:
             <div className="rounded-lg bg-muted/30 p-3 text-center">
               <div className="text-xs text-muted-foreground">Konsistens</div>
               <div className={`text-xl font-bold ${lapAnalysis.consistency >= 90 ? "text-green-400" : lapAnalysis.consistency >= 80 ? "text-yellow-400" : "text-orange-400"}`}>{lapAnalysis.consistency}%</div>
-              <div className="text-[9px] text-muted-foreground">{lapAnalysis.consistency >= 90 ? "Meget konsistent" : lapAnalysis.consistency >= 80 ? "God konsistens" : "Inkonsistent"}</div>
+              <div className="text-[9px] text-muted-foreground">{lapAnalysis.consistency >= 90 ? "Meget konsistent" : lapAnalysis.consistency >= 80 ? "God konsistens" : "Godt interval-arbejde"}</div>
             </div>
             <div className="rounded-lg bg-muted/30 p-3 text-center">
               <div className="text-xs text-muted-foreground">Gns. {session.sport === "bike" ? "Watt" : "Pace"}</div>
@@ -368,15 +413,27 @@ export default function SessionAnalysisPage({ sessionIdProp }: { sessionIdProp?:
                       <td className="p-2 text-foreground">{formatDuration(lap.durationSeconds)}</td>
                       <td className="p-2 text-foreground">{lap.distanceMeters ? formatDistance(lap.distanceMeters) : "–"}</td>
                       {session.sport === "bike" ? <td className="p-2 text-foreground">{lap.avgPower ?? "–"}W</td> : <td className="p-2 text-foreground">{lap.avgPace ? fmtPace(lap.avgPace) : "–"}</td>}
-                      <td className="p-2 text-foreground">{lap.avgHr ?? "–"}</td>
+                      <td className="p-2">
+                        {(() => {
+                          const z = getHrZone(lap.avgHr, lthr);
+                          if (!lap.avgHr) return <span className="text-foreground">–</span>;
+                          return (
+                            <span className="flex items-center gap-1">
+                              <span className="text-foreground">{lap.avgHr}</span>
+                              {z && <span className="rounded px-1 py-0 text-[9px] font-bold text-white" style={{ backgroundColor: z.color }}>{z.label}</span>}
+                            </span>
+                          );
+                        })()}
+                      </td>
                       {laps.some(l => l.avgCadence) && <td className="p-2 text-foreground">{lap.avgCadence ?? "–"}</td>}
                       <td className="p-2">
                         {!isRest && (
-                          <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                          <span className={`inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[10px] font-medium ${
                             Math.abs(dev) < 3 ? "bg-green-500/15 text-green-400" :
                             Math.abs(dev) < 6 ? "bg-yellow-500/15 text-yellow-400" :
                             "bg-red-500/15 text-red-400"
                           }`}>
+                            {dev > 0 ? <TrendingUp className="h-3 w-3" /> : dev < 0 ? <TrendingDown className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
                             {dev > 0 ? "+" : ""}{dev}%
                           </span>
                         )}
@@ -386,6 +443,13 @@ export default function SessionAnalysisPage({ sessionIdProp }: { sessionIdProp?:
                 })}
               </tbody>
             </table>
+          </div>
+          {/* Legend */}
+          <div className="mt-3 flex flex-wrap gap-3 text-[10px] text-muted-foreground">
+            <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-green-500" /> &lt;3% afvigelse</span>
+            <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-yellow-500" /> 3-6% afvigelse</span>
+            <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-red-500" /> &gt;6% afvigelse</span>
+            <span className="ml-auto">{lapAnalysis.consistency >= 90 ? "Konsistens ≥90% = godt jævnt arbejde" : "Konsistens <90% = godt interval-arbejde"}</span>
           </div>
         </div>
       )}
