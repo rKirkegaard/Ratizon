@@ -193,6 +193,7 @@ export default function SessionsPage() {
                     {getSessionTypeLabel(session.sessionType)} {session.title !== session.sessionType ? `— ${session.title}` : ""}
                   </div>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className="text-muted-foreground/50">#{session.id}</span>
                     <span>{formatDate(session.startedAt)}</span>
                     <span>·</span>
                     <span>{formatDuration(session.durationSeconds)}</span>

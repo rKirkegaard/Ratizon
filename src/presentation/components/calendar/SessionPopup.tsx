@@ -152,6 +152,7 @@ export default function SessionPopup({ session, sessionType, athleteId: propAthl
               <div className="text-lg font-semibold text-foreground">{s.title}</div>
               <div className="text-sm text-muted-foreground">
                 {format(parseISO(s.startedAt), "EEEE d. MMMM yyyy 'kl.' HH:mm")}
+                <span className="ml-2 text-[10px] text-muted-foreground/50">ID: {s.id}</span>
               </div>
             </div>
             {/* Session type — editable */}

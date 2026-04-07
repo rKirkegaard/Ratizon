@@ -165,6 +165,7 @@ export default function SessionAnalysisPage() {
             <div className="text-sm text-muted-foreground">
               {new Date(session.startedAt).toLocaleDateString("da-DK", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
               {" kl. "}{new Date(session.startedAt).toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" })}
+              <span className="ml-2 text-[10px] text-muted-foreground/50">ID: {session.id}</span>
             </div>
           </div>
         </div>

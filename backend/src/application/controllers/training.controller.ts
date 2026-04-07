@@ -204,11 +204,25 @@ export async function getSessionTimeseries(req: Request, res: Response) {
         .orderBy(asc(sessionTrackpoints.timestamp));
     }
 
-    const mapped = data.map((tp) => ({
-      ...tp,
-      id: tp.id.toString(),
-      sessionId: tp.sessionId.toString(),
-    }));
+    // Calculate speed from distance if speed is null
+    const mapped = data.map((tp, i) => {
+      let speed = tp.speed;
+      if (speed == null && tp.distance != null && i > 0 && data[i - 1].distance != null) {
+        const prevTs = new Date(data[i - 1].timestamp).getTime();
+        const currTs = new Date(tp.timestamp).getTime();
+        const dtSec = (currTs - prevTs) / 1000;
+        const dDist = (tp.distance as number) - (data[i - 1].distance as number);
+        if (dtSec > 0 && dDist >= 0) {
+          speed = Math.round((dDist / dtSec) * 100) / 100;
+        }
+      }
+      return {
+        ...tp,
+        id: tp.id.toString(),
+        sessionId: tp.sessionId.toString(),
+        speed,
+      };
+    });
 
     res.json({ data: mapped, totalPoints });
   } catch (error: any) {
