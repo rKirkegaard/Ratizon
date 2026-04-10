@@ -1,4 +1,9 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
+import {
+  DndContext, DragOverlay, useSensor, useSensors, PointerSensor,
+  type DragStartEvent, type DragEndEvent,
+} from "@dnd-kit/core";
+import { useDraggable, useDroppable } from "@dnd-kit/core";
 import {
   startOfWeek,
   endOfWeek,
@@ -13,14 +18,17 @@ import {
   subWeeks,
 } from "date-fns";
 import { da } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Clock, Trash2, Coffee, MapPin, Zap, Heart, TrendingUp } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Clock, Trash2, Coffee, MapPin, Zap, Heart, TrendingUp, CheckCircle2, Target, Waves, Bike, Footprints } from "lucide-react";
 import { useSessionTimeSeries } from "@/application/hooks/training/useSessions";
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { SportIcon } from "@/presentation/components/shared/SportIcon";
 import SessionPopup from "@/presentation/components/calendar/SessionPopup";
+import ZoneBar from "@/presentation/components/calendar/ZoneBar";
+import CreateSessionDialog from "@/presentation/components/layout/CreateSessionDialog";
 import { useAthleteStore } from "@/application/stores/athleteStore";
+import { useAthleteProfile } from "@/application/hooks/athlete/useAthleteProfile";
 import { formatDuration, formatDistance } from "@/domain/utils/formatters";
 import { getPhaseForDate, PHASE_COLORS, PHASE_LABELS } from "@/domain/utils/phase-colors";
 import type { Session, PlannedSession } from "@/domain/types/training.types";
@@ -146,6 +154,28 @@ function getIntensityColor(sessionType: string | undefined): string {
   return "#3B82F6"; // default blue
 }
 
+// ── DnD helper components ─────────────────────────────────────────────
+
+function DroppableDayCell({ dateStr, children }: { dateStr: string; children: (isDropTarget: boolean) => React.ReactNode }) {
+  const { setNodeRef, isOver } = useDroppable({ id: dateStr });
+  return (
+    <div ref={setNodeRef}>
+      {children(isOver)}
+    </div>
+  );
+}
+
+function DraggablePlannedSession({ id, children }: { id: string; children: React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id });
+  return (
+    <div ref={setNodeRef} {...listeners} {...attributes} className={`cursor-grab active:cursor-grabbing ${isDragging ? "opacity-20 scale-95" : ""}`}>
+      {children}
+    </div>
+  );
+}
+
+import { calcPlannedSessionMetrics } from "@/domain/utils/sessionMetrics";
+
 function tssBadgeColor(tss: number | null): string {
   if (tss === null) return "bg-muted text-muted-foreground";
   if (tss < 70) return "bg-green-500/15 text-green-400";
@@ -161,6 +191,7 @@ interface WeekViewProps {
   isLoading: boolean;
   onDeletePlanned?: (id: string) => void;
   onMovePlanned?: (id: string, newDate: string) => void;
+  onAddSession?: (dateStr: string) => void;
   phases: CalendarPhase[];
   goals: CalendarGoal[];
   pmcPoints: Array<{ date: string; ctl: number; atl: number; tsb: number }>;
@@ -173,15 +204,40 @@ export default function WeekView({
   sportFilter,
   isLoading,
   onDeletePlanned,
+  onMovePlanned,
+  onAddSession,
   phases,
   goals,
   pmcPoints,
 }: WeekViewProps) {
   const getSportColor = useAthleteStore((s) => s.getSportColor);
   const selectedAthleteId = useAthleteStore((s) => s.selectedAthleteId);
+  const { data: profileData } = useAthleteProfile(selectedAthleteId);
+  const athleteThresholdPace = (profileData?.data ?? (profileData as any))?.runThresholdPace ?? null;
   const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set());
   const [popupSession, setPopupSession] = useState<Session | PlannedSession | null>(null);
   const [popupType, setPopupType] = useState<"completed" | "planned">("completed");
+  const [editSession, setEditSession] = useState<PlannedSession | null>(null);
+
+  // Drag-and-drop state
+  const [draggedSessionId, setDraggedSessionId] = useState<string | null>(null);
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { delay: 150, tolerance: 5 } }));
+
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setDraggedSessionId(event.active.id as string);
+  }, []);
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    setDraggedSessionId(null);
+    if (!over || !onMovePlanned) return;
+    const sessionId = active.id as string;
+    const targetDate = over.id as string;
+    // Only move if target is a valid date string
+    if (/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) {
+      onMovePlanned(sessionId, targetDate);
+    }
+  }, [onMovePlanned]);
 
   const toggleExpand = (id: string) => {
     setExpandedSessions((prev) => {
@@ -258,26 +314,47 @@ export default function WeekView({
   // Week summary
   const weekSummary = useMemo(() => {
     const completed = entries.filter((e) => e.type === "completed") as Array<{ type: "completed"; data: Session }>;
+    const planned = entries.filter((e) => e.type === "planned") as Array<{ type: "planned"; data: PlannedSession }>;
     const brickEntries = entries.filter((e) => e.type === "brick") as Array<{ type: "brick"; data: SessionBrick }>;
-    const filtered = sportFilter ? completed.filter((e) => e.data.sport === sportFilter) : completed;
+    const filteredCompleted = sportFilter ? completed.filter((e) => e.data.sport === sportFilter) : completed;
+    const filteredPlanned = sportFilter ? planned.filter((e) => e.data.sport === sportFilter) : planned;
 
+    // Completed stats
     let totalTss = 0;
     let totalDuration = 0;
-    const sportBreakdown: Record<string, { tss: number; duration: number; count: number }> = {};
+    const sportBreakdown: Record<string, { tss: number; duration: number; distance: number; count: number }> = {};
 
-    for (const e of filtered) {
+    for (const e of filteredCompleted) {
       totalTss += e.data.tss ?? 0;
       totalDuration += e.data.durationSeconds;
-      if (!sportBreakdown[e.data.sport]) sportBreakdown[e.data.sport] = { tss: 0, duration: 0, count: 0 };
+      if (!sportBreakdown[e.data.sport]) sportBreakdown[e.data.sport] = { tss: 0, duration: 0, distance: 0, count: 0 };
       sportBreakdown[e.data.sport].tss += e.data.tss ?? 0;
       sportBreakdown[e.data.sport].duration += e.data.durationSeconds;
+      sportBreakdown[e.data.sport].distance += e.data.distanceMeters ?? 0;
       sportBreakdown[e.data.sport].count += 1;
     }
 
-    // Add brick TSS/duration
     for (const b of brickEntries) {
       totalTss += b.data.totalTss ?? 0;
       totalDuration += b.data.totalDurationSeconds;
+    }
+
+    // Planned stats
+    let plannedTss = 0;
+    let plannedDuration = 0;
+    const plannedBySport: Record<string, { tss: number; duration: number; distance: number; count: number }> = {};
+
+    for (const e of filteredPlanned) {
+      const eMetrics = calcPlannedSessionMetrics(e.data, athleteThresholdPace);
+      const eTss = eMetrics.tss;
+      const eDur = eMetrics.durationSec;
+      plannedTss += eTss;
+      plannedDuration += eDur;
+      if (!plannedBySport[e.data.sport]) plannedBySport[e.data.sport] = { tss: 0, duration: 0, distance: 0, count: 0 };
+      plannedBySport[e.data.sport].tss += eTss;
+      plannedBySport[e.data.sport].duration += eDur;
+      plannedBySport[e.data.sport].distance += eMetrics.distanceKm * 1000;
+      plannedBySport[e.data.sport].count += 1;
     }
 
     // CTL delta from PMC
@@ -289,7 +366,10 @@ export default function WeekView({
       if (weekPmc.length >= 2) ctlDelta = weekPmc[weekPmc.length - 1].ctl - weekPmc[0].ctl;
     }
 
-    return { totalTss, totalDuration, sportBreakdown, sessionCount: filtered.length + brickEntries.length, ctlDelta };
+    return {
+      totalTss, totalDuration, sportBreakdown, sessionCount: filteredCompleted.length + brickEntries.length, ctlDelta,
+      plannedTss, plannedDuration, plannedBySport, plannedCount: filteredPlanned.length,
+    };
   }, [entries, sportFilter, pmcPoints, weekStart, weekEnd]);
 
   if (isLoading) {
@@ -338,6 +418,7 @@ export default function WeekView({
       )}
 
       {/* Week grid: 7 days + summary */}
+      <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="grid grid-cols-8 gap-2">
         {days.map((day, idx) => {
           const key = format(day, "yyyy-MM-dd");
@@ -348,11 +429,12 @@ export default function WeekView({
           const isRestDay = dayEntries.length === 0 && !isFuture;
 
           return (
+            <DroppableDayCell key={key} dateStr={key}>
+            {(isDropTarget) => (
             <div
-              key={key}
               data-testid={`week-day-${key}`}
-              className={`min-h-[200px] rounded-lg border p-2 ${
-                isToday ? "border-primary bg-primary/5" : "border-border bg-card"
+              className={`group/day min-h-[400px] flex flex-col rounded-lg border p-2 ${
+                isToday ? "border-primary bg-primary/5" : isDropTarget ? "border-primary ring-2 ring-primary ring-inset bg-primary/5" : "border-border bg-card"
               }`}
             >
               {/* Day header */}
@@ -383,7 +465,7 @@ export default function WeekView({
               )}
 
               {/* Sessions */}
-              <div className="space-y-1.5">
+              <div className="flex-1 space-y-1.5">
                 {dayEntries.map((entry) => {
                   if (entry.type === "brick") {
                     const brick = entry.data as SessionBrick;
@@ -508,144 +590,203 @@ export default function WeekView({
                     );
                   }
 
-                  // Planned session
+                  // Planned session (draggable)
                   const p = entry.data as PlannedSession;
                   const sportColor = getSportColor(p.sport);
+                  const pMetrics = calcPlannedSessionMetrics(p, athleteThresholdPace);
+                  const pDuration = pMetrics.durationSec;
+                  const pTss = pMetrics.tss;
+                  const purposeLabel = p.sessionPurpose ? {
+                    endurance: "UDHOLDENHED", tempo: "TEMPO", sweet_spot: "SWEET SPOT",
+                    threshold: "TAERSKEL", vo2max: "VO2MAX", recovery: "RESTITUTION",
+                    interval: "INTERVAL", race: "KONKURRENCE",
+                  }[p.sessionPurpose] ?? p.sessionPurpose.toUpperCase() : null;
                   return (
+                    <DraggablePlannedSession key={`p-${p.id}`} id={p.id}>
                     <div
-                      key={`p-${p.id}`}
                       data-testid={`session-planned-${p.id}`}
                       onClick={() => { setPopupSession(p); setPopupType("planned"); }}
-                      className="group relative rounded border border-dashed bg-muted/20 px-2 py-1.5 opacity-60 cursor-pointer"
-                      style={{ borderColor: sportColor }}
+                      className="group relative rounded-lg border border-border/50 bg-muted/40 p-2 cursor-pointer hover:shadow-md transition-shadow border-l-4"
+                      style={{ borderLeftColor: sportColor }}
                     >
-                      <div className="flex items-center gap-1">
-                        <SportIcon sport={p.sport} size={13} />
-                        <span className="truncate text-xs font-medium italic text-muted-foreground">{p.title}</span>
+                      <div className="flex items-start gap-2">
+                        <SportIcon sport={p.sport} size={16} className="mt-0.5 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex w-full items-center gap-1 text-[10px] uppercase tracking-wide font-medium text-muted-foreground">
+                            <span className="truncate">
+                              {purposeLabel || p.title || "Planlagt"}
+                            </span>
+                          </div>
+                          <div className="text-[10px] text-muted-foreground">
+                            {pDuration > 0 && formatDuration(pDuration)}
+                            {pMetrics.distanceKm > 0 && (
+                              <span className="ml-1">· {pMetrics.distanceKm.toFixed(1)} km</span>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      <div className="mt-0.5 flex gap-1 text-[10px] text-muted-foreground/70">
-                        {p.targetDurationSeconds && (
-                          <span><Clock size={9} /> {formatDuration(p.targetDurationSeconds)}</span>
-                        )}
-                        {p.targetTss !== null && (
-                          <span>Maal {Math.round(p.targetTss)}</span>
-                        )}
-                      </div>
+                      {/* Delete button */}
                       {onDeletePlanned && (
                         <button
-                          onClick={() => onDeletePlanned(p.id)}
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onClick={(e) => { e.stopPropagation(); e.preventDefault(); onDeletePlanned(p.id); }}
                           className="absolute right-1 top-1 hidden rounded p-0.5 text-muted-foreground hover:text-red-400 group-hover:block"
                         >
                           <Trash2 size={11} />
                         </button>
                       )}
                     </div>
+                    </DraggablePlannedSession>
                   );
                 })}
 
                 {/* Rest day or empty future day */}
                 {dayEntries.length === 0 && (
-                  <div className="flex flex-col items-center justify-center py-6 text-muted-foreground/40">
+                  <div className="flex flex-col items-center justify-center py-6 text-muted-foreground/40 group-hover/day:text-muted-foreground/60 transition-colors">
                     {isRestDay ? (
-                      <>
-                        <Coffee size={18} />
-                        <span className="mt-1 text-[10px]">Hviledag</span>
-                      </>
+                      <div className="flex flex-col items-center transition-all relative">
+                        <Coffee size={18} className="group-hover/day:animate-[wiggle_0.8s_ease_2] transition-transform duration-300" />
+                        {/* Sleeping stick figure appears on hover — lying down */}
+                        <div className="mt-1 opacity-0 group-hover/day:opacity-100 transition-opacity duration-500 relative">
+                          <span className="text-[18px] inline-block rotate-90" style={{ filter: "grayscale(1) brightness(0.6)" }}>🧍</span>
+                          <span className="absolute -top-1.5 left-4 text-[9px] text-muted-foreground/40 group-hover/day:animate-[fadeInOut_2s_ease_infinite]">zzz</span>
+                        </div>
+                        <span className="text-[10px] -mt-0.5">Hviledag</span>
+                      </div>
+                    ) : isFuture ? (
+                      <div className="flex flex-col items-center">
+                        <div className="relative h-6 w-6 group-hover/day:[&>*]:text-muted-foreground/30">
+                          <Waves size={18} className="absolute inset-0 m-auto opacity-0 group-hover/day:animate-[fadeInOut_4.5s_ease_infinite_0s] transition-opacity" />
+                          <Bike size={18} className="absolute inset-0 m-auto opacity-0 group-hover/day:animate-[fadeInOut_4.5s_ease_infinite_1.5s] transition-opacity" />
+                          <Footprints size={18} className="absolute inset-0 m-auto opacity-0 group-hover/day:animate-[fadeInOut_4.5s_ease_infinite_3s] transition-opacity" />
+                        </div>
+                        <span className="mt-1 text-[10px]">Ingen planlagt</span>
+                      </div>
                     ) : (
-                      <span className="text-[10px]">Ingen planlagt</span>
+                      <span className="text-[10px]">Ingen traeninger</span>
                     )}
                   </div>
                 )}
+
               </div>
+
+              {/* Bottom button: "Slip her" when dragging, "+ Tilfoej" on hover */}
+              {isDropTarget ? (
+                <div className="mt-auto w-full rounded border-2 border-dashed border-primary bg-primary/10 py-1 text-center text-[10px] font-medium text-primary">
+                  Slip her
+                </div>
+              ) : onAddSession && (isToday || isFuture) ? (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onAddSession(key); }}
+                  className="mt-auto w-full rounded border border-dashed border-transparent py-1 text-[10px] text-transparent group-hover/day:border-border group-hover/day:text-muted-foreground/50 hover:!border-primary hover:!text-primary transition-colors"
+                >
+                  + Tilfoej
+                </button>
+              ) : null}
             </div>
+            )}
+            </DroppableDayCell>
           );
         })}
 
-        {/* Week summary column */}
-        <div data-testid="week-summary" className="min-h-[200px] rounded-lg border border-border bg-muted/30 p-3">
-          <div className="mb-3 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Ugeoversigt
+        {/* Week summary column — same format as MonthView Uge Total */}
+        <div data-testid="week-summary" className="min-h-[400px] rounded-lg border border-border bg-muted/30 p-3">
+          <div className="text-xs font-semibold text-foreground mb-2">
+            Uge {getISOWeek(weekStart)}
+            <span className="ml-1 text-muted-foreground font-normal">Uge total</span>
           </div>
+
           <div className="space-y-3">
-            {/* Session count */}
-            <div>
-              <div className="text-[10px] text-muted-foreground">Sessioner</div>
-              <div className="text-xl font-bold text-foreground">{weekSummary.sessionCount}</div>
-            </div>
-
-            {/* Total time */}
-            <div>
-              <div className="text-[10px] text-muted-foreground">Total tid</div>
-              <div className="text-sm font-semibold text-foreground">{formatDuration(weekSummary.totalDuration)}</div>
-            </div>
-
-            {/* Total TSS */}
-            <div>
-              <div className="text-[10px] text-muted-foreground">Total TSS</div>
-              <div className={`inline-flex rounded-full px-2 py-0.5 text-sm font-bold ${tssBadgeColor(weekSummary.totalTss)}`}>
-                {Math.round(weekSummary.totalTss)}
-              </div>
-            </div>
-
-            {/* TSS stacked bar by sport */}
-            {weekSummary.totalTss > 0 && (
-              <div>
-                <div className="text-[10px] text-muted-foreground mb-1">TSS fordeling</div>
-                <div className="flex h-3 w-full overflow-hidden rounded-full">
-                  {Object.entries(weekSummary.sportBreakdown).map(([sport, data]) => {
-                    const pct = (data.tss / weekSummary.totalTss) * 100;
-                    if (pct <= 0) return null;
-                    return (
-                      <div
-                        key={sport}
-                        style={{ width: `${pct}%`, backgroundColor: getSportColor(sport) }}
-                        title={`${sport}: ${Math.round(data.tss)} TSS`}
-                      />
-                    );
-                  })}
+            {/* Completed section */}
+            {weekSummary.sessionCount > 0 && (
+              <div className="text-xs space-y-1">
+                <div className="flex items-center gap-2 font-medium text-foreground mb-1">
+                  <CheckCircle2 className="h-3 w-3 text-green-500" />
+                  Gennemfoert
+                  <span className="text-muted-foreground">{formatDuration(weekSummary.totalDuration)}</span>
                 </div>
+                {weekSummary.totalTss > 0 && (
+                  <div className="flex items-center gap-1 text-muted-foreground">
+                    <Zap className="h-3 w-3 text-amber-400" />
+                    {Math.ceil(weekSummary.totalTss)} TSS
+                  </div>
+                )}
+                {Object.entries(weekSummary.sportBreakdown).map(([sport, data]) => (
+                  <div key={sport} className="flex items-center gap-1 pl-2 whitespace-nowrap text-xs" style={{ color: getSportColor(sport) }}>
+                    <SportIcon sport={sport} size={12} />
+                    <span>{formatDuration(data.duration)}</span>
+                    {data.distance > 0 && <span className="text-muted-foreground">- {formatDistance(data.distance)}</span>}
+                    <span className="text-muted-foreground ml-auto">{Math.round(data.tss)} TSS</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Planned section */}
+            {weekSummary.plannedCount > 0 && (
+              <div className="text-xs space-y-1">
+                <div className="flex items-center gap-2 font-medium text-muted-foreground mb-1">
+                  <Target className="h-3 w-3 text-blue-500" />
+                  Planlagt
+                  <span className="text-muted-foreground">{formatDuration(weekSummary.plannedDuration)}</span>
+                </div>
+                {weekSummary.plannedTss > 0 && (
+                  <div className="flex items-center gap-1 text-muted-foreground">
+                    <Zap className="h-3 w-3 text-amber-400" />
+                    {Math.ceil(weekSummary.plannedTss)} TSS
+                  </div>
+                )}
+                {Object.entries(weekSummary.plannedBySport).map(([sport, data]) => (
+                  <div key={sport} className="flex items-center gap-1 pl-2 whitespace-nowrap text-xs" style={{ color: getSportColor(sport) }}>
+                    <SportIcon sport={sport} size={12} />
+                    <span>{formatDuration(data.duration)}</span>
+                    {data.distance > 0 && <span className="text-muted-foreground">- {formatDistance(data.distance)}</span>}
+                    <span className="text-muted-foreground ml-auto">{Math.round(data.tss)} TSS</span>
+                  </div>
+                ))}
               </div>
             )}
 
             {/* CTL delta */}
             {weekSummary.ctlDelta !== 0 && (
-              <div>
-                <div className="text-[10px] text-muted-foreground">CTL ændring</div>
+              <div className="border-t border-border pt-2">
+                <div className="text-[10px] text-muted-foreground">CTL aendring</div>
                 <div className={`text-sm font-bold ${weekSummary.ctlDelta > 0 ? "text-green-400" : "text-red-400"}`}>
                   {weekSummary.ctlDelta > 0 ? "+" : ""}{weekSummary.ctlDelta.toFixed(1)}
                 </div>
               </div>
             )}
-
-            {/* Per-sport breakdown */}
-            <div className="border-t border-border pt-2">
-              <div className="text-[10px] text-muted-foreground mb-1.5">Per sport</div>
-              <div className="space-y-1">
-                {Object.entries(weekSummary.sportBreakdown).map(([sport, data]) => (
-                  <div key={sport} className="flex items-center gap-1.5">
-                    <SportIcon sport={sport} size={11} />
-                    <div className="flex-1 text-[10px]">
-                      <span className="font-medium text-foreground">{data.count}x</span>
-                      <span className="ml-1 text-muted-foreground">{formatDuration(data.duration)}</span>
-                    </div>
-                    <span className="text-[10px] text-muted-foreground">{Math.round(data.tss)}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
         </div>
       </div>
 
-      {/* Session detail popup — same as MonthView */}
+      {/* Drag overlay */}
+      <DragOverlay>
+        {draggedSessionId && (
+          <div className="rounded-lg border border-primary bg-card px-3 py-2 shadow-xl opacity-90 text-xs text-foreground">
+            Flytter session...
+          </div>
+        )}
+      </DragOverlay>
+      </DndContext>
+
+      {/* Session detail popup */}
       {popupSession && (
         <SessionPopup
           session={popupSession}
           sessionType={popupType}
           athleteId={selectedAthleteId ?? ""}
           onClose={() => setPopupSession(null)}
+          onEditPlanned={(p) => setEditSession(p)}
         />
       )}
+
+      {/* Edit session dialog */}
+      <CreateSessionDialog
+        open={!!editSession}
+        onClose={() => setEditSession(null)}
+        editSession={editSession}
+      />
     </div>
   );
 }

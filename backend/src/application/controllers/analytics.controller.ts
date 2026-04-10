@@ -99,6 +99,35 @@ export async function getPmcHistory(req: Request, res: Response) {
       rampRate: r.rampRate,
     }));
 
+    // Fill gap from last data point to today with exponential decay (TSS=0 days)
+    if (data.length > 0) {
+      const last = data[data.length - 1];
+      const lastDate = new Date(last.date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      let ctl = last.ctl;
+      let atl = last.atl;
+      const cursor = new Date(lastDate);
+      cursor.setDate(cursor.getDate() + 1);
+      while (cursor <= today) {
+        ctl = ctl * (1 - 1 / 42); // CTL decay constant = 42 days
+        atl = atl * (1 - 1 / 7);  // ATL decay constant = 7 days
+        const tsb = ctl - atl;
+        data.push({
+          id: `fill-${cursor.toISOString().split("T")[0]}`,
+          date: new Date(cursor).toISOString(),
+          sport: "all",
+          ctl: Math.round(ctl * 100) / 100,
+          atl: Math.round(atl * 100) / 100,
+          tsb: Math.round(tsb * 100) / 100,
+          monotony: null as any,
+          strain: null as any,
+          rampRate: last.rampRate,
+        });
+        cursor.setDate(cursor.getDate() + 1);
+      }
+    }
+
     res.json({ data });
   } catch (error: any) {
     console.error("Fejl ved hentning af PMC historik:", error);

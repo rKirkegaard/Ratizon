@@ -116,8 +116,11 @@ export default function DashboardPage() {
     <div data-testid="dashboard-page" className="space-y-4">
       <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
 
-      {/* Race Countdown */}
-      <RaceCountdown goal={data.main_goal as any} isLoading={false} />
+      {/* Goals: Main + Next */}
+      <div className={data.next_goal ? "grid gap-4 md:grid-cols-2" : ""}>
+        <RaceCountdown goal={data.main_goal as any} isLoading={false} />
+        {data.next_goal && <RaceCountdown goal={data.next_goal as any} isLoading={false} />}
+      </div>
 
       {/* Wellness Quick-Log */}
       <WellnessQuickLog

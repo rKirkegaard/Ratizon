@@ -7,6 +7,11 @@ export interface Goal {
   targetDate: string | null;
   raceDistance: number | null;
   raceTargetTime: number | null;
+  swimTargetTime: number | null;
+  bikeTargetTime: number | null;
+  runTargetTime: number | null;
+  t1TargetTime: number | null;
+  t2TargetTime: number | null;
   racePriority: "A" | "B" | "C" | null;
   status: "active" | "completed" | "cancelled";
   notes: string | null;

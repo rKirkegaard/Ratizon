@@ -5,6 +5,7 @@ import {
   refresh,
   logout,
   getMe,
+  changePassword,
   devListUsers,
   devLogin,
 } from "../controllers/auth.controller.js";
@@ -24,3 +25,4 @@ authRouter.post("/dev-login", devLogin);
 // Protected routes
 authRouter.post("/logout", authenticateToken, logout);
 authRouter.get("/me", authenticateToken, getMe);
+authRouter.put("/change-password", authenticateToken, changePassword);

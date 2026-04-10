@@ -45,6 +45,7 @@ export async function getDashboard(req: Request, res: Response) {
       alertsResult,
       streakResult,
       mainGoalResult,
+      nextGoalResult,
     ] = await Promise.all([
       // Latest wellness
       db
@@ -196,6 +197,20 @@ export async function getDashboard(req: Request, res: Response) {
         )
         .orderBy(asc(goals.targetDate))
         .limit(1),
+
+      // Next sub-goal (B or C priority, active, future)
+      db
+        .select()
+        .from(goals)
+        .where(
+          and(
+            eq(goals.athleteId, athleteId),
+            eq(goals.status, "active"),
+            gte(goals.targetDate, now)
+          )
+        )
+        .orderBy(asc(goals.targetDate))
+        .limit(5),
     ]);
 
     // --- Build wellness section ---
@@ -359,6 +374,19 @@ export async function getDashboard(req: Request, res: Response) {
             goalType: mainGoalResult[0].goalType,
           }
         : null,
+      nextGoal: (() => {
+        // Find the next upcoming goal that isn't the main A-race
+        const mainId = mainGoalResult[0]?.id;
+        const next = nextGoalResult.find((g) => g.id !== mainId);
+        return next ? {
+          id: next.id,
+          title: next.title,
+          targetDate: next.targetDate?.toISOString() ?? null,
+          sport: next.sport,
+          racePriority: next.racePriority,
+          goalType: next.goalType,
+        } : null;
+      })(),
     };
 
     res.json({ data: response });

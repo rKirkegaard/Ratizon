@@ -22,6 +22,15 @@ export interface CalendarGoal {
   racePriority: string | null;
   goalType: string;
   status: string;
+  sport: string | null;
+  raceDistance: number | null;
+  raceTargetTime: number | null;
+  swimTargetTime: number | null;
+  bikeTargetTime: number | null;
+  runTargetTime: number | null;
+  t1TargetTime: number | null;
+  t2TargetTime: number | null;
+  notes: string | null;
 }
 
 export interface CalendarSession {

@@ -10,6 +10,8 @@ interface UiState {
   setAiPanelOpen: (open: boolean) => void;
   theme: Theme;
   setTheme: (theme: Theme) => void;
+  collapsedSections: Record<string, boolean>;
+  toggleSection: (section: string) => void;
 }
 
 export const useUiStore = create<UiState>()(
@@ -19,6 +21,14 @@ export const useUiStore = create<UiState>()(
       setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
       aiPanelOpen: false,
       setAiPanelOpen: (open) => set({ aiPanelOpen: open }),
+      collapsedSections: {},
+      toggleSection: (section) =>
+        set((state) => ({
+          collapsedSections: {
+            ...state.collapsedSections,
+            [section]: !state.collapsedSections[section],
+          },
+        })),
       theme: "dark",
       setTheme: (theme) => {
         if (theme === "dark") {

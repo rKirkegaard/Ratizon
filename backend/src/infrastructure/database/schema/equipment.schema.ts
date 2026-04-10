@@ -28,6 +28,8 @@ export const equipment = pgTable("equipment", {
   currentDurationHours: real("current_duration_hours").notNull().default(0),
   sessionCount: integer("session_count").notNull().default(0),
   retired: boolean("retired").notNull().default(false),
+  isDefaultFor: varchar("is_default_for", { length: 10 }),
+  initialKm: real("initial_km").notNull().default(0),
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -43,6 +45,19 @@ export const sessionEquipment = pgTable("session_equipment", {
     .references(() => equipment.id, { onDelete: "cascade" }),
   distanceKm: real("distance_km"),
   durationHours: real("duration_hours"),
+  segmentType: varchar("segment_type", { length: 20 }).default("full"),
+  lapIndices: text("lap_indices"),
+  segmentMin: real("segment_min"),
+  notes: text("notes"),
+});
+
+export const equipmentNotificationLog = pgTable("equipment_notification_log", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  equipmentId: uuid("equipment_id")
+    .notNull()
+    .references(() => equipment.id, { onDelete: "cascade" }),
+  thresholdPct: integer("threshold_pct").notNull(),
+  notifiedAt: timestamp("notified_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const equipmentNotificationPrefs = pgTable("equipment_notification_prefs", {

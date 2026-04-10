@@ -6,7 +6,9 @@ import {
 } from "../../infrastructure/database/schema/training.schema.js";
 import { sessionAnalytics } from "../../infrastructure/database/schema/analytics.schema.js";
 import { athletes } from "../../infrastructure/database/schema/athlete.schema.js";
-import { eq } from "drizzle-orm";
+import { equipment, sessionEquipment } from "../../infrastructure/database/schema/equipment.schema.js";
+import { eq, and } from "drizzle-orm";
+import { parseMssToPaceSec } from "../../domain/utils/paceUtils.js";
 import { parseFIT } from "../../infrastructure/parsers/FITParser.js";
 import { parseTCX } from "../../infrastructure/parsers/TCXParser.js";
 import type { ParsedFile } from "../../infrastructure/parsers/FITParser.js";
@@ -151,7 +153,8 @@ export async function uploadSession(
     // Bike: power-TSS using FTP
     // Run: rTSS = (duration * pace * IF) / (threshold * 3600) * 100
     // Fallback: HR-based hrTSS
-    const runThresholdPace = athlete?.runThresholdPace; // s/km
+    // Parse M:SS threshold pace to seconds
+    const runThresholdPace = parseMssToPaceSec(athlete?.runThresholdPace);
     if (tss == null && durationSec > 0) {
       if (parsed.session.sport === "bike" && avgPower && ftp && ftp > 0) {
         const np = parsed.session.normalizedPower ?? avgPower;
@@ -239,6 +242,30 @@ export async function uploadSession(
   } catch (analyticsErr) {
     console.error("Post-upload analytics fejl (non-fatal):", (analyticsErr as Error).message);
   }
+
+  // ── Auto-link default equipment ──────────────────────────────────
+  try {
+    const [defaultEquip] = await db.select({ id: equipment.id })
+      .from(equipment)
+      .where(and(
+        eq(equipment.athleteId, athleteId),
+        eq(equipment.isDefaultFor, parsed.session.sport),
+        eq(equipment.retired, false)
+      ))
+      .limit(1);
+
+    if (defaultEquip) {
+      const distKm = parsed.session.distanceMeters ? parsed.session.distanceMeters / 1000 : null;
+      const durHours = parsed.session.durationSeconds ? parsed.session.durationSeconds / 3600 : null;
+      await db.insert(sessionEquipment).values({
+        sessionId: BigInt(sessionId),
+        equipmentId: defaultEquip.id,
+        segmentType: "full",
+        distanceKm: distKm,
+        durationHours: durHours,
+      }).catch(() => { /* ignore duplicate */ });
+    }
+  } catch { /* non-fatal */ }
 
   return {
     sessionId: sessionId.toString(),

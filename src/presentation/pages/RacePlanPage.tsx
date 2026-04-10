@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useAthleteStore } from "@/application/stores/athleteStore";
 import { useGoals } from "@/application/hooks/planning/usePlanning";
 import {
@@ -6,14 +6,15 @@ import {
   useRacePlan,
   useRaceTimeline,
   useCreateRacePlan,
+  useUpdateRacePlan,
   useCreateNutritionItem,
   useDeleteNutritionItem,
 } from "@/application/hooks/planning/useRacePlan";
 import { SportIcon } from "@/presentation/components/shared/SportIcon";
-import { Plus, Trash2, Clock, Zap, Droplets, Flame } from "lucide-react";
+import { Plus, Trash2, Clock, Zap, Droplets, Flame, Pencil, Check } from "lucide-react";
 import ExportPdfButton from "@/presentation/components/shared/ExportPdfButton";
 import { exportRacePlanPdf } from "@/domain/utils/pdfExport";
-import type { RaceSegment, SegmentType } from "@/domain/types/race-plan.types";
+import type { RacePlan, RaceSegment, SegmentType } from "@/domain/types/race-plan.types";
 
 function formatTime(seconds: number | null): string {
   if (!seconds || seconds <= 0) return "–";
@@ -89,14 +90,154 @@ export default function RacePlanPage() {
     { value: "custom", label: "Brugerdefineret" },
   ];
 
-  // Form state for creating plan
+  // Form state for creating plan — user-friendly formats
   const [showForm, setShowForm] = useState(false);
   const [raceType, setRaceType] = useState("full");
-  const [swimPace, setSwimPace] = useState("110"); // 1:50/100m
-  const [bikePace, setBikePace] = useState("108"); // ~33.3 km/h
-  const [runPace, setRunPace] = useState("330"); // 5:30/km
-  const [t1, setT1] = useState("120");
-  const [t2, setT2] = useState("90");
+  const [swimPace, setSwimPace] = useState("1:50");   // M:SS per 100m
+  const [bikePace, setBikePace] = useState("33.3");    // km/h
+  const [runPace, setRunPace] = useState("5:30");      // M:SS per km
+  const [t1, setT1] = useState("2:00");               // M:SS
+  const [t2, setT2] = useState("1:30");               // M:SS
+
+  /** Parse M:SS string to total seconds */
+  function parseMSS(str: string): number {
+    const parts = str.trim().split(":").map(Number);
+    if (parts.length === 2 && parts.every((n) => !isNaN(n))) return parts[0] * 60 + parts[1];
+    const num = parseFloat(str);
+    return isNaN(num) ? 0 : num;
+  }
+
+  /** Convert km/h to seconds per km */
+  function kmhToSecPerKm(kmh: number): number {
+    if (kmh <= 0) return 0;
+    return 3600 / kmh;
+  }
+
+  /** Convert seconds per km to km/h */
+  function secPerKmToKmh(spk: number): number {
+    if (spk <= 0) return 0;
+    return 3600 / spk;
+  }
+
+  /** Seconds → M:SS display */
+  function secsToMSS(secs: number | null): string {
+    if (!secs || secs <= 0) return "";
+    const m = Math.floor(secs / 60);
+    const s = Math.round(secs % 60);
+    return `${m}:${String(s).padStart(2, "0")}`;
+  }
+
+  /** Seconds → HH:MM:SS display */
+  function secsToHMS(secs: number | null): string {
+    if (!secs || secs <= 0) return "";
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = Math.round(secs % 60);
+    return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  }
+
+  // ── Edit state ──────────────────────────────────────────────────────
+  const updatePlanMutation = useUpdateRacePlan(athleteId, activePlanId);
+  const [editing, setEditing] = useState(false);
+  const [editSwimPace, setEditSwimPace] = useState("");
+  const [editSwimTime, setEditSwimTime] = useState("");
+  const [editBikeKmh, setEditBikeKmh] = useState("");
+  const [editBikeTime, setEditBikeTime] = useState("");
+  const [editRunPace, setEditRunPace] = useState("");
+  const [editRunTime, setEditRunTime] = useState("");
+  const [editT1, setEditT1] = useState("");
+  const [editT2, setEditT2] = useState("");
+  // Track original values to detect what the user actually changed
+  const [origValues, setOrigValues] = useState({ swimPace: "", swimTime: "", bikeKmh: "", bikeTime: "", runPace: "", runTime: "", t1: "", t2: "" });
+
+  const populateEditFields = useCallback((plan: RacePlan | undefined, _tl: typeof timeline) => {
+    if (!plan || !_tl) return;
+    const sp = secsToMSS(plan.swimPace);
+    const st = secsToHMS(plan.targetSwimTime);
+    const bk = plan.bikePace ? secPerKmToKmh(plan.bikePace).toFixed(1) : "";
+    const bt = secsToHMS(plan.targetBikeTime);
+    const rp = secsToMSS(plan.runPace);
+    const rt = secsToHMS(plan.targetRunTime);
+    const t1v = secsToMSS(plan.t1Target);
+    const t2v = secsToMSS(plan.t2Target);
+    setEditSwimPace(sp); setEditSwimTime(st);
+    setEditBikeKmh(bk); setEditBikeTime(bt);
+    setEditRunPace(rp); setEditRunTime(rt);
+    setEditT1(t1v); setEditT2(t2v);
+    setOrigValues({ swimPace: sp, swimTime: st, bikeKmh: bk, bikeTime: bt, runPace: rp, runTime: rt, t1: t1v, t2: t2v });
+  }, []);
+
+  const startEditing = () => {
+    populateEditFields(planDetail as RacePlan | undefined, timeline);
+    setEditing(true);
+  };
+
+  /** Parse H:MM:SS string to seconds */
+  function parseTimeSec(str: string): number {
+    const parts = str.trim().split(":").map(Number);
+    if (parts.some(isNaN)) return 0;
+    if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+    if (parts.length === 2) return parts[0] * 60 + parts[1];
+    return 0;
+  }
+
+  const saveEditing = () => {
+    if (!timeline) return;
+    const payload: Record<string, unknown> = {};
+    const o = origValues;
+
+    // Get distances from current timeline segments
+    const swimDist = timeline.segments.find((s) => s.type === "swim")?.distance ?? 3800;
+    const bikeDist = timeline.segments.find((s) => s.type === "bike")?.distance ?? 180000;
+    const runDist = timeline.segments.find((s) => s.type === "run")?.distance ?? 42195;
+
+    // Swim: if pace changed → use pace; else if time changed → derive pace from time
+    const swimPaceChanged = editSwimPace !== o.swimPace;
+    const swimTimeChanged = editSwimTime !== o.swimTime;
+    if (swimPaceChanged) {
+      const v = parseMSS(editSwimPace);
+      if (v > 0) payload.swimPace = v;
+    } else if (swimTimeChanged) {
+      const t = parseTimeSec(editSwimTime);
+      if (t > 0 && swimDist > 0) payload.swimPace = t / (swimDist / 100);
+    }
+
+    // Bike: if km/h changed → use km/h; else if time changed → derive pace from time
+    const bikePaceChanged = editBikeKmh !== o.bikeKmh;
+    const bikeTimeChanged = editBikeTime !== o.bikeTime;
+    if (bikePaceChanged) {
+      const v = parseFloat(editBikeKmh);
+      if (v > 0) payload.bikePace = kmhToSecPerKm(v);
+    } else if (bikeTimeChanged) {
+      const t = parseTimeSec(editBikeTime);
+      if (t > 0 && bikeDist > 0) payload.bikePace = t / (bikeDist / 1000);
+    }
+
+    // Run: if pace changed → use pace; else if time changed → derive pace from time
+    const runPaceChanged = editRunPace !== o.runPace;
+    const runTimeChanged = editRunTime !== o.runTime;
+    if (runPaceChanged) {
+      const v = parseMSS(editRunPace);
+      if (v > 0) payload.runPace = v;
+    } else if (runTimeChanged) {
+      const t = parseTimeSec(editRunTime);
+      if (t > 0 && runDist > 0) payload.runPace = t / (runDist / 1000);
+    }
+
+    // T1 / T2
+    if (editT1 !== o.t1) {
+      const v = parseMSS(editT1);
+      if (v > 0) payload.t1Target = v;
+    }
+    if (editT2 !== o.t2) {
+      const v = parseMSS(editT2);
+      if (v > 0) payload.t2Target = v;
+    }
+
+    updatePlanMutation.mutate(payload as Partial<RacePlan>, {
+      onSuccess: () => setEditing(false),
+    });
+  };
 
   // Nutrition form
   const [showNutForm, setShowNutForm] = useState(false);
@@ -121,11 +262,11 @@ export default function RacePlanPage() {
     createPlanMutation.mutate({
       goalId: mainGoal?.id ?? null,
       raceType,
-      swimPace: parseFloat(swimPace),
-      bikePace: parseFloat(bikePace),
-      runPace: parseFloat(runPace),
-      t1Target: parseInt(t1),
-      t2Target: parseInt(t2),
+      swimPace: parseMSS(swimPace),                // M:SS → seconds per 100m
+      bikePace: kmhToSecPerKm(parseFloat(bikePace)), // km/h → seconds per km
+      runPace: parseMSS(runPace),                   // M:SS → seconds per km
+      t1Target: parseMSS(t1),                       // M:SS → seconds
+      t2Target: parseMSS(t2),                       // M:SS → seconds
       nutritionStrategy: { caloriesPerHourBike: 300, caloriesPerHourRun: 200 },
       hydrationStrategy: { fluidPerHourMl: 750, sodiumPerHourMg: 500 },
     } as any, {
@@ -191,7 +332,7 @@ export default function RacePlanPage() {
               data-testid="race-type-select"
               value={raceType}
               onChange={(e) => setRaceType(e.target.value)}
-              className="w-full rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-foreground md:w-auto"
+              className="w-full rounded border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring md:w-auto"
             >
               {RACE_TYPES.map((rt) => (
                 <option key={rt.value} value={rt.value}>{rt.label}</option>
@@ -200,24 +341,24 @@ export default function RacePlanPage() {
           </div>
           <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
             <div>
-              <label className="block text-xs text-muted-foreground mb-1">Svoem pace (s/100m)</label>
-              <input value={swimPace} onChange={(e) => setSwimPace(e.target.value)} className="w-full rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-foreground" />
+              <label className="block text-xs text-muted-foreground mb-1">Svoem (M:SS/100m)</label>
+              <input value={swimPace} onChange={(e) => setSwimPace(e.target.value)} placeholder="1:50" className="w-full rounded border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring" />
             </div>
             <div>
-              <label className="block text-xs text-muted-foreground mb-1">T1 (sekunder)</label>
-              <input value={t1} onChange={(e) => setT1(e.target.value)} className="w-full rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-foreground" />
+              <label className="block text-xs text-muted-foreground mb-1">T1 (M:SS)</label>
+              <input value={t1} onChange={(e) => setT1(e.target.value)} placeholder="2:00" className="w-full rounded border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring" />
             </div>
             <div>
-              <label className="block text-xs text-muted-foreground mb-1">Cykel pace (s/km)</label>
-              <input value={bikePace} onChange={(e) => setBikePace(e.target.value)} className="w-full rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-foreground" />
+              <label className="block text-xs text-muted-foreground mb-1">Cykel (km/t)</label>
+              <input value={bikePace} onChange={(e) => setBikePace(e.target.value)} placeholder="33.3" className="w-full rounded border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring" />
             </div>
             <div>
-              <label className="block text-xs text-muted-foreground mb-1">T2 (sekunder)</label>
-              <input value={t2} onChange={(e) => setT2(e.target.value)} className="w-full rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-foreground" />
+              <label className="block text-xs text-muted-foreground mb-1">T2 (M:SS)</label>
+              <input value={t2} onChange={(e) => setT2(e.target.value)} placeholder="1:30" className="w-full rounded border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring" />
             </div>
             <div>
-              <label className="block text-xs text-muted-foreground mb-1">Loeb pace (s/km)</label>
-              <input value={runPace} onChange={(e) => setRunPace(e.target.value)} className="w-full rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-foreground" />
+              <label className="block text-xs text-muted-foreground mb-1">Loeb (M:SS/km)</label>
+              <input value={runPace} onChange={(e) => setRunPace(e.target.value)} placeholder="5:30" className="w-full rounded border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring" />
             </div>
           </div>
           <div className="flex gap-2">
@@ -237,34 +378,115 @@ export default function RacePlanPage() {
           {/* Segment timeline bar */}
           <SegmentBar segments={timeline.segments} totalSec={timeline.totalTimeSec} />
 
-          {/* Total time */}
-          <div className="flex items-center justify-center gap-2 text-lg font-bold text-foreground">
-            <Clock className="h-5 w-5 text-muted-foreground" />
-            Estimeret total: {formatTime(timeline.totalTimeSec)}
+          {/* Total time + edit toggle */}
+          <div className="flex items-center justify-center gap-3">
+            <div className="flex items-center gap-2 text-lg font-bold text-foreground">
+              <Clock className="h-5 w-5 text-muted-foreground" />
+              Estimeret total: {formatTime(timeline.totalTimeSec)}
+            </div>
+            {!editing ? (
+              <button
+                data-testid="edit-race-plan"
+                onClick={startEditing}
+                className="flex items-center gap-1 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted"
+              >
+                <Pencil className="h-3.5 w-3.5" /> Rediger
+              </button>
+            ) : (
+              <button
+                data-testid="save-race-plan"
+                onClick={saveEditing}
+                disabled={updatePlanMutation.isPending}
+                className="flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              >
+                <Check className="h-3.5 w-3.5" /> Gem
+              </button>
+            )}
           </div>
 
-          {/* Segment cards */}
+          {/* Segment cards — editable */}
           <div data-testid="race-segments" className="grid gap-3 md:grid-cols-5">
-            {timeline.segments.map((seg) => (
-              <div
-                key={seg.type}
-                data-testid={`segment-${seg.type}`}
-                className="rounded-lg border border-border bg-card p-4"
-                style={{ borderTopColor: SEGMENT_COLORS[seg.type], borderTopWidth: "3px" }}
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  {seg.type !== "t1" && seg.type !== "t2" && (
-                    <SportIcon sport={seg.type} size={18} />
+            {timeline.segments.map((seg) => {
+              const isTransition = seg.type === "t1" || seg.type === "t2";
+              return (
+                <div
+                  key={seg.type}
+                  data-testid={`segment-${seg.type}`}
+                  className="rounded-lg border border-border bg-card p-4"
+                  style={{ borderTopColor: SEGMENT_COLORS[seg.type], borderTopWidth: "3px" }}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    {!isTransition && <SportIcon sport={seg.type} size={18} />}
+                    <span className="text-sm font-semibold text-foreground">{seg.label}</span>
+                  </div>
+
+                  {!editing ? (
+                    /* ── Read-only view ── */
+                    <div className="space-y-1 text-xs text-muted-foreground">
+                      <p className="text-lg font-bold text-foreground">{formatTime(seg.durationSec)}</p>
+                      {seg.distance > 0 && <p>{(seg.distance / 1000).toFixed(1)} km</p>}
+                      {seg.pace && <p>{seg.pace}</p>}
+                    </div>
+                  ) : (
+                    /* ── Edit view ── */
+                    <div className="space-y-2">
+                      {/* Time */}
+                      <div>
+                        <label className="block text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">
+                          {isTransition ? "Tid (M:SS)" : "Tid (H:MM:SS)"}
+                        </label>
+                        <input
+                          value={
+                            seg.type === "swim" ? editSwimTime :
+                            seg.type === "bike" ? editBikeTime :
+                            seg.type === "run" ? editRunTime :
+                            seg.type === "t1" ? editT1 : editT2
+                          }
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            if (seg.type === "swim") setEditSwimTime(v);
+                            else if (seg.type === "bike") setEditBikeTime(v);
+                            else if (seg.type === "run") setEditRunTime(v);
+                            else if (seg.type === "t1") setEditT1(v);
+                            else setEditT2(v);
+                          }}
+                          placeholder={isTransition ? "2:00" : "1:05:00"}
+                          className="w-full rounded border border-input bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                        />
+                      </div>
+                      {/* Pace — only for swim/bike/run */}
+                      {!isTransition && (
+                        <div>
+                          <label className="block text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">
+                            {seg.type === "swim" ? "Pace (M:SS/100m)" :
+                             seg.type === "bike" ? "Hastighed (km/t)" :
+                             "Pace (M:SS/km)"}
+                          </label>
+                          <input
+                            value={
+                              seg.type === "swim" ? editSwimPace :
+                              seg.type === "bike" ? editBikeKmh : editRunPace
+                            }
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              if (seg.type === "swim") setEditSwimPace(v);
+                              else if (seg.type === "bike") setEditBikeKmh(v);
+                              else setEditRunPace(v);
+                            }}
+                            placeholder={seg.type === "swim" ? "1:50" : seg.type === "bike" ? "33.3" : "5:30"}
+                            className="w-full rounded border border-input bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                          />
+                        </div>
+                      )}
+                      {/* Distance (read-only info) */}
+                      {seg.distance > 0 && (
+                        <p className="text-[10px] text-muted-foreground">{(seg.distance / 1000).toFixed(1)} km</p>
+                      )}
+                    </div>
                   )}
-                  <span className="text-sm font-semibold text-foreground">{seg.label}</span>
                 </div>
-                <div className="space-y-1 text-xs text-muted-foreground">
-                  <p className="text-lg font-bold text-foreground">{formatTime(seg.durationSec)}</p>
-                  {seg.distance > 0 && <p>{(seg.distance / 1000).toFixed(1)} km</p>}
-                  {seg.pace && <p>{seg.pace}</p>}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Nutrition totals */}
@@ -314,17 +536,17 @@ export default function RacePlanPage() {
 
             {showNutForm && (
               <div className="mb-4 grid grid-cols-2 gap-2 rounded-md bg-muted/30 p-3 md:grid-cols-6">
-                <select value={nutSegment} onChange={(e) => setNutSegment(e.target.value as SegmentType)} className="rounded border border-border bg-background px-2 py-1.5 text-xs">
+                <select value={nutSegment} onChange={(e) => setNutSegment(e.target.value as SegmentType)} className="rounded border border-input bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring">
                   <option value="bike">Cykel</option>
                   <option value="run">Loeb</option>
                   <option value="swim">Svoem</option>
                   <option value="t1">T1</option>
                   <option value="t2">T2</option>
                 </select>
-                <input placeholder="Min fra start" value={nutOffset} onChange={(e) => setNutOffset(e.target.value)} className="rounded border border-border bg-background px-2 py-1.5 text-xs" />
-                <input placeholder="Produkt" value={nutItem} onChange={(e) => setNutItem(e.target.value)} className="rounded border border-border bg-background px-2 py-1.5 text-xs" />
-                <input placeholder="Kalorier" value={nutCal} onChange={(e) => setNutCal(e.target.value)} className="rounded border border-border bg-background px-2 py-1.5 text-xs" />
-                <input placeholder="Vaeske (ml)" value={nutFluid} onChange={(e) => setNutFluid(e.target.value)} className="rounded border border-border bg-background px-2 py-1.5 text-xs" />
+                <input placeholder="Min fra start" value={nutOffset} onChange={(e) => setNutOffset(e.target.value)} className="rounded border border-input bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring" />
+                <input placeholder="Produkt" value={nutItem} onChange={(e) => setNutItem(e.target.value)} className="rounded border border-input bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring" />
+                <input placeholder="Kalorier" value={nutCal} onChange={(e) => setNutCal(e.target.value)} className="rounded border border-input bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring" />
+                <input placeholder="Vaeske (ml)" value={nutFluid} onChange={(e) => setNutFluid(e.target.value)} className="rounded border border-input bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring" />
                 <button onClick={handleAddNutrition} disabled={addNutrition.isPending} className="rounded bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
                   Gem
                 </button>

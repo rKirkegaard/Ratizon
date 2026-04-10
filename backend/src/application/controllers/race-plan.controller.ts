@@ -138,13 +138,15 @@ export async function updateRacePlan(req: Request, res: Response) {
     if (b.notes !== undefined) updates.notes = b.notes;
 
     // Recompute segment times if pace changed
-    const swimPace = b.swimPace ?? (await db.select({ v: racePlans.swimPace }).from(racePlans).where(eq(racePlans.id, id)).limit(1))[0]?.v;
-    const bikePace = b.bikePace ?? (await db.select({ v: racePlans.bikePace }).from(racePlans).where(eq(racePlans.id, id)).limit(1))[0]?.v;
-    const runPace = b.runPace ?? (await db.select({ v: racePlans.runPace }).from(racePlans).where(eq(racePlans.id, id)).limit(1))[0]?.v;
+    const [currentPlan] = await db.select().from(racePlans).where(eq(racePlans.id, id)).limit(1);
+    const dist = getRaceDistances(currentPlan?.raceType ?? "full", currentPlan);
+    const swimPace = b.swimPace ?? currentPlan?.swimPace;
+    const bikePace = b.bikePace ?? currentPlan?.bikePace;
+    const runPace = b.runPace ?? currentPlan?.runPace;
 
-    const swimTime = computeSegmentTime(SWIM_DISTANCE, swimPace, "per100m");
-    const bikeTime = computeSegmentTime(BIKE_DISTANCE, bikePace, "perKm");
-    const runTime = computeSegmentTime(RUN_DISTANCE, runPace, "perKm");
+    const swimTime = computeSegmentTime(dist.swim, swimPace, "per100m");
+    const bikeTime = computeSegmentTime(dist.bike, bikePace, "perKm");
+    const runTime = computeSegmentTime(dist.run, runPace, "perKm");
     const t1 = b.t1Target ?? 120;
     const t2 = b.t2Target ?? 90;
 
@@ -280,7 +282,7 @@ export async function getRaceTimeline(req: Request, res: Response) {
       distance: dist.bike,
       startSec: clock,
       durationSec: bikeSec,
-      pace: plan.bikePower ? `${plan.bikePower}W` : plan.bikePace ? `${Math.round(BIKE_DISTANCE / 1000 / (bikeSec / 3600))} km/t` : null,
+      pace: plan.bikePower ? `${plan.bikePower}W` : plan.bikePace && bikeSec > 0 ? `${Math.round(dist.bike / 1000 / (bikeSec / 3600))} km/t` : null,
     });
     clock += bikeSec;
 

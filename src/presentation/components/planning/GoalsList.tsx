@@ -7,6 +7,7 @@ interface GoalsListProps {
   isLoading: boolean;
   onDelete: (id: string) => void;
   onCreate: (goal: Partial<Goal>) => void;
+  onUpdate: (goal: { id: string } & Partial<Goal>) => void;
 }
 
 function formatDate(dateStr: string | null): string {
@@ -44,36 +45,93 @@ export default function GoalsList({
   isLoading,
   onDelete,
   onCreate,
+  onUpdate,
 }: GoalsListProps) {
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const emptyForm = {
     title: "",
     goalType: "race" as Goal["goalType"],
     sport: "",
     targetDate: "",
     racePriority: "" as string,
+    raceDistance: "",
+    swimTargetTime: "",
+    bikeTargetTime: "",
+    runTargetTime: "",
+    t1TargetTime: "",
+    t2TargetTime: "",
     notes: "",
-  });
+  };
+  const [formData, setFormData] = useState(emptyForm);
+
+  /** Convert seconds → HH:MM:SS string for display */
+  function secsToHms(secs: number | null): string {
+    if (secs == null || secs <= 0) return "";
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = secs % 60;
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  }
+
+  /** Convert HH:MM:SS or MM:SS string → seconds */
+  function hmsToSecs(str: string): number | null {
+    const trimmed = str.trim();
+    if (!trimmed) return null;
+    const parts = trimmed.split(":").map(Number);
+    if (parts.some(isNaN)) return null;
+    if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+    if (parts.length === 2) return parts[0] * 60 + parts[1];
+    return null;
+  }
+
+  function resetForm() {
+    setFormData(emptyForm);
+    setEditingId(null);
+    setShowForm(false);
+  }
+
+  function startEdit(goal: Goal) {
+    setFormData({
+      title: goal.title,
+      goalType: goal.goalType,
+      sport: goal.sport ?? "",
+      targetDate: goal.targetDate ? goal.targetDate.split("T")[0] : "",
+      racePriority: goal.racePriority ?? "",
+      raceDistance: goal.raceDistance != null ? String(goal.raceDistance) : "",
+      swimTargetTime: secsToHms(goal.swimTargetTime),
+      bikeTargetTime: secsToHms(goal.bikeTargetTime),
+      runTargetTime: secsToHms(goal.runTargetTime),
+      t1TargetTime: secsToHms(goal.t1TargetTime),
+      t2TargetTime: secsToHms(goal.t2TargetTime),
+      notes: goal.notes ?? "",
+    });
+    setEditingId(goal.id);
+    setShowForm(true);
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    onCreate({
+    const payload = {
       title: formData.title,
       goalType: formData.goalType,
       sport: formData.sport || null,
       targetDate: formData.targetDate || null,
       racePriority: (formData.racePriority || null) as Goal["racePriority"],
+      raceDistance: formData.raceDistance ? Number(formData.raceDistance) : null,
+      swimTargetTime: hmsToSecs(formData.swimTargetTime),
+      bikeTargetTime: hmsToSecs(formData.bikeTargetTime),
+      runTargetTime: hmsToSecs(formData.runTargetTime),
+      t1TargetTime: hmsToSecs(formData.t1TargetTime),
+      t2TargetTime: hmsToSecs(formData.t2TargetTime),
       notes: formData.notes || null,
-    });
-    setFormData({
-      title: "",
-      goalType: "race",
-      sport: "",
-      targetDate: "",
-      racePriority: "",
-      notes: "",
-    });
-    setShowForm(false);
+    };
+    if (editingId) {
+      onUpdate({ id: editingId, ...payload });
+    } else {
+      onCreate(payload);
+    }
+    resetForm();
   }
 
   if (isLoading) {
@@ -100,7 +158,7 @@ export default function GoalsList({
         <h3 className="text-sm font-semibold text-foreground">Delmaal & Events</h3>
         <button
           type="button"
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => { if (showForm) resetForm(); else setShowForm(true); }}
           className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90"
         >
           {showForm ? "Annuller" : "+ Tilfoej maal"}
@@ -165,12 +223,76 @@ export default function GoalsList({
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               className="rounded border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             />
+            <input
+              type="number"
+              placeholder="Distance (meter)"
+              value={formData.raceDistance}
+              onChange={(e) => setFormData({ ...formData, raceDistance: e.target.value })}
+              className="rounded border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+          </div>
+
+          {/* Discipline target times */}
+          <div>
+            <p className="mb-2 text-xs font-medium text-muted-foreground">Maaltider pr. disciplin (HH:MM:SS)</p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+              <div>
+                <label className="mb-1 block text-[10px] uppercase tracking-wide text-muted-foreground">Svoemning</label>
+                <input
+                  type="text"
+                  placeholder="00:30:00"
+                  value={formData.swimTargetTime}
+                  onChange={(e) => setFormData({ ...formData, swimTargetTime: e.target.value })}
+                  className="w-full rounded border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-[10px] uppercase tracking-wide text-muted-foreground">T1</label>
+                <input
+                  type="text"
+                  placeholder="00:02:00"
+                  value={formData.t1TargetTime}
+                  onChange={(e) => setFormData({ ...formData, t1TargetTime: e.target.value })}
+                  className="w-full rounded border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-[10px] uppercase tracking-wide text-muted-foreground">Cykel</label>
+                <input
+                  type="text"
+                  placeholder="02:30:00"
+                  value={formData.bikeTargetTime}
+                  onChange={(e) => setFormData({ ...formData, bikeTargetTime: e.target.value })}
+                  className="w-full rounded border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-[10px] uppercase tracking-wide text-muted-foreground">T2</label>
+                <input
+                  type="text"
+                  placeholder="00:02:00"
+                  value={formData.t2TargetTime}
+                  onChange={(e) => setFormData({ ...formData, t2TargetTime: e.target.value })}
+                  className="w-full rounded border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-[10px] uppercase tracking-wide text-muted-foreground">Loeb</label>
+                <input
+                  type="text"
+                  placeholder="01:45:00"
+                  value={formData.runTargetTime}
+                  onChange={(e) => setFormData({ ...formData, runTargetTime: e.target.value })}
+                  className="w-full rounded border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+              </div>
+            </div>
           </div>
           <button
             type="submit"
             className="rounded bg-primary px-4 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90"
           >
-            Opret maal
+            {editingId ? "Gem aendringer" : "Opret maal"}
           </button>
         </form>
       )}
@@ -213,6 +335,17 @@ export default function GoalsList({
                     {daysBetween(goal.targetDate)}d
                   </span>
                 )}
+                <button
+                  type="button"
+                  onClick={() => startEdit(goal)}
+                  className="rounded p-1 text-muted-foreground hover:bg-primary/20 hover:text-primary"
+                  title="Rediger maal"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                    <path d="m15 5 4 4" />
+                  </svg>
+                </button>
                 <button
                   type="button"
                   onClick={() => onDelete(goal.id)}

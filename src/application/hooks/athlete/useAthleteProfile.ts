@@ -17,10 +17,11 @@ export interface AthleteProfileData {
   ftp: number | null;
   lthr: number | null;
   swimCss: number | null;
-  runThresholdPace: number | null;
+  runThresholdPace: string | null;  // M:SS format, e.g. "4:15"
   trainingPhilosophy: string | null;
   weeklyVolumeMin: number | null;
   weeklyVolumeMax: number | null;
+  cycleType: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -41,10 +42,11 @@ export interface ProfileUpdatePayload {
   height?: number | null;
   gender?: string | null;
   dateOfBirth?: string | null;
-  runThresholdPace?: number | null;
+  runThresholdPace?: string | null;
   trainingPhilosophy?: string | null;
   weeklyVolumeMin?: number | null;
   weeklyVolumeMax?: number | null;
+  cycleType?: string | null;
 }
 
 // ── Hooks ──────────────────────────────────────────────────────────────

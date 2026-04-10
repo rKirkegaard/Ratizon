@@ -1,16 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/application/api/client";
-import type { Equipment } from "@/domain/types/equipment.types";
+import type {
+  Equipment,
+  EquipmentStats,
+  EquipmentMonthlyUsage,
+  EquipmentSessionRow,
+  EquipmentNotificationPrefs,
+} from "@/domain/types/equipment.types";
 
-// ── Response types ─────────────────────────────────────────────────────
-
-interface EquipmentListResponse {
-  data: Equipment[];
-}
-
-interface EquipmentResponse {
-  data: Equipment;
-}
+// ── Create/Update payloads ────────────────────────────────────────────
 
 export interface EquipmentCreatePayload {
   name: string;
@@ -20,55 +18,106 @@ export interface EquipmentCreatePayload {
   purchaseDate?: string;
   maxDistanceKm?: number | null;
   maxDurationHours?: number | null;
+  isDefaultFor?: string | null;
+  initialKm?: number;
   notes?: string;
 }
 
 export type EquipmentUpdatePayload = Partial<Equipment>;
 
-// ── Hooks ──────────────────────────────────────────────────────────────
+// ── List / CRUD hooks ─────────────────────────────────────────────────
 
 export function useEquipment(athleteId: string | null) {
-  return useQuery<EquipmentListResponse>({
+  return useQuery<Equipment[]>({
     queryKey: ["equipment", athleteId],
-    queryFn: () =>
-      apiClient.get<EquipmentListResponse>(`/equipment/${athleteId}`),
+    queryFn: () => apiClient.get<Equipment[]>(`/equipment/${athleteId}`),
     enabled: !!athleteId,
     staleTime: 60 * 1000,
   });
 }
 
-export function useCreateEquipment(athleteId: string | null) {
-  const queryClient = useQueryClient();
+export function useEquipmentStats(athleteId: string | null, equipmentId: string | null) {
+  return useQuery<EquipmentStats>({
+    queryKey: ["equipment-stats", athleteId, equipmentId],
+    queryFn: () => apiClient.get<EquipmentStats>(`/equipment/${athleteId}/${equipmentId}/stats`),
+    enabled: !!athleteId && !!equipmentId,
+    staleTime: 60 * 1000,
+  });
+}
 
-  return useMutation<EquipmentResponse, Error, EquipmentCreatePayload>({
-    mutationFn: (body) =>
-      apiClient.post<EquipmentResponse>(`/equipment/${athleteId}`, body),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["equipment", athleteId] });
-    },
+export function useEquipmentMonthlyUsage(athleteId: string | null, equipmentId: string | null) {
+  return useQuery<EquipmentMonthlyUsage[]>({
+    queryKey: ["equipment-monthly", athleteId, equipmentId],
+    queryFn: () => apiClient.get<EquipmentMonthlyUsage[]>(`/equipment/${athleteId}/${equipmentId}/monthly-usage`),
+    enabled: !!athleteId && !!equipmentId,
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+export function useEquipmentSessions(athleteId: string | null, equipmentId: string | null, page = 1) {
+  return useQuery<{ data: EquipmentSessionRow[]; total: number; page: number; limit: number }>({
+    queryKey: ["equipment-sessions", athleteId, equipmentId, page],
+    queryFn: () => apiClient.get(`/equipment/${athleteId}/${equipmentId}/sessions?page=${page}&limit=20`),
+    enabled: !!athleteId && !!equipmentId,
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useCreateEquipment(athleteId: string | null) {
+  const qc = useQueryClient();
+  return useMutation<Equipment, Error, EquipmentCreatePayload>({
+    mutationFn: (body) => apiClient.post<Equipment>(`/equipment/${athleteId}`, body),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["equipment"] }); },
   });
 }
 
 export function useUpdateEquipment(athleteId: string | null) {
-  const queryClient = useQueryClient();
-
-  return useMutation<EquipmentResponse, Error, { id: string } & EquipmentUpdatePayload>({
-    mutationFn: ({ id, ...body }) =>
-      apiClient.put<EquipmentResponse>(`/equipment/${athleteId}/${id}`, body),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["equipment", athleteId] });
-    },
+  const qc = useQueryClient();
+  return useMutation<Equipment, Error, { id: string } & EquipmentUpdatePayload>({
+    mutationFn: ({ id, ...body }) => apiClient.put<Equipment>(`/equipment/${athleteId}/${id}`, body),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["equipment"] }); },
   });
 }
 
 export function useDeleteEquipment(athleteId: string | null) {
-  const queryClient = useQueryClient();
-
+  const qc = useQueryClient();
   return useMutation<void, Error, string>({
-    mutationFn: (equipmentId) =>
-      apiClient.delete(`/equipment/${athleteId}/${equipmentId}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["equipment", athleteId] });
-    },
+    mutationFn: (equipmentId) => apiClient.delete(`/equipment/${athleteId}/${equipmentId}`),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["equipment"] }); },
+  });
+}
+
+export function useArchiveEquipment(athleteId: string | null) {
+  const qc = useQueryClient();
+  return useMutation<Equipment, Error, string>({
+    mutationFn: (equipmentId) => apiClient.put<Equipment>(`/equipment/${athleteId}/${equipmentId}/archive`),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["equipment"] }); },
+  });
+}
+
+export function useRestoreEquipment(athleteId: string | null) {
+  const qc = useQueryClient();
+  return useMutation<Equipment, Error, string>({
+    mutationFn: (equipmentId) => apiClient.put<Equipment>(`/equipment/${athleteId}/${equipmentId}/restore`),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["equipment"] }); },
+  });
+}
+
+// ── Notification prefs ────────────────────────────────────────────────
+
+export function useNotificationPrefs(athleteId: string | null, equipmentId: string | null) {
+  return useQuery<EquipmentNotificationPrefs>({
+    queryKey: ["equipment-notif-prefs", athleteId, equipmentId],
+    queryFn: () => apiClient.get<EquipmentNotificationPrefs>(`/equipment/${athleteId}/${equipmentId}/notifications`),
+    enabled: !!athleteId && !!equipmentId,
+  });
+}
+
+export function useUpsertNotificationPrefs(athleteId: string | null, equipmentId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Partial<EquipmentNotificationPrefs>) =>
+      apiClient.put(`/equipment/${athleteId}/${equipmentId}/notifications`, body),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["equipment-notif-prefs"] }); },
   });
 }

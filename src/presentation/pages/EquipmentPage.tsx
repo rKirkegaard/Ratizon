@@ -1,51 +1,58 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { Wrench, Plus } from "lucide-react";
 import { useAthleteStore } from "@/application/stores/athleteStore";
-import {
-  useEquipment,
-  useCreateEquipment,
-  useDeleteEquipment,
-} from "@/application/hooks/equipment/useEquipment";
-import EquipmentList from "@/presentation/components/equipment/EquipmentList";
-import EquipmentForm from "@/presentation/components/equipment/EquipmentForm";
+import { useEquipment } from "@/application/hooks/equipment/useEquipment";
+import { SPORT_CATEGORIES } from "@/domain/constants/equipmentCategories";
+import EquipmentCard from "@/presentation/components/equipment/EquipmentCard";
+import EquipmentModal from "@/presentation/components/equipment/EquipmentModal";
 import type { Equipment } from "@/domain/types/equipment.types";
 
-const TYPE_LABELS: Record<string, string> = {
-  shoes: "Sko",
-  bike: "Cykel",
-  wetsuit: "Vaadragt",
-  watch: "Ur",
-  other: "Andet",
-};
+type Tab = "alle" | "cykel" | "loeb" | "svoem" | "arkiveret";
 
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return "–";
-  return new Date(dateStr).toLocaleDateString("da-DK", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-}
+const TABS: { key: Tab; label: string }[] = [
+  { key: "alle", label: "Alle" },
+  { key: "cykel", label: "Cykel" },
+  { key: "loeb", label: "Loeb" },
+  { key: "svoem", label: "Svoem" },
+  { key: "arkiveret", label: "Arkiveret" },
+];
 
 export default function EquipmentPage() {
   const athleteId = useAthleteStore((s) => s.selectedAthleteId);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-
+  const navigate = useNavigate();
   const { data: equipmentData, isLoading } = useEquipment(athleteId);
-  const createMutation = useCreateEquipment(athleteId);
-  const deleteMutation = useDeleteEquipment(athleteId);
+  const [activeTab, setActiveTab] = useState<Tab>("alle");
+  const [modalOpen, setModalOpen] = useState(false);
 
-  const items = equipmentData?.data ?? [];
-  const selectedItem = items.find((i) => i.id === selectedId) ?? null;
+  const items: Equipment[] = useMemo(() => {
+    const raw = equipmentData?.data ?? (Array.isArray(equipmentData) ? equipmentData : []) as Equipment[];
+    return raw;
+  }, [equipmentData]);
 
-  // No athlete selected
+  const filtered = useMemo(() => {
+    if (activeTab === "arkiveret") return items.filter((i) => i.retired);
+    const active = items.filter((i) => !i.retired);
+    if (activeTab === "alle") return active;
+    const sportCats = activeTab === "cykel" ? SPORT_CATEGORIES.bike : activeTab === "loeb" ? SPORT_CATEGORIES.run : SPORT_CATEGORIES.swim;
+    return active.filter((i) => sportCats?.includes(i.equipmentType));
+  }, [items, activeTab]);
+
+  // Sort: defaults first, then by session count desc
+  const sorted = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      if (a.isDefaultFor && !b.isDefaultFor) return -1;
+      if (!a.isDefaultFor && b.isDefaultFor) return 1;
+      return (b.sessionCount ?? 0) - (a.sessionCount ?? 0);
+    });
+  }, [filtered]);
+
   if (!athleteId) {
     return (
       <div data-testid="equipment-page" className="p-4 md:p-6">
         <h1 className="mb-4 text-2xl font-bold text-foreground">Udstyr</h1>
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-16">
-          <p className="text-sm text-muted-foreground">
-            Vaelg en atlet for at se udstyr.
-          </p>
+          <p className="text-sm text-muted-foreground">Vaelg en atlet for at se udstyr.</p>
         </div>
       </div>
     );
@@ -53,173 +60,52 @@ export default function EquipmentPage() {
 
   return (
     <div data-testid="equipment-page" className="space-y-6 p-4 md:p-6">
-      <h1 className="text-2xl font-bold text-foreground">Udstyr</h1>
-
-      {/* Equipment list */}
-      <EquipmentList
-        items={items}
-        isLoading={isLoading}
-        onSelect={(id) => setSelectedId(id === selectedId ? null : id)}
-        onDelete={(id) => {
-          deleteMutation.mutate(id);
-          if (selectedId === id) setSelectedId(null);
-        }}
-      />
-
-      {/* Selected equipment detail */}
-      {selectedItem && (
-        <EquipmentDetail
-          item={selectedItem}
-          onClose={() => setSelectedId(null)}
-        />
-      )}
-
-      {/* Add equipment form */}
-      <EquipmentForm
-        onSubmit={(payload) => createMutation.mutate(payload)}
-        isSubmitting={createMutation.isPending}
-      />
-    </div>
-  );
-}
-
-function EquipmentDetail({
-  item,
-  onClose,
-}: {
-  item: Equipment;
-  onClose: () => void;
-}) {
-  const distancePct =
-    item.maxDistanceKm && item.maxDistanceKm > 0
-      ? Math.min(100, Math.round((item.currentDistanceKm / item.maxDistanceKm) * 100))
-      : null;
-  const durationPct =
-    item.maxDurationHours && item.maxDurationHours > 0
-      ? Math.min(
-          100,
-          Math.round((item.currentDurationHours / item.maxDurationHours) * 100)
-        )
-      : null;
-
-  return (
-    <div
-      data-testid="equipment-detail"
-      className="rounded-lg border border-border bg-card p-4"
-    >
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-foreground">{item.name}</h3>
-        <button
-          type="button"
-          onClick={onClose}
-          className="text-xs text-muted-foreground hover:text-foreground"
-        >
-          Luk
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Wrench className="h-6 w-6 text-muted-foreground" />
+          <h1 className="text-2xl font-bold text-foreground">Udstyr</h1>
+          <span className="text-sm text-muted-foreground">({items.filter((i) => !i.retired).length} aktive)</span>
+        </div>
+        <button onClick={() => setModalOpen(true)} className="flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+          <Plus className="h-4 w-4" /> Nyt udstyr
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <div>
-          <p className="text-xs text-muted-foreground">Type</p>
-          <p className="text-sm font-medium text-foreground">
-            {TYPE_LABELS[item.equipmentType] ?? item.equipmentType}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs text-muted-foreground">Maerke / Model</p>
-          <p className="text-sm font-medium text-foreground">
-            {[item.brand, item.model].filter(Boolean).join(" ") || "–"}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs text-muted-foreground">Koebt</p>
-          <p className="text-sm font-medium text-foreground">
-            {formatDate(item.purchaseDate)}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs text-muted-foreground">Status</p>
-          <p
-            className={`text-sm font-medium ${
-              item.retired ? "text-muted-foreground" : "text-green-400"
-            }`}
+      {/* Tabs */}
+      <div className="flex gap-1 border-b border-border">
+        {TABS.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`px-4 py-2 text-sm font-medium transition-colors ${activeTab === tab.key ? "border-b-2 border-primary text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
-            {item.retired ? "Pensioneret" : "Aktiv"}
-          </p>
-        </div>
+            {tab.label}
+          </button>
+        ))}
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
-        <div>
-          <p className="text-xs text-muted-foreground">Total afstand</p>
-          <p className="text-lg font-bold tabular-nums text-foreground">
-            {Math.round(item.currentDistanceKm)} km
-          </p>
-          {distancePct !== null && (
-            <div className="mt-1">
-              <div className="flex justify-between text-[10px] text-muted-foreground">
-                <span>
-                  af {item.maxDistanceKm} km
-                </span>
-                <span>{distancePct}%</span>
-              </div>
-              <div className="mt-0.5 h-2 overflow-hidden rounded-full bg-muted">
-                <div
-                  className={`h-full rounded-full ${
-                    distancePct >= 90
-                      ? "bg-red-500"
-                      : distancePct >= 70
-                        ? "bg-yellow-500"
-                        : "bg-green-500"
-                  }`}
-                  style={{ width: `${distancePct}%` }}
-                />
-              </div>
-            </div>
-          )}
+      {/* Equipment grid */}
+      {isLoading ? (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => <div key={i} className="h-32 animate-pulse rounded-lg bg-muted" />)}
         </div>
-        <div>
-          <p className="text-xs text-muted-foreground">Total varighed</p>
-          <p className="text-lg font-bold tabular-nums text-foreground">
-            {item.currentDurationHours.toFixed(1)} timer
-          </p>
-          {durationPct !== null && (
-            <div className="mt-1">
-              <div className="flex justify-between text-[10px] text-muted-foreground">
-                <span>
-                  af {item.maxDurationHours} timer
-                </span>
-                <span>{durationPct}%</span>
-              </div>
-              <div className="mt-0.5 h-2 overflow-hidden rounded-full bg-muted">
-                <div
-                  className={`h-full rounded-full ${
-                    durationPct >= 90
-                      ? "bg-red-500"
-                      : durationPct >= 70
-                        ? "bg-yellow-500"
-                        : "bg-green-500"
-                  }`}
-                  style={{ width: `${durationPct}%` }}
-                />
-              </div>
-            </div>
-          )}
-        </div>
-        <div>
-          <p className="text-xs text-muted-foreground">Sessioner</p>
-          <p className="text-lg font-bold tabular-nums text-foreground">
-            {item.sessionCount}
+      ) : sorted.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-16">
+          <p className="text-sm text-muted-foreground">
+            {activeTab === "arkiveret" ? "Intet arkiveret udstyr." : "Intet udstyr fundet. Opret nyt udstyr ovenfor."}
           </p>
         </div>
-      </div>
-
-      {item.notes && (
-        <div className="mt-4">
-          <p className="text-xs text-muted-foreground">Noter</p>
-          <p className="text-sm text-foreground">{item.notes}</p>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {sorted.map((item) => (
+            <EquipmentCard key={item.id} item={item} onClick={() => navigate(`/udstyr/${item.id}`)} />
+          ))}
         </div>
       )}
+
+      {/* Create modal */}
+      <EquipmentModal open={modalOpen} onClose={() => setModalOpen(false)} athleteId={athleteId} />
     </div>
   );
 }

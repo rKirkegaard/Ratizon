@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAthleteStore } from "@/application/stores/athleteStore";
+import SessionEquipmentSection from "@/presentation/components/equipment/SessionEquipmentSection";
 import { useSessionDetail, useSessionTimeSeries } from "@/application/hooks/training/useSessions";
 import { useAthleteProfile } from "@/application/hooks/athlete/useAthleteProfile";
 import { SportIcon } from "@/presentation/components/shared/SportIcon";
@@ -438,6 +439,25 @@ export default function SessionAnalysisPage({ sessionIdProp }: { sessionIdProp?:
             <span className="ml-auto">{lapAnalysis.consistency >= 90 ? "Konsistens ≥90% = godt jævnt arbejde" : "Konsistens <90% = godt interval-arbejde"}</span>
           </div>
         </div>
+      )}
+
+      {/* Session Equipment */}
+      {athleteId && session.id && (
+        <SessionEquipmentSection
+          sessionId={session.id}
+          athleteId={athleteId}
+          sport={session.sport}
+          totalDistanceM={session.distanceMeters}
+          totalDurationMin={session.durationSeconds ? session.durationSeconds / 60 : undefined}
+          laps={laps.map((l: any, i: number) => ({
+            lapIndex: i + 1,
+            distanceM: l.distanceMeters ?? null,
+            durationSec: l.durationSeconds ?? 0,
+            lapType: l.lapType ?? null,
+            avgPowerW: l.avgPower ?? null,
+            avgHr: l.avgHr ?? null,
+          }))}
+        />
       )}
     </div>
   );

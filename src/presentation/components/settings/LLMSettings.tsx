@@ -7,6 +7,10 @@ import {
   useLLMModels,
 } from "@/application/hooks/llm/useLLMSettings";
 import { Brain, Loader2, AlertCircle } from "lucide-react";
+import {
+  BarChart, Bar, PieChart, Pie, Cell,
+  XAxis, YAxis, Tooltip, ResponsiveContainer,
+} from "recharts";
 
 interface LLMSettingsProps {
   athleteId: string | null;
@@ -107,20 +111,9 @@ export default function LLMSettingsComponent({ athleteId }: LLMSettingsProps) {
         </div>
       </div>
 
-      {/* Budget */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <label className="text-xs text-muted-foreground">Maanedligt budget</label>
-          <button
-            onClick={() => {
-              setEditBudget(prefs?.monthlyBudgetCents ? String(prefs.monthlyBudgetCents / 100) : "");
-              setShowBudgetEdit(!showBudgetEdit);
-            }}
-            className="text-xs text-primary hover:underline"
-          >
-            {showBudgetEdit ? "Luk" : "Rediger"}
-          </button>
-        </div>
+      {/* Budget with preset buttons */}
+      <div className="space-y-3">
+        <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Maanedligt budget</label>
         <p className="text-sm text-foreground">
           {prefs?.monthlyBudgetCents
             ? formatCents(prefs.monthlyBudgetCents)
@@ -128,26 +121,52 @@ export default function LLMSettingsComponent({ athleteId }: LLMSettingsProps) {
               ? `${formatCents(systemSettings.globalMonthlyBudgetCents)} (system)`
               : "Ingen graense"}
         </p>
-        {showBudgetEdit && (
-          <div className="flex gap-2">
-            <input
-              placeholder="USD pr. maaned (f.eks. 5.00)"
-              value={editBudget}
-              onChange={(e) => setEditBudget(e.target.value)}
-              className="flex-1 rounded-md border border-border bg-muted/30 px-3 py-1.5 text-sm text-foreground"
-            />
+        {/* Preset buttons */}
+        <div className="flex flex-wrap gap-2">
+          {[100, 500, 1000, 2500, 5000].map((cents) => (
             <button
-              onClick={() => {
-                const cents = editBudget ? Math.round(parseFloat(editBudget) * 100) : null;
-                updatePrefs.mutate({ monthlyBudgetCents: cents });
-                setShowBudgetEdit(false);
-              }}
-              className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground"
+              key={cents}
+              onClick={() => updatePrefs.mutate({ monthlyBudgetCents: cents })}
+              className={`rounded-md border px-3 py-1 text-xs transition-colors ${
+                prefs?.monthlyBudgetCents === cents
+                  ? "border-primary bg-primary/20 text-primary"
+                  : "border-border text-muted-foreground hover:text-foreground hover:bg-accent"
+              }`}
             >
-              Gem
+              {formatCents(cents)}
             </button>
-          </div>
-        )}
+          ))}
+          <button
+            onClick={() => updatePrefs.mutate({ monthlyBudgetCents: null })}
+            className={`rounded-md border px-3 py-1 text-xs transition-colors ${
+              prefs?.monthlyBudgetCents == null
+                ? "border-primary bg-primary/20 text-primary"
+                : "border-border text-muted-foreground hover:text-foreground hover:bg-accent"
+            }`}
+          >
+            Ubegrænset
+          </button>
+        </div>
+        {/* Custom input */}
+        <div className="flex gap-2 max-w-xs">
+          <input
+            placeholder="Brugerdefineret ($)"
+            value={editBudget}
+            onChange={(e) => setEditBudget(e.target.value)}
+            className="flex-1 rounded-md border border-border bg-muted/30 px-3 py-1.5 text-sm text-foreground"
+          />
+          <button
+            onClick={() => {
+              const cents = editBudget ? Math.round(parseFloat(editBudget) * 100) : null;
+              if (cents != null) updatePrefs.mutate({ monthlyBudgetCents: cents });
+              setEditBudget("");
+            }}
+            disabled={!editBudget}
+            className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-50"
+          >
+            Saet
+          </button>
+        </div>
       </div>
 
       {/* Usage stats */}
@@ -198,7 +217,50 @@ export default function LLMSettingsComponent({ athleteId }: LLMSettingsProps) {
             </div>
           )}
 
-          {/* By provider */}
+          {/* Charts */}
+          {usage.byProvider.length > 0 && (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              {/* Provider cost bar chart */}
+              <div>
+                <h5 className="mb-2 text-xs font-medium text-muted-foreground">Omkostning pr. provider</h5>
+                <div className="h-40">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={usage.byProvider.map((p) => ({ name: p.provider, cost: p.costCents / 100, requests: p.requests }))}>
+                      <XAxis dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v}`} />
+                      <Tooltip cursor={false} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, color: "hsl(var(--foreground))" }} formatter={(v: number) => [`$${v.toFixed(2)}`, "Omkostning"]} />
+                      <Bar dataKey="cost" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+              {/* Provider distribution pie */}
+              <div>
+                <h5 className="mb-2 text-xs font-medium text-muted-foreground">Anmodninger pr. provider</h5>
+                <div className="h-40 flex items-center justify-center">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={usage.byProvider.map((p) => ({ name: p.provider, value: p.requests }))}
+                        cx="50%" cy="50%"
+                        innerRadius={30} outerRadius={55}
+                        dataKey="value"
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        labelLine={false}
+                      >
+                        {usage.byProvider.map((_, i) => (
+                          <Cell key={i} fill={["#3b82f6", "#8b5cf6", "#10b981"][i % 3]} />
+                        ))}
+                      </Pie>
+                      <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, color: "hsl(var(--foreground))" }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Text breakdown */}
           {usage.byProvider.length > 0 && (
             <div className="text-xs text-muted-foreground space-y-1">
               {usage.byProvider.map((p) => (

@@ -71,6 +71,7 @@ export async function createPlannedSession(req: Request, res: Response) {
         targetDistanceMeters: body.target_distance_meters ?? null,
         targetTss: body.target_tss ?? null,
         targetZones: body.target_zones ?? null,
+        sessionBlocks: body.session_blocks ?? null,
         aiGenerated: body.ai_generated ?? false,
       })
       .returning();
@@ -108,6 +109,7 @@ export async function updatePlannedSession(req: Request, res: Response) {
     if (body.target_distance_meters !== undefined) updateData.targetDistanceMeters = body.target_distance_meters;
     if (body.target_tss !== undefined) updateData.targetTss = body.target_tss;
     if (body.target_zones !== undefined) updateData.targetZones = body.target_zones;
+    if (body.session_blocks !== undefined) updateData.sessionBlocks = body.session_blocks;
 
     const [updated] = await db
       .update(plannedSessions)
@@ -246,6 +248,11 @@ export async function createGoal(req: Request, res: Response) {
         targetDate: body.targetDate ? new Date(body.targetDate) : null,
         raceDistance: body.raceDistance ?? null,
         raceTargetTime: body.raceTargetTime ?? null,
+        swimTargetTime: body.swimTargetTime ?? null,
+        bikeTargetTime: body.bikeTargetTime ?? null,
+        runTargetTime: body.runTargetTime ?? null,
+        t1TargetTime: body.t1TargetTime ?? null,
+        t2TargetTime: body.t2TargetTime ?? null,
         racePriority: body.racePriority ?? null,
         status: body.status ?? "active",
         notes: body.notes ?? null,
@@ -278,6 +285,11 @@ export async function updateGoal(req: Request, res: Response) {
       updateData.targetDate = body.targetDate ? new Date(body.targetDate) : null;
     if (body.raceDistance !== undefined) updateData.raceDistance = body.raceDistance;
     if (body.raceTargetTime !== undefined) updateData.raceTargetTime = body.raceTargetTime;
+    if (body.swimTargetTime !== undefined) updateData.swimTargetTime = body.swimTargetTime;
+    if (body.bikeTargetTime !== undefined) updateData.bikeTargetTime = body.bikeTargetTime;
+    if (body.runTargetTime !== undefined) updateData.runTargetTime = body.runTargetTime;
+    if (body.t1TargetTime !== undefined) updateData.t1TargetTime = body.t1TargetTime;
+    if (body.t2TargetTime !== undefined) updateData.t2TargetTime = body.t2TargetTime;
     if (body.racePriority !== undefined) updateData.racePriority = body.racePriority;
     if (body.status !== undefined) updateData.status = body.status;
     if (body.notes !== undefined) updateData.notes = body.notes;

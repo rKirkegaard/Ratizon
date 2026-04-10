@@ -69,9 +69,22 @@ export interface PlannedSession {
   targetDistanceMeters: number | null;
   targetTss: number | null;
   targetZones: TargetZones | null;
+  sessionBlocks: SessionBlock[] | null;
   aiGenerated: boolean;
   completedSessionId: string | null;
   createdAt: string;
+}
+
+export interface SessionBlock {
+  id: string;
+  type: string;
+  durationSeconds: number;
+  repeatCount?: number;
+  targetHrZone?: number;
+  targetPace?: string;
+  restPace?: string;
+  restSeconds?: number;
+  description?: string;
 }
 
 export interface TargetZones {

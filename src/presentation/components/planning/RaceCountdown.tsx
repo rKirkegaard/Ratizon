@@ -55,7 +55,7 @@ export default function RaceCountdown({ goal, isLoading }: RaceCountdownProps) {
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Hovedmaal
+            {goal.racePriority === "A" ? "HOVEDMAAL" : "NAESTE DELMAAL"}
           </p>
           <h2 className="mt-1 text-xl font-bold text-foreground">{goal.title}</h2>
           <p className="mt-1 text-sm text-muted-foreground">

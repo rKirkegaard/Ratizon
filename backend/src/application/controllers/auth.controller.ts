@@ -498,3 +498,48 @@ export async function devLogin(req: Request, res: Response) {
     res.status(500).json({ error: error.message });
   }
 }
+
+// ── PUT /api/auth/change-password ─────────────────────────────────────
+
+export async function changePassword(req: Request, res: Response) {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) { res.status(401).json({ error: "Ikke autentificeret", code: "NOT_AUTHENTICATED" }); return; }
+
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      res.status(400).json({ error: "Alle felter er paakraevede", code: "MISSING_FIELDS" }); return;
+    }
+    if (newPassword !== confirmPassword) {
+      res.status(400).json({ error: "De to passwords er ikke ens", code: "PASSWORDS_DO_NOT_MATCH" }); return;
+    }
+    if (newPassword.length < 8) {
+      res.status(400).json({ error: "Password skal vaere mindst 8 tegn", code: "PASSWORD_REQUIREMENTS_NOT_MET" }); return;
+    }
+    if (!/[0-9]/.test(newPassword)) {
+      res.status(400).json({ error: "Password skal indeholde mindst ét tal", code: "PASSWORD_REQUIREMENTS_NOT_MET" }); return;
+    }
+    if (!/[A-Z]/.test(newPassword)) {
+      res.status(400).json({ error: "Password skal indeholde mindst ét stort bogstav", code: "PASSWORD_REQUIREMENTS_NOT_MET" }); return;
+    }
+
+    const [user] = await db.select({ id: users.id, passwordHash: users.passwordHash }).from(users).where(eq(users.id, userId as string)).limit(1);
+    if (!user) { res.status(404).json({ error: "Bruger ikke fundet", code: "NOT_FOUND" }); return; }
+
+    const validCurrent = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!validCurrent) {
+      res.status(400).json({ error: "Det nuvaerende password er forkert", code: "INVALID_CURRENT_PASSWORD" }); return;
+    }
+
+    if (currentPassword === newPassword) {
+      res.status(400).json({ error: "Det nye password maa ikke vaere det samme som det nuvaerende", code: "SAME_AS_CURRENT" }); return;
+    }
+
+    const newHash = await bcrypt.hash(newPassword, 12);
+    await db.update(users).set({ passwordHash: newHash, updatedAt: new Date() }).where(eq(users.id, userId as string));
+
+    res.status(204).send();
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+}

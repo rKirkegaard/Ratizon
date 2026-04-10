@@ -3,6 +3,7 @@ import {
   useGoals,
   useCreateGoal,
   useDeleteGoal,
+  useUpdateGoal,
   usePhases,
   useCreatePhase,
 } from "@/application/hooks/planning/usePlanning";
@@ -24,11 +25,12 @@ export default function SeasonGoalsPage() {
   const { data: phasesData, isLoading: phasesLoading } = usePhases(athleteId);
   const createGoalMutation = useCreateGoal(athleteId);
   const deleteGoalMutation = useDeleteGoal(athleteId);
+  const updateGoalMutation = useUpdateGoal(athleteId);
   const createPhaseMutation = useCreatePhase(athleteId);
   const { data: mesocycleData, isLoading: mesocycleLoading } = useMesocycle(athleteId);
 
-  const goals = goalsData?.data ?? [];
-  const phases = phasesData?.data ?? [];
+  const goals = (goalsData?.data ?? (Array.isArray(goalsData) ? goalsData : [])) as Goal[];
+  const phases = phasesData?.data ?? (Array.isArray(phasesData) ? phasesData : []);
 
   // Find the main goal (A-priority race, soonest date)
   const mainGoal =
@@ -87,6 +89,7 @@ export default function SeasonGoalsPage() {
         isLoading={goalsLoading}
         onDelete={(id) => deleteGoalMutation.mutate(id)}
         onCreate={(goal) => createGoalMutation.mutate(goal)}
+        onUpdate={(goal) => updateGoalMutation.mutate(goal)}
       />
 
       {/* CTL Projection chart */}

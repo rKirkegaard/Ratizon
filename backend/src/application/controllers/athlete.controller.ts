@@ -1,7 +1,66 @@
 import { Request, Response } from "express";
 import { db } from "../../infrastructure/database/connection.js";
-import { athletes, users } from "../../infrastructure/database/schema/athlete.schema.js";
+import { athletes, users, coachAthleteAssignments } from "../../infrastructure/database/schema/athlete.schema.js";
 import { eq } from "drizzle-orm";
+
+/**
+ * GET /api/athletes
+ * List athletes — admins see all, coaches see their assigned athletes, athletes see only themselves
+ */
+export async function listAthletes(req: Request, res: Response) {
+  try {
+    const role = req.user?.role;
+    const userId = req.user?.userId as string;
+
+    if (role === "admin") {
+      // Admins see all athletes
+      const rows = await db.select({
+        athleteId: athletes.id,
+        userId: athletes.userId,
+        displayName: users.displayName,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+        profileImageUrl: athletes.profileImageUrl,
+      }).from(athletes).innerJoin(users, eq(users.id, athletes.userId));
+      res.json({ data: rows });
+    } else if (role === "coach") {
+      // Coaches see athletes assigned to them
+      const rows = await db.select({
+        athleteId: athletes.id,
+        userId: athletes.userId,
+        displayName: users.displayName,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+        profileImageUrl: athletes.profileImageUrl,
+      }).from(coachAthleteAssignments)
+        .innerJoin(athletes, eq(athletes.id, coachAthleteAssignments.athleteId))
+        .innerJoin(users, eq(users.id, athletes.userId))
+        .where(eq(coachAthleteAssignments.coachId, userId));
+      res.json({ data: rows });
+    } else {
+      // Athletes see only themselves
+      const [athlete] = await db.select({ id: athletes.id }).from(athletes).where(eq(athletes.userId, userId)).limit(1);
+      if (athlete) {
+        const [row] = await db.select({
+          athleteId: athletes.id,
+          userId: athletes.userId,
+          displayName: users.displayName,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          email: users.email,
+          profileImageUrl: athletes.profileImageUrl,
+        }).from(athletes).innerJoin(users, eq(users.id, athletes.userId)).where(eq(athletes.id, athlete.id)).limit(1);
+        res.json({ data: row ? [row] : [] });
+      } else {
+        res.json({ data: [] });
+      }
+    }
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+}
 
 /**
  * GET /api/athletes/:athleteId/profile
@@ -30,6 +89,8 @@ export async function getAthleteProfile(req: Request, res: Response) {
         trainingPhilosophy: athletes.trainingPhilosophy,
         weeklyVolumeMin: athletes.weeklyVolumeMin,
         weeklyVolumeMax: athletes.weeklyVolumeMax,
+        cycleType: athletes.cycleType,
+        profileImageUrl: athletes.profileImageUrl,
         createdAt: athletes.createdAt,
         updatedAt: athletes.updatedAt,
       })
@@ -75,6 +136,7 @@ export async function updateAthleteProfile(req: Request, res: Response) {
     if (body.trainingPhilosophy !== undefined) updateData.trainingPhilosophy = body.trainingPhilosophy;
     if (body.weeklyVolumeMin !== undefined) updateData.weeklyVolumeMin = body.weeklyVolumeMin;
     if (body.weeklyVolumeMax !== undefined) updateData.weeklyVolumeMax = body.weeklyVolumeMax;
+    if (body.cycleType !== undefined) updateData.cycleType = body.cycleType;
 
     const [updated] = await db
       .update(athletes)
@@ -99,5 +161,40 @@ export async function updateAthleteProfile(req: Request, res: Response) {
   } catch (error: any) {
     console.error("Fejl ved opdatering af atletprofil:", error);
     res.status(500).json({ error: error.message || "Intern serverfejl" });
+  }
+}
+
+/**
+ * POST /api/athletes/:athleteId/profile-image
+ * Upload profile image (expects JSON { image: "data:image/..." })
+ */
+export async function uploadProfileImage(req: Request, res: Response) {
+  try {
+    const athleteId = req.params.athleteId as string;
+    const { image } = req.body;
+
+    if (!image || typeof image !== "string" || !image.startsWith("data:image/")) {
+      res.status(400).json({ error: "Ugyldig billeddata — skal vaere en data:image/... URI" });
+      return;
+    }
+
+    await db.update(athletes).set({ profileImageUrl: image, updatedAt: new Date() }).where(eq(athletes.id, athleteId));
+    res.json({ data: { url: image } });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+}
+
+/**
+ * DELETE /api/athletes/:athleteId/profile-image
+ * Remove profile image
+ */
+export async function deleteProfileImage(req: Request, res: Response) {
+  try {
+    const athleteId = req.params.athleteId as string;
+    await db.update(athletes).set({ profileImageUrl: null, updatedAt: new Date() }).where(eq(athletes.id, athleteId));
+    res.status(204).send();
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
   }
 }

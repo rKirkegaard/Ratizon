@@ -88,3 +88,18 @@
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground));
 }
+
+/* Sport icons crossfade for empty future days */
+@keyframes fadeInOut {
+  0%, 100% { opacity: 0; }
+  15%, 30% { opacity: 1; }
+  45% { opacity: 0; }
+}
+
+/* Coffee cup wiggle — ends upright */
+@keyframes wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-12deg); }
+  50% { transform: rotate(8deg); }
+  75% { transform: rotate(-5deg); }
+}

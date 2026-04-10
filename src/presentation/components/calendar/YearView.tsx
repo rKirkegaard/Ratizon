@@ -140,7 +140,24 @@ export default function YearView({
         return ps <= me.getTime() && pe >= ms.getTime();
       });
 
-      return { mi, ms, monthDuration, bySport, dailyBars, maxDayDuration, monthGoals, monthPhases };
+      // Build day-aligned phase segments for the phase band
+      // Each segment: { startDay (0-based), endDay (inclusive, 0-based), phase }
+      const phaseSegments: Array<{ startDay: number; endDay: number; phase: CalendarPhase }> = [];
+      if (monthPhases.length > 0) {
+        for (const p of monthPhases) {
+          const pStart = new Date(p.startDate).getTime();
+          const pEnd = new Date(p.endDate).getTime();
+          const segStart = Math.max(0, Math.floor((pStart - ms.getTime()) / 86400000));
+          const segEnd = Math.min(daysInMonth - 1, Math.floor((pEnd - ms.getTime()) / 86400000));
+          if (segEnd >= 0 && segStart < daysInMonth) {
+            phaseSegments.push({ startDay: Math.max(segStart, 0), endDay: Math.min(segEnd, daysInMonth - 1), phase: p });
+          }
+        }
+        // Sort by startDay
+        phaseSegments.sort((a, b) => a.startDay - b.startDay);
+      }
+
+      return { mi, ms, monthDuration, bySport, dailyBars, maxDayDuration, monthGoals, monthPhases, phaseSegments, daysInMonth };
     });
 
     return { weeklyData, maxWeekDuration: maxWD, monthData, yearStats: { totalDuration, totalDistance, totalTss, totalActivities, sportTotals } };
@@ -223,7 +240,7 @@ export default function YearView({
 
       {/* Month cards grid */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
-        {monthData.map(({ mi, ms, monthDuration, bySport, dailyBars, maxDayDuration, monthGoals, monthPhases }) => {
+        {monthData.map(({ mi, ms, monthDuration, bySport, dailyBars, maxDayDuration, monthGoals, monthPhases, phaseSegments, daysInMonth }) => {
           const isCurrent = mi === new Date().getMonth() && year === new Date().getFullYear();
           const hasARace = monthGoals.some((g) => g.racePriority === "A");
 
@@ -241,12 +258,49 @@ export default function YearView({
                 <span className="text-[10px] text-muted-foreground">{monthDuration > 0 ? `${Math.round(monthDuration / 3600)}t` : ""}</span>
               </div>
 
-              {/* Phase band */}
-              {monthPhases.length > 0 && (
-                <div className="mb-1.5 flex h-1 w-full overflow-hidden rounded-full">
-                  {monthPhases.map((p, i) => (
-                    <div key={i} className="flex-1" style={{ backgroundColor: PHASE_COLORS[p.phaseType] || "#6B7280" }} title={p.phaseName} />
-                  ))}
+              {/* Phase band — day-aligned colored segments */}
+              {phaseSegments.length > 0 && (
+                <div className="mb-1.5 flex h-[5px] w-full overflow-hidden rounded-full bg-muted/30">
+                  {(() => {
+                    const elements: React.ReactNode[] = [];
+                    let cursor = 0;
+                    for (let si = 0; si < phaseSegments.length; si++) {
+                      const seg = phaseSegments[si];
+                      // Gap before this segment (no phase)
+                      if (seg.startDay > cursor) {
+                        elements.push(
+                          <div
+                            key={`gap-${si}`}
+                            style={{ flex: seg.startDay - cursor }}
+                          />
+                        );
+                      }
+                      const span = seg.endDay - seg.startDay + 1;
+                      elements.push(
+                        <div
+                          key={`phase-${si}`}
+                          className="group relative"
+                          style={{
+                            flex: span,
+                            backgroundColor: seg.phase.color || PHASE_COLORS[seg.phase.phaseType] || "#6B7280",
+                          }}
+                          title={seg.phase.phaseName}
+                        >
+                          <div className="pointer-events-none absolute -top-6 left-1/2 z-10 hidden -translate-x-1/2 whitespace-nowrap rounded bg-popover px-1.5 py-0.5 text-[9px] font-medium text-popover-foreground shadow-md group-hover:block">
+                            {seg.phase.phaseName}
+                          </div>
+                        </div>
+                      );
+                      cursor = seg.endDay + 1;
+                    }
+                    // Trailing gap
+                    if (cursor < daysInMonth) {
+                      elements.push(
+                        <div key="gap-end" style={{ flex: daysInMonth - cursor }} />
+                      );
+                    }
+                    return elements;
+                  })()}
                 </div>
               )}
 
@@ -270,30 +324,158 @@ export default function YearView({
                 </div>
               )}
 
-              {/* Daily stacked bars */}
-              <div className="flex h-8 items-end gap-px">
-                {dailyBars.map((d, di) => {
-                  const pct = maxDayDuration > 0 ? (d.total / maxDayDuration) * 100 : 0;
-                  const h = Math.max(pct > 0 ? 3 : 0, pct);
-                  return (
-                    <div key={di} className="flex flex-1 flex-col justify-end" style={{ height: "100%" }}>
-                      {d.swim > 0 && <div style={{ height: `${(d.swim / d.total) * h}%`, backgroundColor: swimColor }} />}
-                      {d.bike > 0 && <div style={{ height: `${(d.bike / d.total) * h}%`, backgroundColor: bikeColor }} />}
-                      {d.run > 0 && <div style={{ height: `${(d.run / d.total) * h}%`, backgroundColor: runColor }} />}
-                    </div>
-                  );
-                })}
+              {/* Daily stacked bars with goal markers */}
+              <div className="relative">
+                {/* Goal markers positioned above the day bars */}
+                {monthGoals.length > 0 && (
+                  <div className="flex gap-px mb-0.5" style={{ height: 10 }}>
+                    {Array.from({ length: daysInMonth }).map((_, di) => {
+                      const dayDate = new Date(year, mi, di + 1);
+                      const dayGoals = monthGoals.filter((g) => {
+                        if (!g.targetDate) return false;
+                        const gd = new Date(g.targetDate);
+                        return gd.getDate() === di + 1 && gd.getMonth() === mi;
+                      });
+                      if (dayGoals.length === 0) return <div key={di} className="flex-1" />;
+                      const g = dayGoals[0];
+                      const color = g.racePriority === "A" ? "#EF4444" : g.racePriority === "B" ? "#EAB308" : "#3B82F6";
+                      const tt = g.raceTargetTime ? `${Math.floor(g.raceTargetTime / 3600)}:${String(Math.floor((g.raceTargetTime % 3600) / 60)).padStart(2, "0")}` : null;
+                      return (
+                        <div key={di} className="group/pin flex-1 flex justify-center relative" onClick={(e) => e.stopPropagation()}>
+                          <div className="w-1.5 h-1.5 rounded-full cursor-default" style={{ backgroundColor: color }} />
+                          {/* Hover popup on the date dot */}
+                          <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 z-20 mb-1 hidden w-56 rounded-lg border border-border bg-card p-3 shadow-xl group-hover/pin:block">
+                            <div className="text-sm font-bold text-foreground">{g.title}</div>
+                            {g.targetDate && <div className="text-xs text-muted-foreground">{new Date(g.targetDate).toLocaleDateString("da-DK", { day: "numeric", month: "long", year: "numeric" })}</div>}
+                            <div className="mt-1.5 flex items-center gap-2">
+                              {g.racePriority && <span className="rounded-full px-2 py-0.5 text-[10px] font-bold text-white" style={{ backgroundColor: color }}>{g.racePriority}-race</span>}
+                              {tt && <span className="text-sm font-bold text-foreground">{tt}</span>}
+                            </div>
+                            {(g.swimTargetTime || g.bikeTargetTime || g.runTargetTime) && (
+                              <div className="mt-2 space-y-1 text-xs">
+                                {g.swimTargetTime != null && g.swimTargetTime > 0 && <div className="flex items-center justify-between"><span className="flex items-center gap-1.5"><SportIcon sport="swim" size={12} /> Svoem</span><span className="font-medium">{Math.floor(g.swimTargetTime / 3600)}:{String(Math.floor((g.swimTargetTime % 3600) / 60)).padStart(2, "0")}</span></div>}
+                                {g.t1TargetTime != null && g.t1TargetTime > 0 && <div className="flex items-center justify-between text-[10px] text-muted-foreground pl-5"><span>T1</span><span>{Math.floor(g.t1TargetTime / 60)}:{String(g.t1TargetTime % 60).padStart(2, "0")}</span></div>}
+                                {g.bikeTargetTime != null && g.bikeTargetTime > 0 && <div className="flex items-center justify-between"><span className="flex items-center gap-1.5"><SportIcon sport="bike" size={12} /> Cykel</span><span className="font-medium">{Math.floor(g.bikeTargetTime / 3600)}:{String(Math.floor((g.bikeTargetTime % 3600) / 60)).padStart(2, "0")}</span></div>}
+                                {g.t2TargetTime != null && g.t2TargetTime > 0 && <div className="flex items-center justify-between text-[10px] text-muted-foreground pl-5"><span>T2</span><span>{Math.floor(g.t2TargetTime / 60)}:{String(g.t2TargetTime % 60).padStart(2, "0")}</span></div>}
+                                {g.runTargetTime != null && g.runTargetTime > 0 && <div className="flex items-center justify-between"><span className="flex items-center gap-1.5"><SportIcon sport="run" size={12} /> Loeb</span><span className="font-medium">{Math.floor(g.runTargetTime / 3600)}:{String(Math.floor((g.runTargetTime % 3600) / 60)).padStart(2, "0")}</span></div>}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                <div className="relative flex h-8 items-end gap-px">
+                  {dailyBars.map((d, di) => {
+                    const pct = maxDayDuration > 0 ? (d.total / maxDayDuration) * 100 : 0;
+                    const h = Math.max(pct > 0 ? 3 : 0, pct);
+                    // Week separator: thin line on Mondays (except day 1)
+                    const dayOfWeek = new Date(year, mi, di + 1).getDay();
+                    const isMonday = dayOfWeek === 1 && di > 0;
+                    return (
+                      <div key={di} className="flex flex-1 flex-col justify-end relative" style={{ height: "100%" }}>
+                        {isMonday && <div className="absolute left-0 top-0 bottom-0 w-px bg-border/40" />}
+                        {d.swim > 0 && <div style={{ height: `${(d.swim / d.total) * h}%`, backgroundColor: swimColor }} />}
+                        {d.bike > 0 && <div style={{ height: `${(d.bike / d.total) * h}%`, backgroundColor: bikeColor }} />}
+                        {d.run > 0 && <div style={{ height: `${(d.run / d.total) * h}%`, backgroundColor: runColor }} />}
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* Week numbers below bars */}
+                <div className="flex gap-px mt-0.5">
+                  {Array.from({ length: daysInMonth }).map((_, di) => {
+                    const d = new Date(year, mi, di + 1);
+                    const isMonday = d.getDay() === 1;
+                    // ISO week number
+                    const weekNum = isMonday ? (() => {
+                      const jan4 = new Date(d.getFullYear(), 0, 4);
+                      const dayOfYear = Math.floor((d.getTime() - new Date(d.getFullYear(), 0, 1).getTime()) / 86400000) + 1;
+                      const wday = d.getDay() || 7;
+                      return Math.ceil((dayOfYear - wday + 10) / 7);
+                    })() : null;
+                    return (
+                      <div key={di} className="flex-1 relative">
+                        {weekNum != null && (
+                          <span className="absolute left-0 text-[6px] text-muted-foreground/40 leading-none">{weekNum}</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
-              {/* Goals */}
+              {/* Goal labels with hover popup */}
               {monthGoals.length > 0 && (
-                <div className="mt-1.5 space-y-0.5">
-                  {monthGoals.map((g) => (
-                    <div key={g.id} className="flex items-center gap-1 text-[8px]">
-                      <MapPin size={8} style={{ color: g.racePriority === "A" ? "#EF4444" : g.racePriority === "B" ? "#EAB308" : "#3B82F6" }} />
-                      <span className="truncate text-muted-foreground">{g.title}</span>
-                    </div>
-                  ))}
+                <div className="mt-1 space-y-0.5">
+                  {monthGoals.map((g) => {
+                    const color = g.racePriority === "A" ? "#EF4444" : g.racePriority === "B" ? "#EAB308" : "#3B82F6";
+                    const targetTime = g.raceTargetTime ? `${Math.floor(g.raceTargetTime / 3600)}:${String(Math.floor((g.raceTargetTime % 3600) / 60)).padStart(2, "0")}` : null;
+                    return (
+                      <div key={g.id} className="group/goal relative flex items-center gap-1 text-[8px] cursor-default" onClick={(e) => e.stopPropagation()}>
+                        <div className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                        <span className="truncate text-muted-foreground">{g.title}</span>
+                        {/* Hover popup with full race details */}
+                        <div className="pointer-events-none absolute bottom-full left-0 z-20 mb-1 hidden w-72 rounded-lg border border-border bg-card p-4 shadow-xl group-hover/goal:block">
+                          {/* Header */}
+                          <div className="flex items-start justify-between mb-3">
+                            <div>
+                              <div className="text-base font-bold text-foreground">{g.title}</div>
+                              {g.targetDate && <div className="text-sm text-muted-foreground">{new Date(g.targetDate).toLocaleDateString("da-DK", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</div>}
+                            </div>
+                            {g.racePriority && (
+                              <span className="rounded-full px-2.5 py-1 text-xs font-bold text-white shrink-0 ml-2" style={{ backgroundColor: color }}>{g.racePriority}-race</span>
+                            )}
+                          </div>
+                          {/* Info grid */}
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm mb-3">
+                            {g.sport && <div><span className="text-muted-foreground">Sport: </span><span className="text-foreground capitalize">{g.sport}</span></div>}
+                            {g.goalType && <div><span className="text-muted-foreground">Type: </span><span className="text-foreground">{g.goalType}</span></div>}
+                            {g.raceDistance != null && g.raceDistance > 0 && <div><span className="text-muted-foreground">Distance: </span><span className="text-foreground font-medium">{(g.raceDistance / 1000).toFixed(1)} km</span></div>}
+                            {targetTime && <div><span className="text-muted-foreground">Maaltid: </span><span className="text-foreground font-bold">{targetTime}</span></div>}
+                          </div>
+                          {/* Discipline breakdown */}
+                          {(g.swimTargetTime || g.bikeTargetTime || g.runTargetTime) && (
+                            <div className="border-t border-border/30 pt-3 space-y-2">
+                              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Disciplin-maal</div>
+                              {g.swimTargetTime != null && g.swimTargetTime > 0 && (
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="flex items-center gap-2"><SportIcon sport="swim" size={14} /> Svoem</span>
+                                  <span className="font-semibold text-foreground">{Math.floor(g.swimTargetTime / 3600)}:{String(Math.floor((g.swimTargetTime % 3600) / 60)).padStart(2, "0")}:{String(g.swimTargetTime % 60).padStart(2, "0")}</span>
+                                </div>
+                              )}
+                              {g.t1TargetTime != null && g.t1TargetTime > 0 && (
+                                <div className="flex items-center justify-between text-xs text-muted-foreground pl-6">
+                                  <span>T1 (skifte)</span>
+                                  <span>{Math.floor(g.t1TargetTime / 60)}:{String(g.t1TargetTime % 60).padStart(2, "0")}</span>
+                                </div>
+                              )}
+                              {g.bikeTargetTime != null && g.bikeTargetTime > 0 && (
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="flex items-center gap-2"><SportIcon sport="bike" size={14} /> Cykel</span>
+                                  <span className="font-semibold text-foreground">{Math.floor(g.bikeTargetTime / 3600)}:{String(Math.floor((g.bikeTargetTime % 3600) / 60)).padStart(2, "0")}:{String(g.bikeTargetTime % 60).padStart(2, "0")}</span>
+                                </div>
+                              )}
+                              {g.t2TargetTime != null && g.t2TargetTime > 0 && (
+                                <div className="flex items-center justify-between text-xs text-muted-foreground pl-6">
+                                  <span>T2 (skifte)</span>
+                                  <span>{Math.floor(g.t2TargetTime / 60)}:{String(g.t2TargetTime % 60).padStart(2, "0")}</span>
+                                </div>
+                              )}
+                              {g.runTargetTime != null && g.runTargetTime > 0 && (
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="flex items-center gap-2"><SportIcon sport="run" size={14} /> Loeb</span>
+                                  <span className="font-semibold text-foreground">{Math.floor(g.runTargetTime / 3600)}:{String(Math.floor((g.runTargetTime % 3600) / 60)).padStart(2, "0")}:{String(g.runTargetTime % 60).padStart(2, "0")}</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          {g.notes && <div className="mt-3 border-t border-border/30 pt-2 text-xs text-muted-foreground/70 italic">{g.notes}</div>}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 

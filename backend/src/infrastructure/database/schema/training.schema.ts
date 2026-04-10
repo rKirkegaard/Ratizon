@@ -27,6 +27,7 @@ export const plannedSessions = pgTable("planned_sessions", {
   targetDistanceMeters: integer("target_distance_meters"),
   targetTss: real("target_tss"),
   targetZones: jsonb("target_zones"),
+  sessionBlocks: jsonb("session_blocks"),
   aiGenerated: boolean("ai_generated").notNull().default(false),
   completedSessionId: bigint("completed_session_id", { mode: "bigint" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

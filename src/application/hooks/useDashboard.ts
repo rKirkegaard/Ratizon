@@ -92,6 +92,7 @@ export interface DashboardResponse {
   alerts_total: number;
   motivation: MotivationData;
   main_goal: MainGoalData | null;
+  next_goal: MainGoalData | null;
 }
 
 // ── Wellness log payload ────────────────────────────────────────────────
@@ -212,6 +213,16 @@ function mapBackendResponse(raw: any): DashboardResponse {
           sport: raw.mainGoal.sport ?? null,
           racePriority: raw.mainGoal.racePriority ?? null,
           goalType: raw.mainGoal.goalType ?? "race",
+        }
+      : null,
+    next_goal: raw.nextGoal
+      ? {
+          id: raw.nextGoal.id,
+          title: raw.nextGoal.title,
+          targetDate: raw.nextGoal.targetDate ?? null,
+          sport: raw.nextGoal.sport ?? null,
+          racePriority: raw.nextGoal.racePriority ?? null,
+          goalType: raw.nextGoal.goalType ?? "race",
         }
       : null,
   };

@@ -1,5 +1,11 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Outlet, NavLink } from "react-router-dom";
+import UserMenu from "@/presentation/components/layout/UserMenu";
+import CommandPalette from "@/presentation/components/layout/CommandPalette";
+import AthleteSelector from "@/presentation/components/layout/AthleteSelector";
+import CreateSessionDialog from "@/presentation/components/layout/CreateSessionDialog";
+import { useAuthStore } from "@/application/stores/authStore";
+import { apiClient } from "@/application/api/client";
 import {
   LayoutDashboard,
   CalendarDays,
@@ -13,6 +19,7 @@ import {
   Dumbbell,
   Mountain,
   Flame,
+  UserCog,
   Target,
   Flag,
   List,
@@ -21,6 +28,7 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   MessageCircle,
   X,
   type LucideIcon,
@@ -90,6 +98,7 @@ const STATIC_SECTIONS_AFTER: NavSection[] = [
   {
     title: "INDSTILLINGER",
     items: [
+      { label: "Atletdata", path: "/indstillinger/atletprofil", icon: <UserCog size={18} /> },
       { label: "App & Zoner", path: "/indstillinger", icon: <Settings size={18} /> },
     ],
   },
@@ -106,6 +115,7 @@ const ADMIN_SECTION: NavSection = {
   items: [
     { label: "Brugere", path: "/admin/brugere", icon: <Settings size={18} /> },
     { label: "Tilknytninger", path: "/admin/tilknytninger", icon: <Activity size={18} /> },
+    { label: "System Indstillinger", path: "/admin/indstillinger", icon: <Wrench size={18} /> },
   ],
 };
 
@@ -117,9 +127,45 @@ const FALLBACK_DISCIPLINE_ITEMS: NavItem[] = [
 ];
 
 export default function AppLayout() {
-  const { sidebarCollapsed, setSidebarCollapsed, aiPanelOpen, setAiPanelOpen } = useUiStore();
+  const { sidebarCollapsed, setSidebarCollapsed, aiPanelOpen, setAiPanelOpen, collapsedSections, toggleSection } = useUiStore();
+  const currentUser = useAuthStore((s) => s.user);
+  const selectedAthleteId = useAthleteStore((s) => s.selectedAthleteId);
+  const canSelectAthletes = currentUser?.role === "coach" || currentUser?.role === "admin";
   const getSportsWithPages = useAthleteStore((s) => s.getSportsWithPages);
   const [aiInput, setAiInput] = useState("");
+  const [commandOpen, setCommandOpen] = useState(false);
+  const [createSessionOpen, setCreateSessionOpen] = useState(false);
+  const [allowedPages, setAllowedPages] = useState<Set<string> | null>(null); // null = all allowed
+
+  // Fetch page permissions for athletes
+  useEffect(() => {
+    if (!currentUser) return;
+    if (currentUser.role === "admin" || currentUser.role === "coach") {
+      setAllowedPages(null); // full access
+      return;
+    }
+    // Athletes: check permissions
+    apiClient.get<any>(`/permissions/user/${currentUser.id}`).then((data) => {
+      const perms = data?.permissions ?? data?.data?.permissions ?? [];
+      const allowed = new Set<string>();
+      for (const p of perms) {
+        if (p.has_access) allowed.add(p.page_key);
+      }
+      setAllowedPages(allowed.size > 0 ? allowed : null);
+    }).catch(() => setAllowedPages(null));
+  }, [currentUser]);
+
+  // Ctrl+K shortcut for command palette
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setCommandOpen(true);
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const navSections = useMemo(() => {
     const sportsWithPages = getSportsWithPages();
@@ -141,7 +187,7 @@ export default function AppLayout() {
       items: disciplineItems,
     };
 
-    const sections = [...STATIC_SECTIONS_BEFORE, disciplineSection, ...STATIC_SECTIONS_AFTER];
+    let sections = [...STATIC_SECTIONS_BEFORE, disciplineSection, ...STATIC_SECTIONS_AFTER];
 
     // Add ADMIN section for admin users
     try {
@@ -152,8 +198,29 @@ export default function AppLayout() {
       }
     } catch { /* ignore */ }
 
+    // Filter by page permissions (for athletes)
+    if (allowedPages) {
+      const routeToPermKey: Record<string, string> = {
+        "/dashboard": "dashboard", "/kalender": "calendar",
+        "/ugerapport": "weekly-report", "/performance": "performance",
+        "/load-restitution": "load-recovery", "/wellness": "wellness",
+        "/sammenligning": "comparison", "/test-resultater": "test-baselines",
+        "/saeson-maal": "season-goals", "/raceplan": "raceplan",
+        "/sessioner": "sessions", "/upload": "upload", "/udstyr": "equipment",
+        "/indstillinger": "settings", "/indstillinger/atletprofil": "settings",
+      };
+      sections = sections.map((s) => ({
+        ...s,
+        items: s.items.filter((item) => {
+          const permKey = routeToPermKey[item.path];
+          if (!permKey) return true; // no permission mapping = always show
+          return allowedPages.has(permKey);
+        }),
+      })).filter((s) => s.items.length > 0);
+    }
+
     return sections;
-  }, [getSportsWithPages]);
+  }, [getSportsWithPages, allowedPages]);
 
   return (
     <div data-testid="app-layout" className="flex h-screen overflow-hidden bg-background">
@@ -180,34 +247,49 @@ export default function AppLayout() {
 
         {/* Navigation */}
         <nav data-testid="sidebar-nav" className="flex-1 overflow-y-auto py-2">
-          {navSections.map((section) => (
-            <div key={section.title} data-testid={`nav-section-${section.title.toLowerCase()}`} className="mb-2">
-              {!sidebarCollapsed && (
-                <div className="px-4 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  {section.title}
-                </div>
-              )}
-              {section.items.map((item) => (
-                <NavLink
-                  key={item.path}
-                  to={item.path}
-                  data-testid={`nav-item-${item.path.replace(/\//g, "-").slice(1)}`}
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 px-4 py-2 text-sm transition-colors ${
-                      isActive
-                        ? "bg-accent text-foreground font-medium"
-                        : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-                    } ${sidebarCollapsed ? "justify-center px-2" : ""}`
-                  }
-                  title={sidebarCollapsed ? item.label : undefined}
-                >
-                  {item.icon}
-                  {!sidebarCollapsed && <span>{item.label}</span>}
-                </NavLink>
-              ))}
-            </div>
-          ))}
+          {navSections.map((section) => {
+            const isCollapsed = !!collapsedSections[section.title];
+            return (
+              <div key={section.title} data-testid={`nav-section-${section.title.toLowerCase()}`} className="mb-1">
+                {!sidebarCollapsed ? (
+                  <button
+                    onClick={() => toggleSection(section.title)}
+                    className="flex w-full items-center justify-between px-3 mx-1 py-1.5 mt-1 rounded-md text-[10px] font-semibold uppercase tracking-wider transition-colors text-muted-foreground bg-muted/30 hover:bg-muted/50 hover:text-foreground"
+                  >
+                    <span>{section.title}</span>
+                    <ChevronDown
+                      size={12}
+                      className={`transition-transform ${isCollapsed ? "-rotate-90" : ""}`}
+                    />
+                  </button>
+                ) : (
+                  <div className="my-1 mx-3 h-px bg-border" />
+                )}
+                {!isCollapsed &&
+                  section.items.map((item) => (
+                    <NavLink
+                      key={item.path}
+                      to={item.path}
+                      data-testid={`nav-item-${item.path.replace(/\//g, "-").slice(1)}`}
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 px-4 py-2 text-sm transition-colors ${
+                          isActive
+                            ? "bg-accent text-foreground font-medium"
+                            : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                        } ${sidebarCollapsed ? "justify-center px-2" : ""}`
+                      }
+                      title={sidebarCollapsed ? item.label : undefined}
+                    >
+                      {item.icon}
+                      {!sidebarCollapsed && <span>{item.label}</span>}
+                    </NavLink>
+                  ))}
+              </div>
+            );
+          })}
         </nav>
+        {/* Athlete selector */}
+        <AthleteSelector collapsed={sidebarCollapsed} />
       </aside>
 
       {/* Main content */}
@@ -215,8 +297,26 @@ export default function AppLayout() {
         {/* Top bar */}
         <header
           data-testid="top-bar"
-          className="flex h-14 items-center justify-end border-b border-border px-6"
+          className="flex h-14 items-center justify-end gap-3 border-b border-border px-6"
         >
+          {/* Search / Command palette trigger */}
+          <button
+            data-testid="command-trigger"
+            onClick={() => setCommandOpen(true)}
+            className="flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
+          >
+            <span className="text-xs">Soeg...</span>
+            <kbd className="rounded bg-muted px-1.5 py-0.5 text-[10px] border border-border">Ctrl+K</kbd>
+          </button>
+          {/* Create session */}
+          <button
+            data-testid="create-session-trigger"
+            onClick={() => setCreateSessionOpen(true)}
+            className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            <span>+ Opret</span>
+          </button>
+          {/* AI Coach toggle */}
           <button
             data-testid="ai-chat-toggle"
             onClick={() => setAiPanelOpen(!aiPanelOpen)}
@@ -225,7 +325,13 @@ export default function AppLayout() {
             <MessageCircle size={16} />
             {!aiPanelOpen && <span>AI Coach</span>}
           </button>
+          {/* User menu */}
+          <UserMenu />
         </header>
+        {/* Command palette */}
+        <CommandPalette open={commandOpen} onClose={() => setCommandOpen(false)} />
+        {/* Create session dialog */}
+        <CreateSessionDialog open={createSessionOpen} onClose={() => setCreateSessionOpen(false)} />
 
         {/* Content area */}
         <div className="flex flex-1 overflow-hidden">

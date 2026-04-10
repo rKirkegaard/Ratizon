@@ -1,4 +1,5 @@
 import { useAthleteProfile } from "@/application/hooks/athlete/useAthleteProfile";
+import { parseMssToPaceSec } from "@/domain/utils/paceUtils";
 import { useAthleteStore } from "@/application/stores/athleteStore";
 import { Heart, Zap, TrendingUp } from "lucide-react";
 
@@ -23,7 +24,7 @@ export default function TrainingZones({ athleteId }: TrainingZonesProps) {
   const maxHr = profile?.maxHr;
   const restingHr = profile?.restingHr;
   const ftp = profile?.ftp;
-  const runThresholdPace = profile?.runThresholdPace;
+  const runThresholdPace = parseMssToPaceSec(profile?.runThresholdPace);
   const swimCss = profile?.swimCss;
 
   // Karvonen HR zones: ((HRmax - HRrest) * %intensity) + HRrest

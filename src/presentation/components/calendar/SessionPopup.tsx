@@ -1,5 +1,8 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import WorkoutVisualization from "./WorkoutVisualization";
+import { useAthleteProfile } from "@/application/hooks/athlete/useAthleteProfile";
+import { calcPlannedSessionMetrics } from "@/domain/utils/sessionMetrics";
 import {
   AreaChart,
   Area,
@@ -43,6 +46,7 @@ interface SessionPopupProps {
   sessionType: "completed" | "planned";
   athleteId: string;
   onClose: () => void;
+  onEditPlanned?: (session: PlannedSession) => void;
 }
 
 const SESSION_TYPE_OPTIONS = [
@@ -55,7 +59,7 @@ const SESSION_TYPE_OPTIONS = [
   { value: "anaerobic", label: "Anaerobic" },
 ];
 
-export default function SessionPopup({ session, sessionType, athleteId: propAthleteId, onClose }: SessionPopupProps) {
+export default function SessionPopup({ session, sessionType, athleteId: propAthleteId, onClose, onEditPlanned }: SessionPopupProps) {
   const getSportColor = useAthleteStore((s) => s.getSportColor);
   const storeAthleteId = useAthleteStore((s) => s.selectedAthleteId);
   const athleteId = propAthleteId || storeAthleteId || "";
@@ -65,6 +69,11 @@ export default function SessionPopup({ session, sessionType, athleteId: propAthl
   const [saving, setSaving] = useState(false);
 
   const sessionId = sessionType === "completed" ? String((session as Session).id) : null;
+
+  // Fetch athlete profile for threshold pace (used in rTSS calculation)
+  const { data: profileData } = useAthleteProfile(athleteId || null);
+  const athleteProfile = profileData?.data ?? (profileData as any) ?? null;
+  const thresholdPace = athleteProfile?.runThresholdPace ?? null; // seconds per km
   const { data: detail } = useSessionDetail(athleteId, sessionId);
   const { data: timeSeries } = useSessionTimeSeries(athleteId, sessionId);
 
@@ -436,9 +445,16 @@ export default function SessionPopup({ session, sessionType, athleteId: propAthl
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
       <div className="relative mx-4 max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-border bg-card p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <button onClick={onClose} className="absolute right-4 top-4 rounded-md p-1 text-muted-foreground hover:text-foreground">
-          <X size={18} />
-        </button>
+        <div className="absolute right-4 top-4 flex gap-1">
+          {onEditPlanned && (
+            <button onClick={() => { onEditPlanned(p); onClose(); }} className="rounded-md px-2 py-1 text-xs text-primary hover:bg-primary/10">
+              Rediger
+            </button>
+          )}
+          <button onClick={onClose} className="rounded-md p-1 text-muted-foreground hover:text-foreground">
+            <X size={18} />
+          </button>
+        </div>
 
         <div className="flex items-center gap-3 mb-6">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg text-white" style={{ backgroundColor: sportColor }}>
@@ -452,29 +468,49 @@ export default function SessionPopup({ session, sessionType, athleteId: propAthl
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-3 mb-6">
-          {p.targetDurationSeconds && (
-            <div className="rounded-lg bg-muted/30 p-3 text-center">
-              <div className="text-2xl font-bold text-foreground">{formatDuration(p.targetDurationSeconds)}</div>
-              <div className="text-xs text-muted-foreground">Maal varighed</div>
+        {(() => {
+          const metrics = calcPlannedSessionMetrics(p, thresholdPace);
+          const calcDurationSec = metrics.durationSec;
+          const calcTss = metrics.tss;
+          const calcKm = metrics.distanceKm;
+
+          return (
+            <div className="grid grid-cols-4 gap-3 mb-6">
+              {calcDurationSec > 0 && (
+                <div className="rounded-lg bg-muted/30 p-3 text-center">
+                  <div className="text-2xl font-bold text-foreground">{formatDuration(calcDurationSec)}</div>
+                  <div className="text-xs text-muted-foreground">Varighed</div>
+                </div>
+              )}
+              {calcKm > 0 && (
+                <div className="rounded-lg bg-muted/30 p-3 text-center">
+                  <div className="text-2xl font-bold text-foreground">{calcKm.toFixed(1)}</div>
+                  <div className="text-xs text-muted-foreground">km</div>
+                </div>
+              )}
+              <div className="rounded-lg bg-muted/30 p-3 text-center">
+                <div className="text-2xl font-bold text-foreground">{Math.round(calcTss)}</div>
+                <div className="text-xs text-muted-foreground">TSS</div>
+              </div>
+              <div className="rounded-lg bg-muted/30 p-3 text-center">
+                <div className="text-sm font-bold text-foreground">{p.sessionPurpose}</div>
+                <div className="text-xs text-muted-foreground mt-1">Formaal</div>
+              </div>
             </div>
-          )}
-          {p.targetTss != null && (
-            <div className="rounded-lg bg-muted/30 p-3 text-center">
-              <div className="text-2xl font-bold text-foreground">{Math.round(p.targetTss)}</div>
-              <div className="text-xs text-muted-foreground">Maal TSS</div>
-            </div>
-          )}
-          <div className="rounded-lg bg-muted/30 p-3 text-center">
-            <div className="text-sm font-bold text-foreground">{p.sessionPurpose}</div>
-            <div className="text-xs text-muted-foreground mt-1">Formaal</div>
-          </div>
-        </div>
+          );
+        })()}
 
         {p.description && (
           <div className="rounded-lg border border-border bg-muted/10 p-3">
             <div className="text-xs font-medium text-muted-foreground mb-1">Beskrivelse</div>
             <p className="text-sm text-foreground">{p.description}</p>
+          </div>
+        )}
+
+        {/* Structured workout visualization */}
+        {p.sessionBlocks && p.sessionBlocks.length > 0 && (
+          <div className="mt-4">
+            <WorkoutVisualization blocks={p.sessionBlocks} sport={p.sport} thresholdPaceSec={thresholdPace} />
           </div>
         )}
       </div>

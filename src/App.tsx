@@ -11,7 +11,9 @@ import SeasonGoalsPage from "@/presentation/pages/SeasonGoalsPage";
 import SessionsPage from "@/presentation/pages/SessionsPage";
 import UploadPage from "@/presentation/pages/UploadPage";
 import EquipmentPage from "@/presentation/pages/EquipmentPage";
+import EquipmentDetailPage from "@/presentation/pages/EquipmentDetailPage";
 import SettingsPage from "@/presentation/pages/SettingsPage";
+import AthleteProfilePage from "@/presentation/pages/AthleteProfilePage";
 import RacePlanPage from "@/presentation/pages/RacePlanPage";
 import ComparisonPage from "@/presentation/pages/ComparisonPage";
 import TestBaselinesPage from "@/presentation/pages/TestBaselinesPage";
@@ -19,6 +21,7 @@ import UXTestPage from "@/presentation/pages/UXTestPage";
 import SessionAnalysisPage from "@/presentation/pages/SessionAnalysisPage";
 import AdminUsersPage from "@/presentation/pages/AdminUsersPage";
 import AdminAssignmentsPage from "@/presentation/pages/AdminAssignmentsPage";
+import AdminSystemSettingsPage from "@/presentation/pages/AdminSystemSettingsPage";
 import LoginPage from "@/presentation/pages/LoginPage";
 import DevLoginPage from "@/presentation/pages/DevLoginPage";
 
@@ -42,12 +45,15 @@ export default function App() {
         <Route path="/raceplan" element={<RacePlanPage />} />
         <Route path="/sessioner" element={<SessionsPage />} />
         <Route path="/upload" element={<UploadPage />} />
+        <Route path="/udstyr/:id" element={<EquipmentDetailPage />} />
         <Route path="/udstyr" element={<EquipmentPage />} />
+        <Route path="/indstillinger/atletprofil" element={<AthleteProfilePage />} />
         <Route path="/indstillinger" element={<SettingsPage />} />
         <Route path="/ux-test" element={<UXTestPage />} />
         <Route path="/sessions/:sessionId" element={<SessionAnalysisPage />} />
         <Route path="/admin/brugere" element={<AdminUsersPage />} />
         <Route path="/admin/tilknytninger" element={<AdminAssignmentsPage />} />
+        <Route path="/admin/indstillinger" element={<AdminSystemSettingsPage />} />
       </Route>
     </Routes>
   );

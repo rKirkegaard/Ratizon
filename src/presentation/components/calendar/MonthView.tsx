@@ -1,4 +1,7 @@
 import { useMemo, useState } from "react";
+import { calcPlannedSessionMetrics } from "@/domain/utils/sessionMetrics";
+import { useAthleteProfile } from "@/application/hooks/athlete/useAthleteProfile";
+import { useAthleteStore } from "@/application/stores/athleteStore";
 import {
   startOfMonth,
   endOfMonth,
@@ -15,8 +18,8 @@ import {
 } from "date-fns";
 import { ChevronLeft, ChevronRight, CheckCircle2, Zap, Target } from "lucide-react";
 import SessionPopup from "@/presentation/components/calendar/SessionPopup";
+import ZoneBar from "@/presentation/components/calendar/ZoneBar";
 import { SportIcon } from "@/presentation/components/shared/SportIcon";
-import { useAthleteStore } from "@/application/stores/athleteStore";
 import { formatDuration, formatDistance } from "@/domain/utils/formatters";
 import type { Session, PlannedSession } from "@/domain/types/training.types";
 import type {
@@ -47,6 +50,7 @@ interface MonthViewProps {
   sportFilter: string | null;
   isLoading: boolean;
   onDayClick?: (date: Date) => void;
+  onAddSession?: (dateStr: string) => void;
   phases: CalendarPhase[];
   goals: CalendarGoal[];
 }
@@ -58,9 +62,14 @@ export default function MonthView({
   sportFilter,
   isLoading,
   onDayClick,
+  goals,
 }: MonthViewProps) {
+  const selectedAthleteId = useAthleteStore((s) => s.selectedAthleteId);
+  const { data: profileData } = useAthleteProfile(selectedAthleteId);
+  const athleteThresholdPace = (profileData?.data ?? (profileData as any))?.runThresholdPace ?? null;
   const getSportColor = useAthleteStore((s) => s.getSportColor);
   const [selectedSession, setSelectedSession] = useState<Session | PlannedSession | null>(null);
+  const [selectedGoal, setSelectedGoal] = useState<CalendarGoal | null>(null);
   const [sessionType, setSessionType] = useState<"completed" | "planned">("completed");
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -114,14 +123,15 @@ export default function MonthView({
           bySport[s.sport].tss += s.tss ?? 0;
         } else if (entry.type === "planned") {
           const p = entry.data as PlannedSession;
-          plannedDuration += p.targetDurationSeconds ?? 0;
-          plannedTss += p.targetTss ?? 0;
+          const pm = calcPlannedSessionMetrics(p, athleteThresholdPace);
+          plannedDuration += pm.durationSec;
+          plannedTss += pm.tss;
           plannedSessions += 1;
           if (!plannedBySport[p.sport]) plannedBySport[p.sport] = { count: 0, duration: 0, distance: 0, tss: 0 };
           plannedBySport[p.sport].count += 1;
-          plannedBySport[p.sport].duration += p.targetDurationSeconds ?? 0;
-          plannedBySport[p.sport].distance += p.targetDistanceMeters ?? 0;
-          plannedBySport[p.sport].tss += p.targetTss ?? 0;
+          plannedBySport[p.sport].duration += pm.durationSec;
+          plannedBySport[p.sport].distance += pm.distanceKm * 1000;
+          plannedBySport[p.sport].tss += pm.tss;
         }
       }
     }
@@ -226,6 +236,17 @@ export default function MonthView({
                       {format(day, "d")}
                     </div>
 
+                    {/* Goal markers */}
+                    {goals.filter((g) => g.targetDate && format(parseISO(g.targetDate), "yyyy-MM-dd") === key).map((g) => {
+                      const gColor = g.racePriority === "A" ? "#EF4444" : g.racePriority === "B" ? "#EAB308" : "#3B82F6";
+                      return (
+                        <div key={g.id} className="mb-1 flex items-center gap-1 rounded px-1.5 py-1 text-[10px] cursor-pointer" style={{ backgroundColor: `${gColor}15`, borderLeft: `2px solid ${gColor}` }} onClick={(e) => { e.stopPropagation(); setSelectedGoal(selectedGoal?.id === g.id ? null : g); }}>
+                          <span className="truncate font-medium uppercase tracking-wide" style={{ color: gColor }}>{g.racePriority}-race</span>
+                          <span className="truncate text-foreground">{g.title}</span>
+                        </div>
+                      );
+                    })}
+
                     <div className="space-y-1">
                       {dayEntries.map((entry) => {
                         if (entry.type === "completed") {
@@ -263,21 +284,25 @@ export default function MonthView({
                             <div
                               key={`p-${p.id}`}
                               onClick={(e) => { e.stopPropagation(); setSelectedSession(p); setSessionType("planned"); }}
-                              className="rounded border border-dashed border-border/50 bg-muted/20 px-1.5 py-1 text-xs text-muted-foreground/60 opacity-60 cursor-pointer"
-                              style={{ borderLeftColor: getSportColor(p.sport), borderLeftWidth: 2, borderLeftStyle: "solid" }}
+                              className="flex rounded overflow-hidden border border-dashed border-border/50 bg-muted/20 cursor-pointer"
                             >
-                              <div className="flex items-center gap-1 mb-0.5">
-                                <SportIcon sport={p.sport} size={12} />
-                                <span className="font-medium text-[10px] italic">{p.title}</span>
+                              {/* Left sport border */}
+                              <div className="w-[3px] shrink-0 rounded-l" style={{ backgroundColor: getSportColor(p.sport) }} />
+                              {/* Content */}
+                              <div className="flex-1 px-1.5 py-1 text-xs text-muted-foreground/60">
+                                <div className="flex items-center gap-1 mb-0.5">
+                                  <SportIcon sport={p.sport} size={12} />
+                                  <span className="font-medium text-[10px] italic">{p.title}</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-[10px]">
+                                  {(() => { const m = calcPlannedSessionMetrics(p, athleteThresholdPace); return (<>
+                                    {m.durationSec > 0 && <span>{formatDuration(m.durationSec)}</span>}
+                                    {m.tss > 0 && <span className="flex items-center gap-0.5"><Target className="h-2.5 w-2.5" />{Math.round(m.tss)}</span>}
+                                  </>); })()}
+                                </div>
                               </div>
-                              <div className="flex items-center gap-2 text-[10px]">
-                                {p.targetDurationSeconds && <span>{formatDuration(p.targetDurationSeconds)}</span>}
-                                {p.targetTss != null && (
-                                  <span className="flex items-center gap-0.5">
-                                    <Target className="h-2.5 w-2.5" />{Math.round(p.targetTss)}
-                                  </span>
-                                )}
-                              </div>
+                              {/* Right zone bar */}
+                              <ZoneBar blocks={p.sessionBlocks} targetZones={p.targetZones as any} width={3} />
                             </div>
                           );
                         }
@@ -358,6 +383,74 @@ export default function MonthView({
           onClose={() => setSelectedSession(null)}
         />
       )}
+
+      {/* Goal Detail Popup */}
+      {selectedGoal && (() => {
+        const g = selectedGoal;
+        const gColor = g.racePriority === "A" ? "#EF4444" : g.racePriority === "B" ? "#EAB308" : "#3B82F6";
+        const tt = g.raceTargetTime ? `${Math.floor(g.raceTargetTime / 3600)}:${String(Math.floor((g.raceTargetTime % 3600) / 60)).padStart(2, "0")}` : null;
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setSelectedGoal(null)}>
+            <div className="w-full max-w-sm rounded-lg border border-border bg-card p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+              <button onClick={() => setSelectedGoal(null)} className="absolute right-4 top-4 text-muted-foreground hover:text-foreground">✕</button>
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <div className="text-lg font-bold text-foreground">{g.title}</div>
+                  {g.targetDate && <div className="text-sm text-muted-foreground">{new Date(g.targetDate).toLocaleDateString("da-DK", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</div>}
+                </div>
+                <span className="rounded-full px-2.5 py-1 text-xs font-bold text-white shrink-0 ml-2" style={{ backgroundColor: gColor }}>{g.racePriority}-race</span>
+              </div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm mb-4">
+                {g.sport && <div><span className="text-muted-foreground">Sport: </span><span className="text-foreground capitalize">{g.sport}</span></div>}
+                {g.goalType && <div><span className="text-muted-foreground">Type: </span><span className="text-foreground">{g.goalType}</span></div>}
+                {g.raceDistance != null && g.raceDistance > 0 && <div><span className="text-muted-foreground">Distance: </span><span className="font-medium">{(g.raceDistance / 1000).toFixed(1)} km</span></div>}
+                {tt && <div><span className="text-muted-foreground">Maaltid: </span><span className="font-bold">{tt}</span></div>}
+              </div>
+              {(g.swimTargetTime || g.bikeTargetTime || g.runTargetTime) && (
+                <div className="border-t border-border pt-3 space-y-2">
+                  <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Disciplin-maal</div>
+                  {g.swimTargetTime != null && g.swimTargetTime > 0 && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-2"><SportIcon sport="swim" size={16} /> Svoem</span>
+                      <span className="font-semibold text-foreground">{Math.floor(g.swimTargetTime / 3600)}:{String(Math.floor((g.swimTargetTime % 3600) / 60)).padStart(2, "0")}:{String(g.swimTargetTime % 60).padStart(2, "0")}</span>
+                    </div>
+                  )}
+                  {g.t1TargetTime != null && g.t1TargetTime > 0 && (
+                    <div className="flex items-center justify-between text-xs text-muted-foreground pl-6">
+                      <span>T1 (skifte)</span>
+                      <span>{Math.floor(g.t1TargetTime / 60)}:{String(g.t1TargetTime % 60).padStart(2, "0")}</span>
+                    </div>
+                  )}
+                  {g.bikeTargetTime != null && g.bikeTargetTime > 0 && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-2"><SportIcon sport="bike" size={16} /> Cykel</span>
+                      <span className="font-semibold text-foreground">{Math.floor(g.bikeTargetTime / 3600)}:{String(Math.floor((g.bikeTargetTime % 3600) / 60)).padStart(2, "0")}:{String(g.bikeTargetTime % 60).padStart(2, "0")}</span>
+                    </div>
+                  )}
+                  {g.t2TargetTime != null && g.t2TargetTime > 0 && (
+                    <div className="flex items-center justify-between text-xs text-muted-foreground pl-6">
+                      <span>T2 (skifte)</span>
+                      <span>{Math.floor(g.t2TargetTime / 60)}:{String(g.t2TargetTime % 60).padStart(2, "0")}</span>
+                    </div>
+                  )}
+                  {g.runTargetTime != null && g.runTargetTime > 0 && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-2"><SportIcon sport="run" size={16} /> Loeb</span>
+                      <span className="font-semibold text-foreground">{Math.floor(g.runTargetTime / 3600)}:{String(Math.floor((g.runTargetTime % 3600) / 60)).padStart(2, "0")}:{String(g.runTargetTime % 60).padStart(2, "0")}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+              {g.notes && <div className="mt-3 border-t border-border pt-2 text-sm text-muted-foreground italic">{g.notes}</div>}
+              <div className="mt-4 flex justify-end">
+                <button onClick={() => { setSelectedGoal(null); window.location.href = "/saeson-maal"; }} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                  Rediger maal
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
