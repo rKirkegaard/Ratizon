@@ -9,6 +9,7 @@ import SwimPaceChart from "@/presentation/components/discipline/SwimPaceChart";
 import SwolfTrendChart from "@/presentation/components/discipline/SwolfTrendChart";
 import { SportIcon } from "@/presentation/components/shared/SportIcon";
 import { formatDistance, formatDuration, formatNumber, formatPacePer100m } from "@/domain/utils/formatters";
+import { calcPacePer100m } from "@/domain/utils/paceUtils";
 
 function ChartSkeleton({ height = "h-64" }: { height?: string }) {
   return (
@@ -63,17 +64,16 @@ export default function SwimmingPage() {
   const totalDistanceM = swimSessions.reduce((sum, s) => sum + (s.distanceMeters ?? 0), 0);
   const totalDurationSec = swimSessions.reduce((sum, s) => sum + s.durationSeconds, 0);
 
-  // Average pace in seconds per 100m
-  const sessionsWithPace = swimSessions.filter(
-    (s) => s.avgPace && s.avgPace > 0 && s.distanceMeters && s.distanceMeters > 0
+  // Average pace in seconds per 100m — compute from distance and duration
+  const sessionsWithDist = swimSessions.filter(
+    (s) => s.distanceMeters && s.distanceMeters > 0 && s.durationSeconds > 0
   );
   let avgPacePer100m = 0;
-  if (sessionsWithPace.length > 0) {
-    const totalPace = sessionsWithPace.reduce((sum, s) => {
-      // avgPace is s/km, convert to s/100m
-      return sum + (s.avgPace! / 10);
+  if (sessionsWithDist.length > 0) {
+    const totalPace = sessionsWithDist.reduce((sum, s) => {
+      return sum + calcPacePer100m(s.durationSeconds, s.distanceMeters!);
     }, 0);
-    avgPacePer100m = totalPace / sessionsWithPace.length;
+    avgPacePer100m = totalPace / sessionsWithDist.length;
   }
 
   return (

@@ -26,24 +26,14 @@ function formatDate(dateStr: string): string {
   return d.toLocaleDateString("da-DK", { day: "numeric", month: "short" });
 }
 
-/** Simple linear regression for trend line */
+import { linearRegression } from "@/domain/utils/trendUtils";
+
 function linearTrend(
   points: { dateTs: number; pace: number }[]
 ): { dateTs: number; trendPace: number }[] {
   if (points.length < 2) return [];
-  const n = points.length;
-  const sumX = points.reduce((s, p) => s + p.dateTs, 0);
-  const sumY = points.reduce((s, p) => s + p.pace, 0);
-  const sumXY = points.reduce((s, p) => s + p.dateTs * p.pace, 0);
-  const sumXX = points.reduce((s, p) => s + p.dateTs * p.dateTs, 0);
-  const denom = n * sumXX - sumX * sumX;
-  if (denom === 0) return [];
-  const slope = (n * sumXY - sumX * sumY) / denom;
-  const intercept = (sumY - slope * sumX) / n;
-  return points.map((p) => ({
-    dateTs: p.dateTs,
-    trendPace: slope * p.dateTs + intercept,
-  }));
+  const result = linearRegression(points.map((p) => ({ x: p.dateTs, y: p.pace })));
+  return points.map((p, i) => ({ dateTs: p.dateTs, trendPace: result.predictions[i] }));
 }
 
 export default function PaceTrend({ data }: PaceTrendProps) {

@@ -59,6 +59,7 @@ export default function WeeklyZoneChart({
   const chartData = activeZones.map((z) => ({
     zone: `Zone ${z.zone}`,
     minutter: Math.round((z.pct / 100) * durationMin * 10) / 10,
+    pct: z.pct,
   }));
 
   if (chartData.length === 0) {
@@ -93,7 +94,10 @@ export default function WeeklyZoneChart({
               tickFormatter={(v: number) => formatMinutesLabel(v)}
             />
             <Tooltip cursor={false}
-              formatter={(value: number) => [`${formatMinutesLabel(value)}`, "Tid"]}
+              formatter={(value: number, _name: string, props: any) => {
+                const pct = props?.payload?.pct ?? 0;
+                return [`${formatMinutesLabel(value)} (${Math.round(pct)}%)`, "Tid"];
+              }}
               contentStyle={{
                 backgroundColor: "hsl(var(--card))",
                 border: "1px solid hsl(var(--border))",

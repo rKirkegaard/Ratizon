@@ -1,4 +1,5 @@
 import { useState } from "react";
+import InfoTooltip from "@/presentation/components/shared/InfoTooltip";
 import {
   BarChart,
   Bar,
@@ -34,9 +35,21 @@ export default function MonotonyStrainChart({ points }: MonotonyStrainChartProps
 
   return (
     <div data-testid="monotony-strain-chart" className="rounded-lg border border-border bg-card p-4">
-      <h3 className="mb-3 text-sm font-semibold text-foreground">
-        Monotoni & Strain
-      </h3>
+      <div className="mb-3 flex items-center gap-1.5">
+        <h3 className="text-sm font-semibold text-foreground">
+          Monotoni & Strain
+        </h3>
+        <InfoTooltip
+          testId="monotony-info-tooltip"
+          content={
+            <>
+              <strong className="text-foreground">Monotoni</strong> maaler ensformighed i traening (lav variation = hoej monotoni &gt; 2.0 oeger sygdomsrisiko).
+              <br /><strong className="text-foreground">Strain</strong> = ugentlig TSS × monotoni. Hoej strain (&gt; 6000) indikerer overbelastningsrisiko.
+              <br /><span className="text-muted-foreground/70">Kilde: Foster et al. (1998)</span>
+            </>
+          }
+        />
+      </div>
 
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">

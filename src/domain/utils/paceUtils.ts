@@ -15,6 +15,12 @@ export function parseMssToPaceSec(mss: string | number | null | undefined): numb
   return !isNaN(num) && num > 0 ? num : null;
 }
 
+/** Compute pace in seconds per 100m from duration and distance. Returns 0 if invalid. */
+export function calcPacePer100m(durationSeconds: number, distanceMeters: number): number {
+  if (distanceMeters <= 0 || durationSeconds <= 0) return 0;
+  return durationSeconds / (distanceMeters / 100);
+}
+
 /** Format 255 → "4:15". Returns "" on null/zero. */
 export function paceSecToMss(secs: number | null | undefined): string {
   if (secs == null || secs <= 0) return "";

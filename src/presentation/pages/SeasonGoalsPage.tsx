@@ -19,7 +19,10 @@ import PhaseComplianceCards from "@/presentation/components/planning/PhaseCompli
 import VolumeDistribution from "@/presentation/components/planning/VolumeDistribution";
 import TaperSection from "@/presentation/components/planning/TaperSection";
 import PerformancePipeline from "@/presentation/components/planning/PerformancePipeline";
+import ThresholdProgressionCard from "@/presentation/components/planning/ThresholdProgressionCard";
 import { useCTLEstimate } from "@/application/hooks/planning/useCTLEstimate";
+import { useAthleteProfile } from "@/application/hooks/athlete/useAthleteProfile";
+import { parseMssToPaceSec } from "@/domain/utils/paceUtils";
 import type { Goal } from "@/domain/types/planning.types";
 
 export default function SeasonGoalsPage() {
@@ -32,6 +35,8 @@ export default function SeasonGoalsPage() {
   const updateGoalMutation = useUpdateGoal(athleteId);
   const createPhaseMutation = useCreatePhase(athleteId);
   const { data: mesocycleData, isLoading: mesocycleLoading } = useMesocycle(athleteId);
+  const { data: profileRes } = useAthleteProfile(athleteId);
+  const athleteProfile = (profileRes as any)?.data ?? profileRes;
   const queryClient = useQueryClient();
   const recalcPmc = useMutation({
     mutationFn: () => apiClient.post(`/analytics/${athleteId}/pmc/recalculate`, { sport: "all" }),
@@ -111,6 +116,20 @@ export default function SeasonGoalsPage() {
 
       {/* Performance Pipeline */}
       {ctlEstimate && <PerformancePipeline estimate={ctlEstimate} />}
+
+      {/* Threshold Progression — where should baselines be today? */}
+      {ctlEstimate && mainGoal?.targetDate && athleteProfile && (
+        <ThresholdProgressionCard
+          currentBaselines={{
+            ftp: athleteProfile.ftp ?? 0,
+            runPaceSec: parseMssToPaceSec(athleteProfile.runThresholdPace) ?? 0,
+            swimCssSec: athleteProfile.swimCss ?? 0,
+          }}
+          requiredThresholds={ctlEstimate.derivedThresholds}
+          trainingStartDate={phases.length > 0 ? phases[0].startDate : mainGoal.createdAt ?? mainGoal.targetDate}
+          raceDate={mainGoal.targetDate}
+        />
+      )}
 
       {/* CTL Projection chart */}
       <CTLProjection

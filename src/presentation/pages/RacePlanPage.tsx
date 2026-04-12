@@ -147,8 +147,9 @@ export default function RacePlanPage() {
   const [editRunTime, setEditRunTime] = useState("");
   const [editT1, setEditT1] = useState("");
   const [editT2, setEditT2] = useState("");
+  const [editBikePower, setEditBikePower] = useState("");
   // Track original values to detect what the user actually changed
-  const [origValues, setOrigValues] = useState({ swimPace: "", swimTime: "", bikeKmh: "", bikeTime: "", runPace: "", runTime: "", t1: "", t2: "" });
+  const [origValues, setOrigValues] = useState({ swimPace: "", swimTime: "", bikeKmh: "", bikeTime: "", bikePower: "", runPace: "", runTime: "", t1: "", t2: "" });
 
   const populateEditFields = useCallback((plan: RacePlan | undefined, _tl: typeof timeline) => {
     if (!plan || !_tl) return;
@@ -160,11 +161,12 @@ export default function RacePlanPage() {
     const rt = secsToHMS(plan.targetRunTime);
     const t1v = secsToMSS(plan.t1Target);
     const t2v = secsToMSS(plan.t2Target);
+    const bp = plan.bikePower ? String(plan.bikePower) : "";
     setEditSwimPace(sp); setEditSwimTime(st);
-    setEditBikeKmh(bk); setEditBikeTime(bt);
+    setEditBikeKmh(bk); setEditBikeTime(bt); setEditBikePower(bp);
     setEditRunPace(rp); setEditRunTime(rt);
     setEditT1(t1v); setEditT2(t2v);
-    setOrigValues({ swimPace: sp, swimTime: st, bikeKmh: bk, bikeTime: bt, runPace: rp, runTime: rt, t1: t1v, t2: t2v });
+    setOrigValues({ swimPace: sp, swimTime: st, bikeKmh: bk, bikeTime: bt, bikePower: bp, runPace: rp, runTime: rt, t1: t1v, t2: t2v });
   }, []);
 
   const startEditing = () => {
@@ -222,6 +224,13 @@ export default function RacePlanPage() {
     } else if (runTimeChanged) {
       const t = parseTimeSec(editRunTime);
       if (t > 0 && runDist > 0) payload.runPace = t / (runDist / 1000);
+    }
+
+    // Bike power (watts)
+    if (editBikePower !== o.bikePower) {
+      const v = parseInt(editBikePower);
+      if (v > 0) payload.bikePower = v;
+      else if (!editBikePower.trim()) payload.bikePower = null;
     }
 
     // T1 / T2
@@ -601,6 +610,9 @@ export default function RacePlanPage() {
                       <p className="text-lg font-bold text-foreground">{formatTime(seg.durationSec)}</p>
                       {seg.distance > 0 && <p>{(seg.distance / 1000).toFixed(1)} km</p>}
                       {seg.pace && <p>{seg.pace}</p>}
+                      {seg.type === "bike" && planDetail?.bikePower && (
+                        <p>{planDetail.bikePower}W</p>
+                      )}
                     </div>
                   ) : (
                     /* ── Edit view ── */
@@ -649,6 +661,21 @@ export default function RacePlanPage() {
                               else setEditRunPace(v);
                             }}
                             placeholder={seg.type === "swim" ? "1:50" : seg.type === "bike" ? "33.3" : "5:30"}
+                            className="w-full rounded border border-input bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                          />
+                        </div>
+                      )}
+                      {/* Bike power (watts) — only for bike segment */}
+                      {seg.type === "bike" && (
+                        <div>
+                          <label className="block text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">
+                            Maalpower (watt)
+                          </label>
+                          <input
+                            data-testid="edit-bike-power"
+                            value={editBikePower}
+                            onChange={(e) => setEditBikePower(e.target.value)}
+                            placeholder="225"
                             className="w-full rounded border border-input bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                           />
                         </div>

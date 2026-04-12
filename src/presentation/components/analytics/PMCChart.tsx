@@ -76,9 +76,9 @@ export default function PMCChart({ points = [] }: PMCChartProps) {
     tsbNegative: p.tsb < 0 ? p.tsb : 0,
   }));
 
-  const tsbValues = points.map((p) => p.tsb);
-  const minTsb = Math.min(...tsbValues, -30);
-  const maxTsb = Math.max(...tsbValues, 40);
+  const allValues = points.flatMap((p) => [p.ctl, p.atl, p.tsb]);
+  const minVal = Math.min(...allValues, -30);
+  const maxVal = Math.max(...allValues, 40);
 
   return (
     <div data-testid="pmc-chart" className="rounded-lg border border-border bg-card p-4">
@@ -105,7 +105,7 @@ export default function PMCChart({ points = [] }: PMCChartProps) {
             {/* Zone backgrounds on TSB axis */}
             <ReferenceArea
               y1={25}
-              y2={maxTsb + 10}
+              y2={maxVal + 10}
               fill="#EF4444"
               fillOpacity={0.04}
               label={{ value: "Dekonditionering", position: "insideTopLeft", fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
@@ -125,7 +125,7 @@ export default function PMCChart({ points = [] }: PMCChartProps) {
               label={{ value: "Frisk", position: "insideTopLeft", fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
             />
             <ReferenceArea
-              y1={minTsb - 10}
+              y1={minVal - 10}
               y2={-10}
               fill="#EF4444"
               fillOpacity={0.06}
@@ -140,7 +140,8 @@ export default function PMCChart({ points = [] }: PMCChartProps) {
             />
             <YAxis
               tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-              domain={[minTsb - 10, maxTsb + 10]}
+              domain={[minVal - 10, maxVal + 10]}
+              tickFormatter={(v: number) => Math.round(v).toString()}
             />
             <RechartsTooltip content={<PMCTooltip />} />
 

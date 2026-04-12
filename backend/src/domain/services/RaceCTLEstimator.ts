@@ -190,13 +190,26 @@ export function estimateCTLRequirement(
     : targets.targetTimeSec * config.runSplitPct;
 
   // 2. Derive race paces / power
-  const raceBikePower = targets.bikePowerW ?? estimateBikePower(
-    config.bikeDistM, bikeSec, baselines.weightKg,
-  );
-  const raceSwimPaceSec = targets.swimPaceSec ??
-    (swimSec / (config.swimDistM / 100));
-  const raceRunPaceSec = targets.runPaceSec ??
-    (runSec / (config.runDistM / 1000));
+  const hasBikePowerOverride = targets.bikePowerW != null && targets.bikePowerW > 0;
+  const hasSwimPaceOverride = targets.swimPaceSec != null && targets.swimPaceSec > 0;
+  const hasRunPaceOverride = targets.runPaceSec != null && targets.runPaceSec > 0;
+
+  const raceBikePower = hasBikePowerOverride
+    ? targets.bikePowerW!
+    : estimateBikePower(config.bikeDistM, bikeSec, baselines.weightKg);
+  const raceSwimPaceSec = hasSwimPaceOverride
+    ? targets.swimPaceSec!
+    : (swimSec / (config.swimDistM / 100));
+  const raceRunPaceSec = hasRunPaceOverride
+    ? targets.runPaceSec!
+    : (runSec / (config.runDistM / 1000));
+
+  if (!hasBikePowerOverride) {
+    warnings.push(
+      `Cykelwatt er estimeret til ${Math.round(raceBikePower)}W fra splittid og aerodynamisk model. ` +
+      "Tilfoej en raceplan med din faktiske maalpower for praecis estimering."
+    );
+  }
 
   // 3. Calculate raw intensity fractions
   // For pace-based (swim/run): IF = threshold_pace / race_pace

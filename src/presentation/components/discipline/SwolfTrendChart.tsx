@@ -20,19 +20,7 @@ function formatDate(dateStr: string): string {
   return d.toLocaleDateString("da-DK", { day: "numeric", month: "short" });
 }
 
-function linearTrend(points: { x: number; y: number }[]): { x: number; ty: number }[] {
-  if (points.length < 2) return [];
-  const n = points.length;
-  const sumX = points.reduce((s, p) => s + p.x, 0);
-  const sumY = points.reduce((s, p) => s + p.y, 0);
-  const sumXY = points.reduce((s, p) => s + p.x * p.y, 0);
-  const sumXX = points.reduce((s, p) => s + p.x * p.x, 0);
-  const denom = n * sumXX - sumX * sumX;
-  if (denom === 0) return [];
-  const slope = (n * sumXY - sumX * sumY) / denom;
-  const intercept = (sumY - slope * sumX) / n;
-  return points.map((p) => ({ x: p.x, ty: slope * p.x + intercept }));
-}
+import { scatterTrend as linearTrend } from "@/domain/utils/trendUtils";
 
 export default function SwolfTrendChart({ data }: SwolfTrendChartProps) {
   const getSportColor = useAthleteStore((s) => s.getSportColor);

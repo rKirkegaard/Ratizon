@@ -33,10 +33,10 @@ export default function PerformancePage() {
   const athleteId = useAthleteStore((s) => s.selectedAthleteId);
 
   const [days, setDays] = useState(90);
-  const [paceHrMin, setPaceHrMin] = useState(140);
-  const [paceHrMax, setPaceHrMax] = useState(155);
-  const [powerHrMin, setPowerHrMin] = useState(140);
-  const [powerHrMax, setPowerHrMax] = useState(155);
+  const [paceHrMin, setPaceHrMin] = useState(120);
+  const [paceHrMax, setPaceHrMax] = useState(140);
+  const [powerHrMin, setPowerHrMin] = useState(120);
+  const [powerHrMax, setPowerHrMax] = useState(140);
 
   const { data: pmcData, isLoading: pmcLoading } = usePMC(athleteId, days);
   const { data: efData, isLoading: efLoading } = useEFTrend(athleteId, days);
