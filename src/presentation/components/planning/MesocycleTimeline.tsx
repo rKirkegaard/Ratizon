@@ -164,21 +164,21 @@ export default function MesocycleTimeline({
         <div className="h-56 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={chartData} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
               <XAxis
                 dataKey="date"
-                tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
                 tickFormatter={formatWeek}
                 interval="preserveStartEnd"
               />
               <YAxis
-                tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
                 width={35}
               />
               <Tooltip cursor={false}
                 contentStyle={{
-                  backgroundColor: "var(--card)",
-                  border: "1px solid var(--border)",
+                  backgroundColor: "hsl(var(--card))",
+                  border: "1px solid hsl(var(--border))",
                   borderRadius: "8px",
                   fontSize: "12px",
                 }}
@@ -197,7 +197,7 @@ export default function MesocycleTimeline({
               {/* TSB area (background) */}
               <Area
                 dataKey="tsb"
-                fill="var(--primary)"
+                fill="hsl(var(--primary))"
                 fillOpacity={0.05}
                 stroke="none"
               />
@@ -232,13 +232,13 @@ export default function MesocycleTimeline({
               {/* Today marker */}
               <ReferenceLine
                 x={today}
-                stroke="var(--foreground)"
+                stroke="hsl(var(--foreground))"
                 strokeWidth={2}
                 strokeDasharray="4 2"
                 label={{
                   value: "I dag",
                   position: "top",
-                  fill: "var(--foreground)",
+                  fill: "hsl(var(--foreground))",
                   fontSize: 10,
                 }}
               />

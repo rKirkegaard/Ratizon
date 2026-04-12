@@ -3,6 +3,10 @@ import { apiClient } from "@/application/api/client";
 import { LLM_PROVIDERS, getModelsForProvider, getProvider } from "@/domain/constants/llmProviders";
 import { Brain, Key, Eye, EyeOff, Save, Trash2, Loader2, Palette } from "lucide-react";
 import ZoneColorPicker from "@/presentation/components/settings/ZoneColorPicker";
+import SportConfigEditor from "@/presentation/components/settings/SportConfigEditor";
+import GarminConnection from "@/presentation/components/settings/GarminConnection";
+import DatePickerPreview from "@/presentation/components/settings/DatePickerPreview";
+import { useAthleteStore } from "@/application/stores/athleteStore";
 
 interface SystemSettings {
   defaultProvider: string;
@@ -48,6 +52,7 @@ function apiKeyFieldName(providerId: string): string {
 }
 
 export default function AdminSystemSettingsPage() {
+  const athleteId = useAthleteStore((s) => s.selectedAthleteId);
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState<SystemSettings | null>(null);
   const [saving, setSaving] = useState(false);
@@ -218,6 +223,9 @@ export default function AdminSystemSettingsPage() {
         </button>
       </div>
 
+      {/* ── Calendar & Date Format ──────────────────────────────────── */}
+      <DatePickerPreview />
+
       {/* ── Zone Colors ─────────────────────────────────────────────── */}
       <div className="rounded-lg border border-border bg-card p-5 space-y-4">
         <div className="flex items-center gap-2">
@@ -226,6 +234,12 @@ export default function AdminSystemSettingsPage() {
         </div>
         <ZoneColorPicker />
       </div>
+
+      {/* ── Sport Config ────────────────────────────────────────────── */}
+      {athleteId && <SportConfigEditor athleteId={athleteId} />}
+
+      {/* ── Garmin ──────────────────────────────────────────────────── */}
+      {athleteId && <GarminConnection athleteId={athleteId} />}
     </div>
   );
 }

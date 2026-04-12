@@ -2,9 +2,12 @@ import { Request, Response } from "express";
 import { db } from "../../infrastructure/database/connection.js";
 import { plannedSessions, sessions } from "../../infrastructure/database/schema/training.schema.js";
 import { goals, athleteTrainingPhases, weeklyBudgets } from "../../infrastructure/database/schema/planning.schema.js";
+import { athletes } from "../../infrastructure/database/schema/athlete.schema.js";
+import { racePlans } from "../../infrastructure/database/schema/race-plan.schema.js";
 import { athletePmc } from "../../infrastructure/database/schema/analytics.schema.js";
 import { eq, and, gte, lte, desc, asc, sql } from "drizzle-orm";
 import { generateTaper, type TaperProfile } from "../../domain/services/TaperCalculator.js";
+import { estimateCTLRequirement, type AthleteBaselines, type RaceTargets } from "../../domain/services/RaceCTLEstimator.js";
 
 /**
  * GET /api/planning/:athleteId/sessions?startDate=X&endDate=Y
@@ -245,6 +248,7 @@ export async function createGoal(req: Request, res: Response) {
         title: body.title,
         goalType: body.goalType,
         sport: body.sport ?? null,
+        raceSubType: body.raceSubType ?? null,
         targetDate: body.targetDate ? new Date(body.targetDate) : null,
         raceDistance: body.raceDistance ?? null,
         raceTargetTime: body.raceTargetTime ?? null,
@@ -281,6 +285,7 @@ export async function updateGoal(req: Request, res: Response) {
     if (body.title !== undefined) updateData.title = body.title;
     if (body.goalType !== undefined) updateData.goalType = body.goalType;
     if (body.sport !== undefined) updateData.sport = body.sport;
+    if (body.raceSubType !== undefined) updateData.raceSubType = body.raceSubType;
     if (body.targetDate !== undefined)
       updateData.targetDate = body.targetDate ? new Date(body.targetDate) : null;
     if (body.raceDistance !== undefined) updateData.raceDistance = body.raceDistance;
@@ -647,6 +652,149 @@ export async function generateTaperPlan(req: Request, res: Response) {
     });
   } catch (error: any) {
     console.error("Fejl ved generering af taper:", error);
+    res.status(500).json({ error: error.message || "Intern serverfejl" });
+  }
+}
+
+// ── CTL Estimate ─────────────────────────────────────────────────────────
+
+function parseRunPace(pace: string | null): number {
+  if (!pace) return 0;
+  const [min, sec] = pace.split(":").map(Number);
+  return (min || 0) * 60 + (sec || 0);
+}
+
+/**
+ * POST /api/planning/:athleteId/ctl-estimate
+ * Estimate required CTL for a race goal based on athlete baselines.
+ */
+export async function estimateCTL(req: Request, res: Response) {
+  try {
+    const athleteId = req.params.athleteId as string;
+    const { goalId } = req.body;
+
+    // 1. Fetch athlete baselines
+    const [athlete] = await db
+      .select({
+        ftp: athletes.ftp,
+        swimCss: athletes.swimCss,
+        runThresholdPace: athletes.runThresholdPace,
+        weight: athletes.weight,
+      })
+      .from(athletes)
+      .where(eq(athletes.id, athleteId))
+      .limit(1);
+
+    if (!athlete) {
+      res.status(404).json({ error: "Atlet ikke fundet" });
+      return;
+    }
+
+    // 2. Find the goal
+    const goalConditions = [eq(goals.athleteId, athleteId)];
+    if (goalId) {
+      goalConditions.push(eq(goals.id, goalId));
+    } else {
+      goalConditions.push(eq(goals.racePriority, "A"), eq(goals.status, "active"));
+    }
+    const [goal] = await db
+      .select()
+      .from(goals)
+      .where(and(...goalConditions))
+      .orderBy(asc(goals.targetDate))
+      .limit(1);
+
+    if (!goal || !goal.targetDate) {
+      res.status(400).json({ error: "Intet gyldigt maal fundet med en dato" });
+      return;
+    }
+
+    if (!goal.raceTargetTime || goal.raceTargetTime <= 0) {
+      res.status(400).json({ error: "Maalet mangler en maaltid (raceTargetTime)" });
+      return;
+    }
+
+    // 3. Check for a linked race plan (for pace overrides)
+    const [racePlan] = await db
+      .select({
+        raceType: racePlans.raceType,
+        swimPace: racePlans.swimPace,
+        bikePower: racePlans.bikePower,
+        runPace: racePlans.runPace,
+      })
+      .from(racePlans)
+      .where(and(eq(racePlans.goalId, goal.id), eq(racePlans.athleteId, athleteId)))
+      .limit(1);
+
+    // 4. Get current CTL
+    const [latestPmc] = await db
+      .select({ ctl: athletePmc.ctl })
+      .from(athletePmc)
+      .where(and(eq(athletePmc.athleteId, athleteId), eq(athletePmc.sport, "all")))
+      .orderBy(desc(athletePmc.date))
+      .limit(1);
+    const currentCTL = latestPmc?.ctl ?? 0;
+
+    // 5. Get phases
+    const phases = await db
+      .select({
+        id: athleteTrainingPhases.id,
+        phaseType: athleteTrainingPhases.phaseType,
+        startDate: athleteTrainingPhases.startDate,
+        endDate: athleteTrainingPhases.endDate,
+      })
+      .from(athleteTrainingPhases)
+      .where(eq(athleteTrainingPhases.athleteId, athleteId))
+      .orderBy(asc(athleteTrainingPhases.startDate));
+
+    // 6. Build inputs
+    const raceType = (racePlan?.raceType ?? goal.raceSubType ?? "full") as RaceTargets["raceType"];
+    const baselines: AthleteBaselines = {
+      ftp: athlete.ftp ?? 0,
+      swimCssSec: athlete.swimCss ?? 0,
+      runThresholdPaceSec: parseRunPace(athlete.runThresholdPace),
+      weightKg: athlete.weight ?? 75,
+    };
+
+    const targets: RaceTargets = {
+      raceType: ["sprint", "olympic", "quarter", "half", "full"].includes(raceType) ? raceType : "full",
+      targetTimeSec: goal.raceTargetTime,
+      // Per-discipline split times from the goal (seconds) — preferred over derivation
+      swimTimeSec: goal.swimTargetTime ?? undefined,
+      bikeTimeSec: goal.bikeTargetTime ?? undefined,
+      runTimeSec: goal.runTargetTime ?? undefined,
+      // Pace/power overrides from a linked race plan
+      swimPaceSec: racePlan?.swimPace ?? undefined,
+      bikePowerW: racePlan?.bikePower ?? undefined,
+      runPaceSec: racePlan?.runPace ?? undefined,
+    };
+
+    const weeksToRace = Math.max(1, Math.ceil(
+      (goal.targetDate.getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000)
+    ));
+
+    const phaseSpecs = phases.map((p) => ({
+      id: p.id,
+      phaseType: p.phaseType,
+      startDate: p.startDate.toISOString(),
+      endDate: p.endDate.toISOString(),
+    }));
+
+    // 7. Run domain estimation
+    const estimate = estimateCTLRequirement(baselines, targets, currentCTL, weeksToRace, phaseSpecs);
+
+    res.json({
+      data: {
+        ...estimate,
+        currentCTL: Math.round(currentCTL * 10) / 10,
+        ctlGap: Math.max(0, estimate.requiredCTL - Math.round(currentCTL)),
+        weeksToRace,
+        goalTitle: goal.title,
+        raceType: targets.raceType,
+      },
+    });
+  } catch (error: any) {
+    console.error("Fejl ved CTL estimat:", error);
     res.status(500).json({ error: error.message || "Intern serverfejl" });
   }
 }

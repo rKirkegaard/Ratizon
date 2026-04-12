@@ -121,8 +121,8 @@ export class PMCCalculator {
     );
 
     const filled: DailyTSSEntry[] = [];
-    const start = new Date(sorted[0].date);
-    const end = new Date(sorted[sorted.length - 1].date);
+    const startKey = sorted[0].date.slice(0, 10);
+    const endKey = sorted[sorted.length - 1].date.slice(0, 10);
 
     const tssMap = new Map<string, number>();
     for (const entry of sorted) {
@@ -130,14 +130,16 @@ export class PMCCalculator {
       tssMap.set(key, (tssMap.get(key) || 0) + entry.tss);
     }
 
-    const current = new Date(start);
+    // Use UTC dates to avoid timezone drift
+    const current = new Date(startKey + "T00:00:00Z");
+    const end = new Date(endKey + "T00:00:00Z");
     while (current <= end) {
       const key = current.toISOString().slice(0, 10);
       filled.push({
         date: key,
         tss: tssMap.get(key) || 0,
       });
-      current.setDate(current.getDate() + 1);
+      current.setUTCDate(current.getUTCDate() + 1);
     }
 
     return filled;

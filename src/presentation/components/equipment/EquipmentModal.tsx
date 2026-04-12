@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
+import DatePicker from "@/presentation/components/shared/DatePicker";
 import { CATEGORY_ICONS, CATEGORY_LABELS, DEFAULT_RETIREMENT, SPORT_CATEGORIES } from "@/domain/constants/equipmentCategories";
 import { useCreateEquipment, useUpdateEquipment } from "@/application/hooks/equipment/useEquipment";
 import type { Equipment } from "@/domain/types/equipment.types";
@@ -122,7 +123,7 @@ export default function EquipmentModal({ open, onClose, athleteId, equipment }: 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="mb-1 block text-xs text-muted-foreground">Koebsdato</label>
-              <input type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground" />
+              <DatePicker value={purchaseDate} onChange={setPurchaseDate} />
             </div>
             <div>
               <label className="mb-1 block text-xs text-muted-foreground">Startkilometer</label>

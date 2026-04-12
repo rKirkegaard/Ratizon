@@ -1,5 +1,22 @@
 # Ratizon — Claude Code Instruktioner
 
+## Arbejdsproces — ALTID foelg denne raekkefoelge
+
+1. **Laes og forstaa** den eksisterende kode, datamodel og moenstre FOER du aendrer noget
+2. **Konsulter agenter** foer implementering:
+   - `solution-architect` for datamodel-aendringer, nye endpoints, schema-design
+   - `ui-ux-designer` for frontend-aendringer, nye komponenter, layout
+   - `ironman-training-expert` (eller relevant domaene-ekspert) for domaenelogik og formler
+3. **Verificer konsistens** — nye felter/vaerdier SKAL matche eksisterende data og moenstre
+4. **Test med eksisterende data** — tjek at eksisterende data stadig vises korrekt efter aendringer
+5. **Goer kun det der er bedt om** — udvid ikke scope, fjern ikke funktionalitet
+
+### Hvad IKKE at goere
+- Opret IKKE nye tabeller/kolonner uden solution-architect review
+- AEndr IKKE eksisterende komponenters opfoersel uden at forstaa alle steder de bruges
+- Erstat IKKE eksisterende UI-mekanismer (fx kalendervaelger) bare fordi et underliggende problem skal loeses
+- Antag IKKE at noget "er fint for nu" — implementer korrekt foerste gang
+
 ## Arkitekturregler
 
 ### Beregningsfunktioner skal ALTID centraliseres
@@ -35,6 +52,14 @@
 - All UI tekst paa dansk, kode paa engelsk
 - data-testid paa alle interaktive elementer
 - Ingen shadcn/ui — plain HTML + Tailwind
+
+## Dato og kalender
+- Datoformat er ALTID dansk: **d. måned åååå** (dag foerst, IKKE mm/dd/yyyy)
+- Ugen starter ALTID med **mandag** og slutter med **soendag** (ISO 8601)
+- Brug ALTID `DatePicker` fra `@/presentation/components/shared/DatePicker` til datovalg — den er defineret som standard i systemindstillinger (App & Zoner)
+- Brug IKKE `<input type="date">` — det bruger OS-locale og viser forkert format
+- Alle dato-beregninger (uge-start, ISO-uge) skal bruge UTC-baserede funktioner for at undgaa timezone-drift
+- `date-fns` med `da` locale er standard for datoformatering
 
 ## API
 - `apiClient` auto-unwrapper `{data: ...}` responses

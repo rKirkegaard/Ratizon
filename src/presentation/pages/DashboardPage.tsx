@@ -10,6 +10,7 @@ import UpcomingSessions from "@/presentation/components/dashboard/UpcomingSessio
 import CoachInbox from "@/presentation/components/dashboard/CoachInbox";
 import MotivationStrip from "@/presentation/components/dashboard/MotivationStrip";
 import RaceCountdown from "@/presentation/components/planning/RaceCountdown";
+import PoolDisruptions from "@/presentation/components/dashboard/PoolDisruptions";
 import { UserCircle2 } from "lucide-react";
 
 function SkeletonBlock({ className = "" }: { className?: string }) {
@@ -115,6 +116,8 @@ export default function DashboardPage() {
   return (
     <div data-testid="dashboard-page" className="space-y-4">
       <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+
+      <PoolDisruptions />
 
       {/* Goals: Main + Next */}
       <div className={data.next_goal ? "grid gap-4 md:grid-cols-2" : ""}>

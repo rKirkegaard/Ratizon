@@ -3,6 +3,7 @@ import { useAthleteStore } from "@/application/stores/athleteStore";
 import { useSessions } from "@/application/hooks/training/useSessions";
 import { useSessionComparison, usePeriodComparison } from "@/application/hooks/analytics/useComparison";
 import { SportIcon } from "@/presentation/components/shared/SportIcon";
+import DatePicker from "@/presentation/components/shared/DatePicker";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
@@ -211,15 +212,15 @@ export default function ComparisonPage() {
             <div className="rounded-lg border border-blue-500/30 bg-blue-500/5 p-4">
               <h4 className="mb-2 text-xs font-semibold text-blue-400">Periode A</h4>
               <div className="grid grid-cols-2 gap-2">
-                <input type="date" value={periodStartA} onChange={(e) => setPeriodStartA(e.target.value)} className="rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground" />
-                <input type="date" value={periodEndA} onChange={(e) => setPeriodEndA(e.target.value)} className="rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground" />
+                <DatePicker value={periodStartA} onChange={setPeriodStartA} placeholder="Start" />
+                <DatePicker value={periodEndA} onChange={setPeriodEndA} placeholder="Slut" />
               </div>
             </div>
             <div className="rounded-lg border border-orange-500/30 bg-orange-500/5 p-4">
               <h4 className="mb-2 text-xs font-semibold text-orange-400">Periode B</h4>
               <div className="grid grid-cols-2 gap-2">
-                <input type="date" value={periodStartB} onChange={(e) => setPeriodStartB(e.target.value)} className="rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground" />
-                <input type="date" value={periodEndB} onChange={(e) => setPeriodEndB(e.target.value)} className="rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground" />
+                <DatePicker value={periodStartB} onChange={setPeriodStartB} placeholder="Start" />
+                <DatePicker value={periodEndB} onChange={setPeriodEndB} placeholder="Slut" />
               </div>
             </div>
           </div>

@@ -19,6 +19,7 @@ export const goals = pgTable("goals", {
   goalType: varchar("goal_type", { length: 30 }).notNull(),
   sport: varchar("sport", { length: 10 }),
   targetDate: timestamp("target_date", { withTimezone: true }),
+  raceSubType: varchar("race_sub_type", { length: 20 }),
   raceDistance: integer("race_distance"),
   raceTargetTime: integer("race_target_time"),
   swimTargetTime: integer("swim_target_time"),

@@ -4,6 +4,7 @@ export interface Goal {
   title: string;
   goalType: "race" | "performance" | "volume" | "health";
   sport: string | null;
+  raceSubType: string | null;
   targetDate: string | null;
   raceDistance: number | null;
   raceTargetTime: number | null;

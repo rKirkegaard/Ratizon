@@ -31,6 +31,7 @@ export const racePlans = pgTable("race_plans", {
   targetBikeTime: integer("target_bike_time"),  // seconds
   targetRunTime: integer("target_run_time"),    // seconds
   targetTotalTime: integer("target_total_time"),// seconds
+  scenarios: jsonb("scenarios"),                    // { B: { swimPace, bikePace, runPace, t1Target, t2Target }, C: { ... } }
   nutritionStrategy: jsonb("nutrition_strategy"), // { caloriesPerHourBike, caloriesPerHourRun, notes }
   hydrationStrategy: jsonb("hydration_strategy"), // { fluidPerHourMl, sodiumPerHourMg, notes }
   notes: text("notes"),

@@ -83,7 +83,10 @@ export default function DisciplineBalance({
                 ))}
               </Pie>
               <Tooltip cursor={false}
-                formatter={(value: number) => formatMinutes(value)}
+                formatter={(value: number) => {
+                  const pct = totalDuration > 0 ? Math.round((value / totalDuration) * 100) : 0;
+                  return `${formatMinutes(value)} (${pct}%)`;
+                }}
                 contentStyle={{
                   backgroundColor: "hsl(var(--card))",
                   border: "1px solid hsl(var(--border))",

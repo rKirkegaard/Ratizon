@@ -1,5 +1,14 @@
 export type SegmentType = "swim" | "t1" | "bike" | "t2" | "run";
 
+export interface ScenarioPaces {
+  label: string;
+  swimPace: number | null;
+  bikePace: number | null;
+  runPace: number | null;
+  t1Target: number | null;
+  t2Target: number | null;
+}
+
 export interface RacePlan {
   id: string;
   athleteId: string;
@@ -14,6 +23,7 @@ export interface RacePlan {
   targetBikeTime: number | null;
   targetRunTime: number | null;
   targetTotalTime: number | null;
+  scenarios: Record<string, ScenarioPaces> | null;
   nutritionStrategy: Record<string, unknown> | null;
   hydrationStrategy: Record<string, unknown> | null;
   notes: string | null;

@@ -91,6 +91,7 @@ export async function getAthleteProfile(req: Request, res: Response) {
         weeklyVolumeMax: athletes.weeklyVolumeMax,
         cycleType: athletes.cycleType,
         profileImageUrl: athletes.profileImageUrl,
+        poolUrls: athletes.poolUrls,
         createdAt: athletes.createdAt,
         updatedAt: athletes.updatedAt,
       })
@@ -137,6 +138,7 @@ export async function updateAthleteProfile(req: Request, res: Response) {
     if (body.weeklyVolumeMin !== undefined) updateData.weeklyVolumeMin = body.weeklyVolumeMin;
     if (body.weeklyVolumeMax !== undefined) updateData.weeklyVolumeMax = body.weeklyVolumeMax;
     if (body.cycleType !== undefined) updateData.cycleType = body.cycleType;
+    if (body.poolUrls !== undefined) updateData.poolUrls = body.poolUrls;
 
     const [updated] = await db
       .update(athletes)

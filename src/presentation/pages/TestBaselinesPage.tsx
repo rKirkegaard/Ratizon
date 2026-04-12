@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAthleteStore } from "@/application/stores/athleteStore";
 import { useTests, useCreateTest, useDeleteTest, useApplyBaseline } from "@/application/hooks/analytics/useTests";
 import { Plus, Trash2, CheckCircle2, FlaskConical, Loader2 } from "lucide-react";
+import DatePicker from "@/presentation/components/shared/DatePicker";
 
 const TEST_TYPES = [
   { value: "ftp", label: "FTP Test", sport: "bike", unit: "W", baselineField: "ftp" },
@@ -98,7 +99,7 @@ export default function TestBaselinesPage() {
             </div>
             <div>
               <label className="block text-xs text-muted-foreground mb-1">Dato</label>
-              <input type="date" value={testDate} onChange={(e) => setTestDate(e.target.value)} className="w-full rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-foreground" />
+              <DatePicker value={testDate} onChange={setTestDate} />
             </div>
             <div>
               <label className="block text-xs text-muted-foreground mb-1">Resultat ({selectedType.unit})</label>

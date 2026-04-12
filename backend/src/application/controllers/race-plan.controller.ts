@@ -107,6 +107,7 @@ export async function createRacePlan(req: Request, res: Response) {
         targetBikeTime: bikeTime,
         targetRunTime: runTime,
         targetTotalTime: totalTime > 0 ? totalTime : null,
+        scenarios: b.scenarios ?? null,
         nutritionStrategy: b.nutritionStrategy ?? null,
         hydrationStrategy: b.hydrationStrategy ?? null,
         notes: b.notes ?? null,
@@ -133,6 +134,7 @@ export async function updateRacePlan(req: Request, res: Response) {
     if (b.bikePace !== undefined) updates.bikePace = b.bikePace;
     if (b.t2Target !== undefined) updates.t2Target = b.t2Target;
     if (b.runPace !== undefined) updates.runPace = b.runPace;
+    if (b.scenarios !== undefined) updates.scenarios = b.scenarios;
     if (b.nutritionStrategy !== undefined) updates.nutritionStrategy = b.nutritionStrategy;
     if (b.hydrationStrategy !== undefined) updates.hydrationStrategy = b.hydrationStrategy;
     if (b.notes !== undefined) updates.notes = b.notes;

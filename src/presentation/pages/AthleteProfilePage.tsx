@@ -9,6 +9,7 @@ import { apiClient } from "@/application/api/client";
 import AthleteProfile from "@/presentation/components/settings/AthleteProfile";
 import LLMSettings from "@/presentation/components/settings/LLMSettings";
 import TrainingZones from "@/presentation/components/settings/TrainingZones";
+import PoolSettings from "@/presentation/components/settings/PoolSettings";
 import { Copy, Check, ChevronDown, Search } from "lucide-react";
 
 interface AthleteOption {
@@ -19,7 +20,7 @@ interface AthleteOption {
   email: string;
 }
 
-type Tab = "data" | "zones" | "ai";
+type Tab = "data" | "zones" | "ai" | "pools";
 
 export default function AthleteProfilePage() {
   const currentUser = useAuthStore((s) => s.user);
@@ -165,6 +166,7 @@ export default function AthleteProfilePage() {
         {([
           { key: "data" as Tab, label: "Atlet Data" },
           { key: "zones" as Tab, label: "Traeningszoner" },
+          { key: "pools" as Tab, label: "Svømmehaller" },
           { key: "ai" as Tab, label: "AI Brug" },
         ]).map((t) => (
           <button key={t.key} data-testid={`athlete-tab-${t.key}`} onClick={() => setTab(t.key)} className={`px-4 py-2 text-sm font-medium transition-colors ${tab === t.key ? "border-b-2 border-primary text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
@@ -185,6 +187,10 @@ export default function AthleteProfilePage() {
 
       {tab === "zones" && (
         <TrainingZones athleteId={athleteId} />
+      )}
+
+      {tab === "pools" && (
+        <PoolSettings athleteId={athleteId} />
       )}
 
       {tab === "ai" && (

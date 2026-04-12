@@ -292,13 +292,111 @@ export default function RacePlanPage() {
     });
   };
 
+  // ── Scenario tabs ────────────────────────────────────────────────────
+  type ScenarioKey = "A" | "B" | "C";
+  const SCENARIO_LABELS: Record<ScenarioKey, { label: string; desc: string }> = {
+    A: { label: "Plan A", desc: "God dag" },
+    B: { label: "Plan B", desc: "Normal dag" },
+    C: { label: "Plan C", desc: "Overlevelse" },
+  };
+  const [activeScenario, setActiveScenario] = useState<ScenarioKey>("A");
+
+  /** Compute segment times from pace+distance for a scenario */
+  function computeScenarioTimeline(paces: { swimPace: number | null; bikePace: number | null; runPace: number | null; t1Target: number | null; t2Target: number | null }, distances: { swim: number; bike: number; run: number }) {
+    const swimSec = paces.swimPace ? Math.round((distances.swim / 100) * paces.swimPace) : 0;
+    const bikeSec = paces.bikePace ? Math.round((distances.bike / 1000) * paces.bikePace) : 0;
+    const runSec = paces.runPace ? Math.round((distances.run / 1000) * paces.runPace) : 0;
+    const t1Sec = paces.t1Target ?? 120;
+    const t2Sec = paces.t2Target ?? 90;
+    let clock = 0;
+    const segs: RaceSegment[] = [
+      { type: "swim", label: "Svoemning", distance: distances.swim, startSec: (clock), durationSec: swimSec, pace: paces.swimPace ? `${Math.floor(paces.swimPace / 60)}:${String(Math.round(paces.swimPace % 60)).padStart(2, "0")}/100m` : null },
+      { type: "t1", label: "T1", distance: 0, startSec: (clock += swimSec), durationSec: t1Sec, pace: null },
+      { type: "bike", label: "Cykling", distance: distances.bike, startSec: (clock += t1Sec), durationSec: bikeSec, pace: paces.bikePace && bikeSec > 0 ? `${Math.round(distances.bike / 1000 / (bikeSec / 3600))} km/t` : null },
+      { type: "t2", label: "T2", distance: 0, startSec: (clock += bikeSec), durationSec: t2Sec, pace: null },
+      { type: "run", label: "Loeb", distance: distances.run, startSec: (clock += t2Sec), durationSec: runSec, pace: paces.runPace ? `${Math.floor(paces.runPace / 60)}:${String(Math.round(paces.runPace % 60)).padStart(2, "0")}/km` : null },
+    ];
+    return {
+      segments: segs,
+      totalTimeSec: swimSec + t1Sec + bikeSec + t2Sec + runSec,
+    };
+  }
+
+  // Get scenario data: A = from timeline, B/C = computed from stored scenarios
+  const plan = planDetail as RacePlan | undefined;
+  const scenarioData = activeScenario === "A" ? timeline : (() => {
+    if (!plan?.scenarios || !timeline) return null;
+    const sc = (plan.scenarios as Record<string, any>)[activeScenario];
+    if (!sc) return null;
+    const distances = {
+      swim: timeline.segments.find((s) => s.type === "swim")?.distance ?? 3800,
+      bike: timeline.segments.find((s) => s.type === "bike")?.distance ?? 180000,
+      run: timeline.segments.find((s) => s.type === "run")?.distance ?? 42195,
+    };
+    return { ...computeScenarioTimeline(sc, distances), nutritionTimeline: timeline.nutritionTimeline, totals: timeline.totals };
+  })();
+
+  // Editing scenarios B/C
+  const [editingScenario, setEditingScenario] = useState<ScenarioKey | null>(null);
+  const [scnSwimPace, setScnSwimPace] = useState("");
+  const [scnBikeKmh, setScnBikeKmh] = useState("");
+  const [scnRunPace, setScnRunPace] = useState("");
+  const [scnT1, setScnT1] = useState("");
+  const [scnT2, setScnT2] = useState("");
+
+  function startScenarioEdit(key: ScenarioKey) {
+    const sc = (plan?.scenarios as Record<string, any>)?.[key];
+    if (sc) {
+      setScnSwimPace(secsToMSS(sc.swimPace));
+      setScnBikeKmh(sc.bikePace ? secPerKmToKmh(sc.bikePace).toFixed(1) : "");
+      setScnRunPace(secsToMSS(sc.runPace));
+      setScnT1(secsToMSS(sc.t1Target));
+      setScnT2(secsToMSS(sc.t2Target));
+    } else {
+      // Default: Plan A values + 5%/10% slower
+      const factor = key === "B" ? 1.05 : 1.12;
+      setScnSwimPace(secsToMSS(plan?.swimPace ? Math.round(plan.swimPace * factor) : null));
+      setScnBikeKmh(plan?.bikePace ? secPerKmToKmh(plan.bikePace / factor).toFixed(1) : "");
+      setScnRunPace(secsToMSS(plan?.runPace ? Math.round(plan.runPace * factor) : null));
+      setScnT1(secsToMSS(plan?.t1Target ?? null));
+      setScnT2(secsToMSS(plan?.t2Target ?? null));
+    }
+    setEditingScenario(key);
+  }
+
+  function saveScenario() {
+    if (!editingScenario || !plan) return;
+    const existing = (plan.scenarios as Record<string, any>) ?? {};
+    const updated = {
+      ...existing,
+      [editingScenario]: {
+        label: SCENARIO_LABELS[editingScenario].desc,
+        swimPace: parseMSS(scnSwimPace) || null,
+        bikePace: kmhToSecPerKm(parseFloat(scnBikeKmh) || 0) || null,
+        runPace: parseMSS(scnRunPace) || null,
+        t1Target: parseMSS(scnT1) || null,
+        t2Target: parseMSS(scnT2) || null,
+      },
+    };
+    updatePlanMutation.mutate({ scenarios: updated } as Partial<RacePlan>, {
+      onSuccess: () => setEditingScenario(null),
+    });
+  }
+
   return (
     <div data-testid="race-plan-page" className="space-y-6 p-4 md:p-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-foreground">Raceplan</h1>
         <div className="flex items-center gap-3">
           {mainGoal && (
-            <span className="text-sm text-muted-foreground">{mainGoal.title}</span>
+            <div className="text-right">
+              <span className="text-sm text-muted-foreground">{mainGoal.title}</span>
+              {mainGoal.raceTargetTime != null && mainGoal.raceTargetTime > 0 && (
+                <span className="ml-2 rounded bg-primary/15 px-2 py-0.5 text-xs font-bold text-primary">
+                  Maal: {formatTime(mainGoal.raceTargetTime)}
+                </span>
+              )}
+            </div>
           )}
           {timeline && (
             <ExportPdfButton
@@ -375,38 +473,115 @@ export default function RacePlanPage() {
       {/* Plan detail */}
       {timeline && (
         <>
-          {/* Segment timeline bar */}
-          <SegmentBar segments={timeline.segments} totalSec={timeline.totalTimeSec} />
-
-          {/* Total time + edit toggle */}
-          <div className="flex items-center justify-center gap-3">
-            <div className="flex items-center gap-2 text-lg font-bold text-foreground">
-              <Clock className="h-5 w-5 text-muted-foreground" />
-              Estimeret total: {formatTime(timeline.totalTimeSec)}
-            </div>
-            {!editing ? (
+          {/* Scenario tabs */}
+          <div className="flex items-center gap-1 rounded-lg border border-border bg-muted/30 p-1 w-fit">
+            {(["A", "B", "C"] as ScenarioKey[]).map((key) => (
               <button
-                data-testid="edit-race-plan"
-                onClick={startEditing}
-                className="flex items-center gap-1 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted"
+                key={key}
+                onClick={() => setActiveScenario(key)}
+                className={`rounded-md px-4 py-1.5 text-xs font-medium transition-colors ${
+                  activeScenario === key
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                }`}
               >
-                <Pencil className="h-3.5 w-3.5" /> Rediger
+                {SCENARIO_LABELS[key].label}
+                <span className="ml-1 hidden text-[10px] opacity-70 sm:inline">({SCENARIO_LABELS[key].desc})</span>
               </button>
-            ) : (
-              <button
-                data-testid="save-race-plan"
-                onClick={saveEditing}
-                disabled={updatePlanMutation.isPending}
-                className="flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-              >
-                <Check className="h-3.5 w-3.5" /> Gem
-              </button>
-            )}
+            ))}
           </div>
 
+          {/* Scenario B/C: edit or create */}
+          {activeScenario !== "A" && !scenarioData && !editingScenario && (
+            <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-8">
+              <p className="mb-3 text-sm text-muted-foreground">
+                {SCENARIO_LABELS[activeScenario].label} ({SCENARIO_LABELS[activeScenario].desc}) er ikke oprettet endnu.
+              </p>
+              <button
+                onClick={() => startScenarioEdit(activeScenario)}
+                className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              >
+                <Plus className="h-4 w-4" /> Opret {SCENARIO_LABELS[activeScenario].label}
+              </button>
+            </div>
+          )}
+
+          {/* Scenario edit form */}
+          {editingScenario && (
+            <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+              <h3 className="text-sm font-semibold text-foreground">{SCENARIO_LABELS[editingScenario].label} — {SCENARIO_LABELS[editingScenario].desc}</h3>
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+                <div>
+                  <label className="block text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">Svoem (M:SS/100m)</label>
+                  <input value={scnSwimPace} onChange={(e) => setScnSwimPace(e.target.value)} placeholder="1:50" className="w-full rounded border border-input bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring" />
+                </div>
+                <div>
+                  <label className="block text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">T1 (M:SS)</label>
+                  <input value={scnT1} onChange={(e) => setScnT1(e.target.value)} placeholder="2:00" className="w-full rounded border border-input bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring" />
+                </div>
+                <div>
+                  <label className="block text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">Cykel (km/t)</label>
+                  <input value={scnBikeKmh} onChange={(e) => setScnBikeKmh(e.target.value)} placeholder="33.3" className="w-full rounded border border-input bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring" />
+                </div>
+                <div>
+                  <label className="block text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">T2 (M:SS)</label>
+                  <input value={scnT2} onChange={(e) => setScnT2(e.target.value)} placeholder="1:30" className="w-full rounded border border-input bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring" />
+                </div>
+                <div>
+                  <label className="block text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">Loeb (M:SS/km)</label>
+                  <input value={scnRunPace} onChange={(e) => setScnRunPace(e.target.value)} placeholder="5:30" className="w-full rounded border border-input bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring" />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={saveScenario} disabled={updatePlanMutation.isPending} className="rounded-md bg-primary px-4 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">Gem</button>
+                <button onClick={() => setEditingScenario(null)} className="rounded-md border border-border px-4 py-2 text-xs text-muted-foreground hover:text-foreground">Annuller</button>
+              </div>
+            </div>
+          )}
+
+          {/* Segment timeline bar + total time + edit (only when scenarioData exists) */}
+          {scenarioData && (
+            <>
+              <SegmentBar segments={scenarioData.segments} totalSec={scenarioData.totalTimeSec} />
+
+              <div className="flex items-center justify-center gap-3">
+                <div className="flex items-center gap-2 text-lg font-bold text-foreground">
+                  <Clock className="h-5 w-5 text-muted-foreground" />
+                  Estimeret total: {formatTime(scenarioData.totalTimeSec)}
+                </div>
+                {activeScenario === "A" && !editing ? (
+                  <button
+                    data-testid="edit-race-plan"
+                    onClick={startEditing}
+                    className="flex items-center gap-1 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted"
+                  >
+                    <Pencil className="h-3.5 w-3.5" /> Rediger
+                  </button>
+                ) : activeScenario === "A" && editing ? (
+                  <button
+                    data-testid="save-race-plan"
+                    onClick={saveEditing}
+                    disabled={updatePlanMutation.isPending}
+                    className="flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                  >
+                    <Check className="h-3.5 w-3.5" /> Gem
+                  </button>
+                ) : activeScenario !== "A" && !editingScenario ? (
+                  <button
+                    onClick={() => startScenarioEdit(activeScenario)}
+                    className="flex items-center gap-1 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted"
+                  >
+                    <Pencil className="h-3.5 w-3.5" /> Rediger
+                  </button>
+                ) : null}
+              </div>
+            </>
+          )}
+
           {/* Segment cards — editable */}
+          {scenarioData && (
           <div data-testid="race-segments" className="grid gap-3 md:grid-cols-5">
-            {timeline.segments.map((seg) => {
+            {scenarioData.segments.map((seg) => {
               const isTransition = seg.type === "t1" || seg.type === "t2";
               return (
                 <div
@@ -488,6 +663,7 @@ export default function RacePlanPage() {
               );
             })}
           </div>
+          )}
 
           {/* Nutrition totals */}
           <div data-testid="nutrition-totals" className="grid grid-cols-2 gap-3 md:grid-cols-4">

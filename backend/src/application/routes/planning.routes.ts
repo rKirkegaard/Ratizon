@@ -13,6 +13,7 @@ import {
   createPhase,
   getMesocycle,
   generateTaperPlan,
+  estimateCTL,
 } from "../controllers/planning.controller.js";
 
 export const planningRouter = Router();
@@ -40,6 +41,9 @@ planningRouter.post("/:athleteId/phases", createPhase);
 
 // ── Mesocycle View ────────────────────────────────────────────────────
 planningRouter.get("/:athleteId/mesocycle", getMesocycle);
+
+// ── CTL Estimate ─────────────────────────────────────────────────────
+planningRouter.post("/:athleteId/ctl-estimate", estimateCTL);
 
 // ── Taper Calculator ──────────────────────────────────────────────────
 planningRouter.post("/:athleteId/taper/generate", generateTaperPlan);

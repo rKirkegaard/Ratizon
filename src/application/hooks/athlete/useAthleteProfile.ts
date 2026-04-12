@@ -22,6 +22,7 @@ export interface AthleteProfileData {
   weeklyVolumeMin: number | null;
   weeklyVolumeMax: number | null;
   cycleType: string | null;
+  poolUrls: { url: string; active: boolean }[] | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -47,6 +48,7 @@ export interface ProfileUpdatePayload {
   weeklyVolumeMin?: number | null;
   weeklyVolumeMax?: number | null;
   cycleType?: string | null;
+  poolUrls?: { url: string; active: boolean }[] | null;
 }
 
 // ── Hooks ──────────────────────────────────────────────────────────────

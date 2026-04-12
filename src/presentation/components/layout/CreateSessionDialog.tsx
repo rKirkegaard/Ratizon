@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef } from "react";
 import { Loader2, Plus, Trash2, ChevronUp, ChevronDown } from "lucide-react";
+import DatePicker from "@/presentation/components/shared/DatePicker";
 import { useAthleteStore } from "@/application/stores/athleteStore";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/application/api/client";
@@ -207,7 +208,7 @@ export default function CreateSessionDialog({ open, onClose, editSession }: Crea
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="mb-1 block text-xs text-muted-foreground">Dato</label>
-              <input data-testid="session-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground" />
+              <DatePicker value={date} onChange={setDate} />
             </div>
             <div>
               <label className="mb-1 block text-xs text-muted-foreground">Sport</label>

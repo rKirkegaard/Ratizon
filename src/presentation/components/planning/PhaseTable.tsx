@@ -1,10 +1,14 @@
 import { useState } from "react";
+import { AlertTriangle, Check } from "lucide-react";
+import DatePicker from "@/presentation/components/shared/DatePicker";
 import type { AthleteTrainingPhase } from "@/domain/types/planning.types";
+import type { PhaseCTLTarget } from "@/application/hooks/planning/useCTLEstimate";
 
 interface PhaseTableProps {
   phases: AthleteTrainingPhase[];
   isLoading: boolean;
   onCreatePhase: (phase: Partial<AthleteTrainingPhase>) => void;
+  suggestedTargets?: PhaseCTLTarget[];
 }
 
 const PHASE_TYPE_LABELS: Record<string, string> = {
@@ -43,7 +47,15 @@ export default function PhaseTable({
   phases,
   isLoading,
   onCreatePhase,
+  suggestedTargets,
 }: PhaseTableProps) {
+  const suggestedMap = new Map(
+    (suggestedTargets ?? []).map((t) => [t.phaseId, t.ctlTarget])
+  );
+  // Also build a map by phaseType for the create form placeholder
+  const suggestedByType = new Map(
+    (suggestedTargets ?? []).map((t) => [t.phaseType, t.ctlTarget])
+  );
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
     phaseName: "",
@@ -136,29 +148,21 @@ export default function PhaseTable({
                 </option>
               ))}
             </select>
-            <input
-              type="date"
-              placeholder="Start"
+            <DatePicker
               value={formData.startDate}
-              onChange={(e) =>
-                setFormData({ ...formData, startDate: e.target.value })
-              }
+              onChange={(v) => setFormData({ ...formData, startDate: v })}
+              placeholder="Start"
               required
-              className="rounded border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             />
-            <input
-              type="date"
-              placeholder="Slut"
+            <DatePicker
               value={formData.endDate}
-              onChange={(e) =>
-                setFormData({ ...formData, endDate: e.target.value })
-              }
+              onChange={(v) => setFormData({ ...formData, endDate: v })}
+              placeholder="Slut"
               required
-              className="rounded border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             />
             <input
               type="number"
-              placeholder="CTL-maal"
+              placeholder={suggestedByType.get(formData.phaseType) ? `Foreslaaet: ${suggestedByType.get(formData.phaseType)}` : "CTL-maal"}
               value={formData.ctlTarget}
               onChange={(e) =>
                 setFormData({ ...formData, ctlTarget: e.target.value })
@@ -244,7 +248,22 @@ export default function PhaseTable({
                       {formatDate(phase.endDate)}
                     </td>
                     <td className="py-2 pr-4 tabular-nums text-foreground">
-                      {phase.ctlTarget ?? "–"}
+                      <span className="inline-flex items-center gap-1">
+                        {phase.ctlTarget ?? "–"}
+                        {(() => {
+                          const suggested = suggestedMap.get(phase.id);
+                          if (!suggested || !phase.ctlTarget) return null;
+                          const diff = Math.abs(phase.ctlTarget - suggested);
+                          if (diff <= suggested * 0.1) {
+                            return <Check size={12} className="text-emerald-400" />;
+                          }
+                          return (
+                            <span title={`Anbefalet: ${suggested}`}>
+                              <AlertTriangle size={12} className="text-amber-400" />
+                            </span>
+                          );
+                        })()}
+                      </span>
                     </td>
                     <td className="py-2 tabular-nums text-foreground">
                       {phase.weeklyHoursTarget

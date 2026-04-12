@@ -109,17 +109,17 @@ export default function TaperSection({ athleteId, goalId }: TaperSectionProps) {
             <div className="h-48 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={result.projection} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} tickFormatter={formatDate} />
-                  <YAxis tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} width={35} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={formatDate} />
+                  <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} width={35} />
                   <Tooltip cursor={false}
-                    contentStyle={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: "8px", fontSize: "12px" }}
+                    contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }}
                     labelFormatter={formatDate}
                   />
                   <Line dataKey="ctl" stroke="#22C55E" strokeWidth={2} dot={false} name="CTL" />
                   <Line dataKey="atl" stroke="#EF4444" strokeWidth={1.5} dot={false} name="ATL" />
                   <Line dataKey="tsb" stroke="#3B82F6" strokeWidth={2} dot={false} name="TSB" />
-                  <ReferenceLine y={0} stroke="var(--border)" strokeDasharray="3 3" />
+                  <ReferenceLine y={0} stroke="hsl(var(--border))" strokeDasharray="3 3" />
                   <ReferenceLine x={result.raceDate.split("T")[0]} stroke="#EAB308" strokeWidth={2} label={{ value: "Race", fill: "#EAB308", fontSize: 10 }} />
                 </LineChart>
               </ResponsiveContainer>

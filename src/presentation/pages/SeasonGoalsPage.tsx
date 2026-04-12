@@ -1,4 +1,6 @@
 import { useAthleteStore } from "@/application/stores/athleteStore";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiClient } from "@/application/api/client";
 import {
   useGoals,
   useCreateGoal,
@@ -16,6 +18,8 @@ import MesocycleTimeline from "@/presentation/components/planning/MesocycleTimel
 import PhaseComplianceCards from "@/presentation/components/planning/PhaseComplianceCards";
 import VolumeDistribution from "@/presentation/components/planning/VolumeDistribution";
 import TaperSection from "@/presentation/components/planning/TaperSection";
+import PerformancePipeline from "@/presentation/components/planning/PerformancePipeline";
+import { useCTLEstimate } from "@/application/hooks/planning/useCTLEstimate";
 import type { Goal } from "@/domain/types/planning.types";
 
 export default function SeasonGoalsPage() {
@@ -28,6 +32,15 @@ export default function SeasonGoalsPage() {
   const updateGoalMutation = useUpdateGoal(athleteId);
   const createPhaseMutation = useCreatePhase(athleteId);
   const { data: mesocycleData, isLoading: mesocycleLoading } = useMesocycle(athleteId);
+  const queryClient = useQueryClient();
+  const recalcPmc = useMutation({
+    mutationFn: () => apiClient.post(`/analytics/${athleteId}/pmc/recalculate`, { sport: "all" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["mesocycle", athleteId] });
+      queryClient.invalidateQueries({ queryKey: ["pmc", athleteId] });
+    },
+    onError: (err) => console.error("PMC recalculate failed:", err),
+  });
 
   const goals = (goalsData?.data ?? (Array.isArray(goalsData) ? goalsData : [])) as Goal[];
   const phases = phasesData?.data ?? (Array.isArray(phasesData) ? phasesData : []);
@@ -47,18 +60,22 @@ export default function SeasonGoalsPage() {
           new Date(a.targetDate!).getTime() - new Date(b.targetDate!).getTime()
       )[0] ?? null;
 
-  // CTL estimation: find current phase's CTL target or use a default
+  // CTL: use real data from mesocycle
   const now = new Date();
   const currentPhase = phases.find(
     (p) => new Date(p.startDate) <= now && new Date(p.endDate) >= now
   );
-  const currentCTL = currentPhase?.ctlTarget
-    ? Math.round(currentPhase.ctlTarget * 0.7)
-    : 45;
+  const ctlTimeSeries = mesocycleData?.ctlTimeSeries ?? [];
+  const currentCTL = ctlTimeSeries.length > 0
+    ? Math.round(ctlTimeSeries[ctlTimeSeries.length - 1].ctl)
+    : 0;
   const targetCTL = mainGoal
     ? phases.find((p) => p.phaseType === "race")?.ctlTarget ?? 80
     : 80;
   const ctlGap = targetCTL - currentCTL;
+
+  // CTL estimate from race target time
+  const { data: ctlEstimate } = useCTLEstimate(athleteId, mainGoal?.id ?? null);
 
   // No athlete selected
   if (!athleteId) {
@@ -92,12 +109,24 @@ export default function SeasonGoalsPage() {
         onUpdate={(goal) => updateGoalMutation.mutate(goal)}
       />
 
+      {/* Performance Pipeline */}
+      {ctlEstimate && <PerformancePipeline estimate={ctlEstimate} />}
+
       {/* CTL Projection chart */}
       <CTLProjection
-        currentCTL={currentCTL}
+        ctlTimeSeries={ctlTimeSeries}
         targetCTL={targetCTL}
+        derivedCTL={ctlEstimate?.requiredCTL ?? null}
         targetDate={mainGoal?.targetDate ?? null}
-        isLoading={goalsLoading || phasesLoading}
+        phases={phases.map((p: any) => ({
+          phaseType: p.phaseType,
+          startDate: p.startDate,
+          endDate: p.endDate,
+          ctlTarget: p.ctlTarget,
+        }))}
+        isLoading={goalsLoading || mesocycleLoading}
+        onRecalculate={() => recalcPmc.mutate()}
+        isRecalculating={recalcPmc.isPending}
       />
 
       {/* Mesocycle Timeline */}
@@ -130,6 +159,7 @@ export default function SeasonGoalsPage() {
         phases={phases}
         isLoading={phasesLoading}
         onCreatePhase={(phase) => createPhaseMutation.mutate(phase)}
+        suggestedTargets={ctlEstimate?.phaseTargets}
       />
 
       {/* Gap analysis */}
@@ -137,44 +167,77 @@ export default function SeasonGoalsPage() {
         data-testid="gap-analysis"
         className="rounded-lg border border-border bg-card p-4"
       >
-        <h3 className="mb-2 text-sm font-semibold text-foreground">
+        <h3 className="mb-3 text-sm font-semibold text-foreground">
           Gap-analyse
         </h3>
         {goalsLoading || phasesLoading ? (
           <div className="h-12 animate-pulse rounded bg-muted" />
         ) : mainGoal ? (
-          <div className="space-y-2 text-sm">
-            {ctlGap > 0 ? (
-              <p className="text-yellow-400">
-                Du mangler ca. <strong>{ctlGap} CTL</strong> for at naa
-                race-target ({targetCTL} CTL) til{" "}
-                <strong>{mainGoal.title}</strong>.
-              </p>
-            ) : (
-              <p className="text-green-400">
-                Du er paa eller over dit CTL-maal ({targetCTL}) for{" "}
-                <strong>{mainGoal.title}</strong>. Fokuser paa at holde formen!
-              </p>
-            )}
+          <div className="space-y-3">
+            {/* Metrics grid */}
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+              <div className="rounded-lg border border-border/50 p-3">
+                <p className="text-xs text-muted-foreground">Nuvaerende CTL</p>
+                <p className="text-lg font-bold text-foreground">{currentCTL}</p>
+              </div>
+              <div className="rounded-lg border border-border/50 p-3">
+                <p className="text-xs text-muted-foreground">{ctlEstimate ? "Krav (afledt)" : "Maal (manuelt)"}</p>
+                <p className={`text-lg font-bold ${ctlEstimate ? "text-emerald-400" : "text-foreground"}`}>
+                  {ctlEstimate?.requiredCTL ?? targetCTL}
+                </p>
+              </div>
+              <div className="rounded-lg border border-border/50 p-3">
+                <p className="text-xs text-muted-foreground">Gap</p>
+                <p className={`text-lg font-bold ${(ctlEstimate?.ctlGap ?? ctlGap) > 0 ? "text-amber-400" : "text-emerald-400"}`}>
+                  {ctlEstimate?.ctlGap ?? ctlGap} CTL
+                </p>
+              </div>
+              <div className="rounded-lg border border-border/50 p-3">
+                <p className="text-xs text-muted-foreground">Ramp-rate</p>
+                <p className="text-lg font-bold text-foreground">
+                  {ctlEstimate ? `+${ctlEstimate.requiredRampRate}/uge` : "–"}
+                </p>
+              </div>
+            </div>
+
+            {/* Progress bar */}
+            {(() => {
+              const target = ctlEstimate?.requiredCTL ?? targetCTL;
+              const pct = target > 0 ? Math.min(100, Math.round((currentCTL / target) * 100)) : 0;
+              return (
+                <div>
+                  <div className="mb-1 flex justify-between text-xs text-muted-foreground">
+                    <span>{pct}% af maal</span>
+                    <span>{currentCTL} / {target}</span>
+                  </div>
+                  <div className="h-2.5 w-full overflow-hidden rounded-full bg-accent">
+                    <div
+                      className={`h-full rounded-full transition-all ${
+                        pct >= 90 ? "bg-emerald-500" : pct >= 70 ? "bg-amber-500" : "bg-red-500"
+                      }`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Context text */}
             {currentPhase && (
-              <p className="text-muted-foreground">
-                Nuvaerende fase:{" "}
-                <strong>{currentPhase.phaseName}</strong>{" "}
-                ({currentPhase.phaseType}) &mdash;{" "}
-                {currentPhase.weeklyHoursTarget
-                  ? `${currentPhase.weeklyHoursTarget} timer/uge`
-                  : "Ingen volumenmaal"}
+              <p className="text-xs text-muted-foreground">
+                Nuvaerende fase: <strong>{currentPhase.phaseName}</strong> ({currentPhase.phaseType})
+                {currentPhase.weeklyHoursTarget ? ` — ${currentPhase.weeklyHoursTarget} timer/uge` : ""}
               </p>
             )}
-            {!currentPhase && phases.length > 0 && (
-              <p className="text-muted-foreground">
-                Du er ikke i en aktiv traeningsfase. Tjek dine faser ovenfor.
+            {ctlEstimate && ctlEstimate.requiredRampRate > 8 && (
+              <p className="text-xs text-red-400">
+                Den kraevede ramp-rate ({ctlEstimate.requiredRampRate}/uge) er hoej. Overvej at justere maaltiden eller flytte racedatoen.
               </p>
             )}
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Opret et A-maal for at se gap-analyse mod race-day.
+            Opret et A-maal med en maaltid for at se gap-analyse mod race-day.
           </p>
         )}
       </div>

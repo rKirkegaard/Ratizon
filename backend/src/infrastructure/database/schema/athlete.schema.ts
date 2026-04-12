@@ -46,6 +46,7 @@ export const athletes = pgTable("athletes", {
   weeklyVolumeMax: real("weekly_volume_max"),           // hours per week
   cycleType: varchar("cycle_type", { length: 10 }),     // 3:1, 2:1, 4:1
   profileImageUrl: text("profile_image_url"),
+  poolUrls: jsonb("pool_urls").$type<{ url: string; active: boolean }[]>(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

@@ -15,6 +15,7 @@ import { llmSettingsRouter } from "./llm-settings.routes.js";
 import { testRouter } from "./test.routes.js";
 import { adminRouter } from "./admin.routes.js";
 import { permissionsRouter } from "./permissions.routes.js";
+import { poolStatusRouter } from "./pool-status.routes.js";
 import { authenticateToken } from "../middleware/auth.middleware.js";
 
 export function registerRoutes(app: Express): void {
@@ -37,4 +38,7 @@ export function registerRoutes(app: Express): void {
   app.use("/api/tests", authenticateToken, testRouter);
   app.use("/api/admin", adminRouter); // Admin routes handle own auth + role check
   app.use("/api/permissions", authenticateToken, permissionsRouter);
+
+  // Public routes (no auth — public data)
+  app.use("/api/pool-status", poolStatusRouter);
 }

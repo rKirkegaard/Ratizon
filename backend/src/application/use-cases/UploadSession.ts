@@ -7,7 +7,9 @@ import {
 import { sessionAnalytics } from "../../infrastructure/database/schema/analytics.schema.js";
 import { athletes } from "../../infrastructure/database/schema/athlete.schema.js";
 import { equipment, sessionEquipment } from "../../infrastructure/database/schema/equipment.schema.js";
-import { eq, and } from "drizzle-orm";
+import { eq, and, asc, sql } from "drizzle-orm";
+import { athletePmc } from "../../infrastructure/database/schema/analytics.schema.js";
+import { PMCCalculator } from "../../domain/services/PMCCalculator.js";
 import { parseMssToPaceSec } from "../../domain/utils/paceUtils.js";
 import { parseFIT } from "../../infrastructure/parsers/FITParser.js";
 import { parseTCX } from "../../infrastructure/parsers/TCXParser.js";
@@ -267,9 +269,60 @@ export async function uploadSession(
     }
   } catch { /* non-fatal */ }
 
+  // ── Recalculate PMC in background ────────────────────────────────
+  recalculatePmcForAthlete(athleteId).catch((err) =>
+    console.error("PMC genberegning fejlede:", err)
+  );
+
   return {
     sessionId: sessionId.toString(),
     sport: parsed.session.sport,
     title: parsed.session.title,
   };
+}
+
+async function recalculatePmcForAthlete(athleteId: string): Promise<void> {
+  const sessionRows = await db
+    .select({
+      startedAt: sessions.startedAt,
+      tss: sessions.tss,
+      sessionAnalyticsTss: sql<number | null>`(SELECT sa.hrss FROM session_analytics sa WHERE sa.session_id = ${sessions.id} LIMIT 1)`,
+    })
+    .from(sessions)
+    .where(eq(sessions.athleteId, athleteId))
+    .orderBy(asc(sessions.startedAt));
+
+  if (sessionRows.length === 0) return;
+
+  const dailyTssMap = new Map<string, number>();
+  for (const s of sessionRows) {
+    const dateKey = s.startedAt.toISOString().slice(0, 10);
+    const tss = s.sessionAnalyticsTss ?? s.tss ?? 0;
+    dailyTssMap.set(dateKey, (dailyTssMap.get(dateKey) || 0) + tss);
+  }
+
+  const calculator = new PMCCalculator();
+  const filled = calculator.fillMissingDays(
+    Array.from(dailyTssMap.entries()).map(([date, tss]) => ({ date, tss }))
+  );
+  const pmcResults = calculator.calculate(filled);
+
+  await db.delete(athletePmc).where(eq(athletePmc.athleteId, athleteId));
+
+  const batchSize = 500;
+  for (let i = 0; i < pmcResults.length; i += batchSize) {
+    await db.insert(athletePmc).values(
+      pmcResults.slice(i, i + batchSize).map((p) => ({
+        athleteId,
+        date: new Date(p.date),
+        sport: "all",
+        ctl: p.ctl,
+        atl: p.atl,
+        tsb: p.tsb,
+        monotony: p.monotony,
+        strain: p.strain,
+        rampRate: p.rampRate,
+      }))
+    );
+  }
 }
