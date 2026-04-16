@@ -408,6 +408,21 @@ export default function CTLProjection({
               />
             )}
 
+            {/* Today marker — discrete vertical line */}
+            <ReferenceLine
+              x={new Date().toISOString().split("T")[0]}
+              stroke="hsl(var(--muted-foreground))"
+              strokeDasharray="2 4"
+              strokeOpacity={0.5}
+              label={{
+                value: "I dag",
+                position: "top",
+                fontSize: 9,
+                fill: "hsl(var(--muted-foreground))",
+              }}
+            />
+
+
             <Line
               type="monotone"
               dataKey="actualCTL"

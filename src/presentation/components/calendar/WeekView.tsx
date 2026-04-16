@@ -419,7 +419,7 @@ export default function WeekView({
 
       {/* Week grid: 7 days + summary */}
       <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="grid grid-cols-8 gap-2">
+      <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(7, 1fr) minmax(180px, 1.4fr)" }}>
         {days.map((day, idx) => {
           const key = format(day, "yyyy-MM-dd");
           const dayEntries = entriesByDay.get(key) ?? [];
@@ -690,7 +690,7 @@ export default function WeekView({
         })}
 
         {/* Week summary column — same format as MonthView Uge Total */}
-        <div data-testid="week-summary" className="min-h-[400px] rounded-lg border border-border bg-muted/30 p-3">
+        <div data-testid="week-summary" className="min-h-[400px] rounded-lg border border-border bg-muted/30 p-3 overflow-hidden">
           <div className="text-xs font-semibold text-foreground mb-2">
             Uge {getISOWeek(weekStart)}
             <span className="ml-1 text-muted-foreground font-normal">Uge total</span>
@@ -712,7 +712,7 @@ export default function WeekView({
                   </div>
                 )}
                 {Object.entries(weekSummary.sportBreakdown).map(([sport, data]) => (
-                  <div key={sport} className="flex items-center gap-1 pl-2 whitespace-nowrap text-xs" style={{ color: getSportColor(sport) }}>
+                  <div key={sport} className="flex items-center gap-1 pl-2 text-xs flex-wrap" style={{ color: getSportColor(sport) }}>
                     <SportIcon sport={sport} size={12} />
                     <span>{formatDuration(data.duration)}</span>
                     {data.distance > 0 && <span className="text-muted-foreground">- {formatDistance(data.distance)}</span>}
@@ -737,7 +737,7 @@ export default function WeekView({
                   </div>
                 )}
                 {Object.entries(weekSummary.plannedBySport).map(([sport, data]) => (
-                  <div key={sport} className="flex items-center gap-1 pl-2 whitespace-nowrap text-xs" style={{ color: getSportColor(sport) }}>
+                  <div key={sport} className="flex items-center gap-1 pl-2 text-xs flex-wrap" style={{ color: getSportColor(sport) }}>
                     <SportIcon sport={sport} size={12} />
                     <span>{formatDuration(data.duration)}</span>
                     {data.distance > 0 && <span className="text-muted-foreground">- {formatDistance(data.distance)}</span>}

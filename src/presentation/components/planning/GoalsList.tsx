@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Clock } from "lucide-react";
 import DatePicker from "@/presentation/components/shared/DatePicker";
 import ConfirmDialog from "@/presentation/components/shared/ConfirmDialog";
 import type { Goal } from "@/domain/types/planning.types";
@@ -128,47 +128,60 @@ const readOnlyCls = "rounded border border-input bg-muted/50 px-3 py-2 text-sm t
 
 // ── Extracted sub-components (outside main component to avoid re-mount) ──
 
-function DisciplineRow({ label, color, distM, distEditable, distLabel, paceValue, paceOnChange, pacePlaceholder, paceUnit, timeValue, timeOnChange, timePlaceholder, mismatch, onDistChange }: {
-  label: string; color: string; distM: number; distEditable: boolean; distLabel: string;
+const SEGMENT_COLORS: Record<string, string> = {
+  swim: "#22d3ee",
+  t1: "#9ca3af",
+  bike: "#22c55e",
+  t2: "#9ca3af",
+  run: "#f97316",
+};
+
+function DisciplineCard({ label, color, sport, distM, paceValue, paceOnChange, pacePlaceholder, paceUnit, timeValue, timeOnChange, timePlaceholder }: {
+  label: string; color: string; sport: string; distM: number;
   paceValue: string; paceOnChange: (v: string) => void; pacePlaceholder: string; paceUnit: string;
   timeValue: string; timeOnChange: (v: string) => void; timePlaceholder: string;
-  mismatch: string | null; onDistChange?: (v: number) => void;
 }) {
+  const isTransition = sport === "t1" || sport === "t2";
   return (
-    <>
-      <div className="grid grid-cols-1 sm:grid-cols-[80px_1fr_1fr_1fr] gap-2 items-center">
-        <div className="flex items-center gap-1.5">
-          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
-          <span className="text-xs font-medium" style={{ color }}>{label}</span>
-        </div>
-        {distEditable ? (
-          <input type="number" placeholder="Distance (m)" value={distM || ""} onChange={(e) => onDistChange?.(Number(e.target.value) || 0)} className={`${inputCls} tabular-nums`} />
-        ) : (
-          <span className={readOnlyCls}>{distLabel}</span>
-        )}
-        <div className="relative">
-          <input type="text" placeholder={pacePlaceholder} value={paceValue} onChange={(e) => paceOnChange(e.target.value)} className={`${inputCls} tabular-nums pr-16`} />
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">{paceUnit}</span>
-        </div>
-        <input type="text" placeholder={timePlaceholder} value={timeValue} onChange={(e) => timeOnChange(e.target.value)} className={`${inputCls} tabular-nums`} />
+    <div className="rounded-lg border border-border bg-card p-4" style={{ borderTopColor: color, borderTopWidth: "3px" }}>
+      <div className="flex items-center gap-2 mb-2">
+        {!isTransition && <SportIcon sport={sport} size={18} />}
+        <span className="text-sm font-semibold text-foreground">{label}</span>
       </div>
-      {mismatch && (
-        <div className="sm:col-span-4 flex items-center gap-1.5 px-1 -mt-1 mb-1">
-          <AlertTriangle className="h-3 w-3 text-amber-400 shrink-0" />
-          <span className="text-[11px] text-amber-400">{mismatch}</span>
+      <div className="space-y-2">
+        <div>
+          <label className="block text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">
+            {isTransition ? "Tid (M:SS)" : "Tid (H:MM:SS)"}
+          </label>
+          <input type="text" value={timeValue} onChange={(e) => timeOnChange(e.target.value)} placeholder={timePlaceholder}
+            className={`${inputCls} w-full tabular-nums`} />
         </div>
-      )}
-    </>
+        {!isTransition && (
+          <div>
+            <label className="block text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">
+              {paceUnit === "km/t" ? "Hastighed (km/t)" : `Pace (${paceUnit})`}
+            </label>
+            <input type="text" value={paceValue} onChange={(e) => paceOnChange(e.target.value)} placeholder={pacePlaceholder}
+              className={`${inputCls} w-full tabular-nums`} />
+          </div>
+        )}
+        {distM > 0 && (
+          <p className="text-[10px] text-muted-foreground">{distM >= 1000 ? (distM / 1000).toFixed(1) + " km" : distM + " m"}</p>
+        )}
+      </div>
+    </div>
   );
 }
 
-function TransitionRow({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+function TransitionCard({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-[80px_1fr_1fr_1fr] gap-2 items-center">
-      <span className="text-xs font-medium text-muted-foreground">{label}</span>
-      <span className="hidden sm:block" />
-      <span className="hidden sm:block" />
-      <input type="text" placeholder="M:SS" value={value} onChange={(e) => onChange(e.target.value)} className={`${inputCls} tabular-nums`} />
+    <div className="rounded-lg border border-border bg-card p-4" style={{ borderTopColor: SEGMENT_COLORS.t1, borderTopWidth: "3px" }}>
+      <span className="text-sm font-semibold text-foreground mb-2 block">{label}</span>
+      <div>
+        <label className="block text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">Tid (M:SS)</label>
+        <input type="text" value={value} onChange={(e) => onChange(e.target.value)} placeholder="M:SS"
+          className={`${inputCls} w-full tabular-nums`} />
+      </div>
     </div>
   );
 }
@@ -412,106 +425,113 @@ export default function GoalsList({ goals, isLoading, onDelete, onCreate, onUpda
             </div>
           )}
 
-          {/* Section C: Discipline Splits */}
+          {/* Section C: Discipline Splits — card layout matching raceplan style */}
           {isRace && sport && formData.raceSubType && (
-            <div className="space-y-1.5">
-              {/* Column headers */}
-              <div className="hidden sm:grid grid-cols-[80px_1fr_1fr_1fr] gap-2 px-1 text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
-                <span />
-                <span>Distance</span>
-                <span>Pace / Hastighed</span>
-                <span>Tid</span>
+            <div className="space-y-2">
+              {/* Segment bar — matching raceplan style */}
+              {hasSplits && computedTotal && computedTotal > 0 && (
+                <div className="flex h-8 w-full overflow-hidden rounded-lg text-xs font-medium text-white">
+                  {hasDiscipline("swim") && hmsToSecs(formData.swimTargetTime) && (
+                    <div className="flex items-center justify-center" style={{ width: `${(hmsToSecs(formData.swimTargetTime)! / computedTotal) * 100}%`, backgroundColor: SEGMENT_COLORS.swim }}>
+                      {(hmsToSecs(formData.swimTargetTime)! / computedTotal) > 0.08 && "Svoem"}
+                    </div>
+                  )}
+                  {sport === "triathlon" && hmsToSecs(formData.t1TargetTime) && (
+                    <div style={{ width: `${(hmsToSecs(formData.t1TargetTime)! / computedTotal) * 100}%`, backgroundColor: SEGMENT_COLORS.t1 }} />
+                  )}
+                  {hasDiscipline("bike") && hmsToSecs(formData.bikeTargetTime) && (
+                    <div className="flex items-center justify-center" style={{ width: `${(hmsToSecs(formData.bikeTargetTime)! / computedTotal) * 100}%`, backgroundColor: SEGMENT_COLORS.bike }}>
+                      {(hmsToSecs(formData.bikeTargetTime)! / computedTotal) > 0.08 && "Cykling"}
+                    </div>
+                  )}
+                  {sport === "triathlon" && hmsToSecs(formData.t2TargetTime) && (
+                    <div style={{ width: `${(hmsToSecs(formData.t2TargetTime)! / computedTotal) * 100}%`, backgroundColor: SEGMENT_COLORS.t2 }} />
+                  )}
+                  {hasDiscipline("run") && hmsToSecs(formData.runTargetTime) && (
+                    <div className="flex items-center justify-center" style={{ width: `${(hmsToSecs(formData.runTargetTime)! / computedTotal) * 100}%`, backgroundColor: SEGMENT_COLORS.run }}>
+                      {(hmsToSecs(formData.runTargetTime)! / computedTotal) > 0.08 && "Loeb"}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Mini-cards grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-2">
+                {hasDiscipline("swim") && (
+                  <DisciplineCard label="Svoem" color="#22d3ee" sport="swim" distM={formData.swimDist}
+                    paceValue={formData.swimPace}
+                    paceOnChange={(v) => {
+                      const timeSec = expectedTime(formData.swimDist, v, "swim");
+                      setFormData((prev) => ({ ...prev, swimPace: v, ...(timeSec ? { swimTargetTime: secsToHms(Math.round(timeSec)) } : {}) }));
+                    }}
+                    pacePlaceholder="1:45" paceUnit="/100m"
+                    timeValue={formData.swimTargetTime}
+                    timeOnChange={(v) => {
+                      const sec = hmsToSecs(v);
+                      const pace = sec && formData.swimDist ? paceFromDistAndTime(formData.swimDist, sec, "swim") : "";
+                      setFormData((prev) => ({ ...prev, swimTargetTime: v, ...(pace ? { swimPace: pace } : {}) }));
+                    }}
+                    timePlaceholder="H:MM:SS" />
+                )}
+
+                {sport === "triathlon" && (
+                  <TransitionCard label="T1" value={formData.t1TargetTime}
+                    onChange={(v) => setFormData((prev) => ({ ...prev, t1TargetTime: v }))} />
+                )}
+
+                {hasDiscipline("bike") && (
+                  <DisciplineCard label="Cykel" color="#22c55e" sport="bike" distM={formData.bikeDist}
+                    paceValue={formData.bikePace}
+                    paceOnChange={(v) => {
+                      const timeSec = expectedTime(formData.bikeDist, v, "bike");
+                      setFormData((prev) => ({ ...prev, bikePace: v, ...(timeSec ? { bikeTargetTime: secsToHms(Math.round(timeSec)) } : {}) }));
+                    }}
+                    pacePlaceholder="32.0" paceUnit="km/t"
+                    timeValue={formData.bikeTargetTime}
+                    timeOnChange={(v) => {
+                      const sec = hmsToSecs(v);
+                      const pace = sec && formData.bikeDist ? paceFromDistAndTime(formData.bikeDist, sec, "bike") : "";
+                      setFormData((prev) => ({ ...prev, bikeTargetTime: v, ...(pace ? { bikePace: pace } : {}) }));
+                    }}
+                    timePlaceholder="H:MM:SS" />
+                )}
+
+                {sport === "triathlon" && (
+                  <TransitionCard label="T2" value={formData.t2TargetTime}
+                    onChange={(v) => setFormData((prev) => ({ ...prev, t2TargetTime: v }))} />
+                )}
+
+                {hasDiscipline("run") && (
+                  <DisciplineCard label="Loeb" color="#f97316" sport="run" distM={formData.runDist}
+                    paceValue={formData.runPace}
+                    paceOnChange={(v) => {
+                      const timeSec = expectedTime(formData.runDist, v, "run");
+                      setFormData((prev) => ({ ...prev, runPace: v, ...(timeSec ? { runTargetTime: secsToHms(Math.round(timeSec)) } : {}) }));
+                    }}
+                    pacePlaceholder="5:15" paceUnit="/km"
+                    timeValue={formData.runTargetTime}
+                    timeOnChange={(v) => {
+                      const sec = hmsToSecs(v);
+                      const pace = sec && formData.runDist ? paceFromDistAndTime(formData.runDist, sec, "run") : "";
+                      setFormData((prev) => ({ ...prev, runTargetTime: v, ...(pace ? { runPace: pace } : {}) }));
+                    }}
+                    timePlaceholder="H:MM:SS" />
+                )}
               </div>
 
-              {hasDiscipline("swim") && (
-                <DisciplineRow label="Svoem" color="#22d3ee"
-                  distM={formData.swimDist} distEditable={isCustom}
-                  distLabel={formData.swimDist > 0 ? formatDistanceShort(formData.swimDist) : "–"}
-                  paceValue={formData.swimPace}
-                  paceOnChange={(v) => {
-                    const timeSec = expectedTime(formData.swimDist, v, "swim");
-                    setFormData((prev) => ({ ...prev, swimPace: v, ...(timeSec ? { swimTargetTime: secsToHms(Math.round(timeSec)) } : {}) }));
-                  }}
-                  pacePlaceholder="1:45" paceUnit="/100m"
-                  timeValue={formData.swimTargetTime}
-                  timeOnChange={(v) => {
-                    const sec = hmsToSecs(v);
-                    const pace = sec && formData.swimDist ? paceFromDistAndTime(formData.swimDist, sec, "swim") : "";
-                    setFormData((prev) => ({ ...prev, swimTargetTime: v, ...(pace ? { swimPace: pace } : {}) }));
-                  }}
-                  timePlaceholder="H:MM:SS"
-                  mismatch={null}
-                  onDistChange={(v) => setFormData((prev) => ({ ...prev, swimDist: v }))} />
-              )}
-
-              {sport === "triathlon" && (
-                <TransitionRow label="T1" value={formData.t1TargetTime}
-                  onChange={(v) => setFormData((prev) => ({ ...prev, t1TargetTime: v }))} />
-              )}
-
-              {hasDiscipline("bike") && (
-                <DisciplineRow label="Cykel" color="#22c55e"
-                  distM={formData.bikeDist} distEditable={isCustom}
-                  distLabel={formData.bikeDist > 0 ? formatDistanceShort(formData.bikeDist) : "–"}
-                  paceValue={formData.bikePace}
-                  paceOnChange={(v) => {
-                    const timeSec = expectedTime(formData.bikeDist, v, "bike");
-                    setFormData((prev) => ({ ...prev, bikePace: v, ...(timeSec ? { bikeTargetTime: secsToHms(Math.round(timeSec)) } : {}) }));
-                  }}
-                  pacePlaceholder="32.0" paceUnit="km/t"
-                  timeValue={formData.bikeTargetTime}
-                  timeOnChange={(v) => {
-                    const sec = hmsToSecs(v);
-                    const pace = sec && formData.bikeDist ? paceFromDistAndTime(formData.bikeDist, sec, "bike") : "";
-                    setFormData((prev) => ({ ...prev, bikeTargetTime: v, ...(pace ? { bikePace: pace } : {}) }));
-                  }}
-                  timePlaceholder="H:MM:SS"
-                  mismatch={null}
-                  onDistChange={(v) => setFormData((prev) => ({ ...prev, bikeDist: v }))} />
-              )}
-
-              {sport === "triathlon" && (
-                <TransitionRow label="T2" value={formData.t2TargetTime}
-                  onChange={(v) => setFormData((prev) => ({ ...prev, t2TargetTime: v }))} />
-              )}
-
-              {hasDiscipline("run") && (
-                <DisciplineRow label="Loeb" color="#f97316"
-                  distM={formData.runDist} distEditable={isCustom}
-                  distLabel={formData.runDist > 0 ? formatDistanceShort(formData.runDist) : "–"}
-                  paceValue={formData.runPace}
-                  paceOnChange={(v) => {
-                    const timeSec = expectedTime(formData.runDist, v, "run");
-                    setFormData((prev) => ({ ...prev, runPace: v, ...(timeSec ? { runTargetTime: secsToHms(Math.round(timeSec)) } : {}) }));
-                  }}
-                  pacePlaceholder="5:15" paceUnit="/km"
-                  timeValue={formData.runTargetTime}
-                  timeOnChange={(v) => {
-                    const sec = hmsToSecs(v);
-                    const pace = sec && formData.runDist ? paceFromDistAndTime(formData.runDist, sec, "run") : "";
-                    setFormData((prev) => ({ ...prev, runTargetTime: v, ...(pace ? { runPace: pace } : {}) }));
-                  }}
-                  timePlaceholder="H:MM:SS"
-                  mismatch={null}
-                  onDistChange={(v) => setFormData((prev) => ({ ...prev, runDist: v }))} />
-              )}
-
-              {/* Section D: Totals */}
-              <div className="grid grid-cols-1 sm:grid-cols-[80px_1fr_1fr_1fr] gap-2 items-center mt-2 pt-2 border-t border-border/50">
-                <span className="text-xs font-semibold text-foreground">Total</span>
-                <span className="text-xs tabular-nums text-muted-foreground hidden sm:block">
-                  {formData.raceDistance ? formatDistanceShort(Number(formData.raceDistance)) : "–"}
-                </span>
-                <span className="hidden sm:block" />
-                {hasSplits ? (
-                  <span className={`${readOnlyCls} font-semibold bg-primary/10 text-primary border-primary/30`}>
-                    {secsToHms(computedTotal)} <span className="text-[10px] font-normal text-muted-foreground ml-1">beregnet</span>
-                  </span>
-                ) : (
-                  <input type="text" placeholder="HH:MM:SS" value={formData.raceTargetTime}
-                    onChange={(e) => setFormData({ ...formData, raceTargetTime: e.target.value })}
-                    className={`${inputCls} tabular-nums`} />
-                )}
+              {/* Total — matching raceplan style */}
+              <div className="flex items-center justify-center gap-2">
+                <div className="flex items-center gap-2 text-lg font-bold text-foreground">
+                  <Clock size={20} className="text-muted-foreground" />
+                  Estimeret total:{" "}
+                  {hasSplits ? (
+                    secsToHms(computedTotal)
+                  ) : (
+                    <input type="text" placeholder="HH:MM:SS" value={formData.raceTargetTime}
+                      onChange={(e) => setFormData({ ...formData, raceTargetTime: e.target.value })}
+                      className={`${inputCls} tabular-nums w-28`} />
+                  )}
+                </div>
               </div>
             </div>
           )}
