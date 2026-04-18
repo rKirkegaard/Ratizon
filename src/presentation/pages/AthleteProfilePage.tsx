@@ -10,6 +10,7 @@ import AthleteProfile from "@/presentation/components/settings/AthleteProfile";
 import LLMSettings from "@/presentation/components/settings/LLMSettings";
 import TrainingZones from "@/presentation/components/settings/TrainingZones";
 import PoolSettings from "@/presentation/components/settings/PoolSettings";
+import InjuryManager from "@/presentation/components/settings/InjuryManager";
 import { Copy, Check, ChevronDown, Search } from "lucide-react";
 
 interface AthleteOption {
@@ -106,9 +107,19 @@ export default function AthleteProfilePage() {
 
   return (
     <div data-testid="athlete-profile-page" className="space-y-6 p-4 md:p-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Atlet Indstillinger</h1>
-        <p className="text-sm text-muted-foreground">Administrer atletdata og praeferencer</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Atlet Indstillinger</h1>
+          <p className="text-sm text-muted-foreground">Administrer atletdata og praeferencer</p>
+        </div>
+        {/* Athlete ID — compact top-right */}
+        <div className="flex items-center gap-1.5 rounded-md border border-border/50 bg-muted/30 px-2 py-1">
+          <span className="text-[10px] text-muted-foreground">ID:</span>
+          <code className="text-[10px] font-mono text-muted-foreground">{athleteId}</code>
+          <button onClick={handleCopyId} className="rounded p-0.5 text-muted-foreground hover:text-foreground">
+            {copiedId ? <Check size={10} className="text-emerald-400" /> : <Copy size={10} />}
+          </button>
+        </div>
       </div>
 
       {/* Athlete selector (coaches/admins with multiple athletes) */}
@@ -152,15 +163,6 @@ export default function AthleteProfilePage() {
         </div>
       )}
 
-      {/* Athlete ID display */}
-      <div className="flex items-center gap-3 rounded-lg border border-border/50 bg-muted/50 p-3">
-        <span className="text-sm text-muted-foreground">Atlet-ID (til import):</span>
-        <code className="rounded bg-background px-2 py-1 text-xs font-mono text-foreground">{athleteId}</code>
-        <button onClick={handleCopyId} className="rounded p-1 text-muted-foreground hover:text-foreground">
-          {copiedId ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
-        </button>
-      </div>
-
       {/* Tabs */}
       <div className="flex gap-1 border-b border-border">
         {([
@@ -194,7 +196,10 @@ export default function AthleteProfilePage() {
       )}
 
       {tab === "ai" && (
-        <LLMSettings athleteId={athleteId} />
+        <>
+          <LLMSettings athleteId={athleteId} />
+          <InjuryManager athleteId={athleteId} />
+        </>
       )}
     </div>
   );

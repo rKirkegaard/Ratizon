@@ -16,6 +16,9 @@ import { testRouter } from "./test.routes.js";
 import { adminRouter } from "./admin.routes.js";
 import { permissionsRouter } from "./permissions.routes.js";
 import { poolStatusRouter } from "./pool-status.routes.js";
+import { chatMessagesRouter } from "./chat-messages.routes.js";
+import { recommendationsRouter } from "./recommendations.routes.js";
+import { coachRouter } from "./coach.routes.js";
 import { authenticateToken } from "../middleware/auth.middleware.js";
 
 export function registerRoutes(app: Express): void {
@@ -30,6 +33,7 @@ export function registerRoutes(app: Express): void {
   app.use("/api/wellness", authenticateToken, wellnessRouter);
   app.use("/api/dashboard", authenticateToken, dashboardRouter);
   app.use("/api/ai-coaching", authenticateToken, aiCoachingRouter);
+  app.use("/api/chat-messages", authenticateToken, chatMessagesRouter);
   app.use("/api/equipment", authenticateToken, equipmentRouter);
   app.use("/api/sports", authenticateToken, sportRouter);
   app.use("/api/garmin", garminRouter); // Mixed auth — handled per-route
@@ -38,6 +42,8 @@ export function registerRoutes(app: Express): void {
   app.use("/api/tests", authenticateToken, testRouter);
   app.use("/api/admin", adminRouter); // Admin routes handle own auth + role check
   app.use("/api/permissions", authenticateToken, permissionsRouter);
+  app.use("/api/recommendations", authenticateToken, recommendationsRouter);
+  app.use("/api/coach", authenticateToken, coachRouter);
 
   // Public routes (no auth — public data)
   app.use("/api/pool-status", poolStatusRouter);

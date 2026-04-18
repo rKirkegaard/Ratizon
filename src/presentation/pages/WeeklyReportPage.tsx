@@ -6,6 +6,7 @@ import { StatCard } from "@/presentation/components/shared/StatCard";
 import DisciplineBalance from "@/presentation/components/analytics/DisciplineBalance";
 import WeeklyZoneChart from "@/presentation/components/analytics/WeeklyZoneChart";
 import WeeklySessionList from "@/presentation/components/analytics/WeeklySessionList";
+import AISummary from "@/presentation/components/analytics/AISummary";
 import { formatDuration, formatNumber } from "@/domain/utils/formatters";
 
 function getISOWeek(date: Date): number {
@@ -119,6 +120,9 @@ export default function WeeklyReportPage() {
           </button>
         </div>
       </div>
+
+      {/* AI Weekly Summary */}
+      {!isLoading && <AISummary weekDate={dateParam} />}
 
       {/* Top stat cards */}
       {isLoading ? (

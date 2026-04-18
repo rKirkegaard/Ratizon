@@ -10,6 +10,8 @@ import PMCChart from "@/presentation/components/analytics/PMCChart";
 import EFTrendChart from "@/presentation/components/analytics/EFTrendChart";
 import PaceAtHRChart from "@/presentation/components/analytics/PaceAtHRChart";
 import PowerAtHRChart from "@/presentation/components/analytics/PowerAtHRChart";
+import AIMonthlySummary from "@/presentation/components/analytics/AIMonthlySummary";
+import AdvancedAnalyticsDashboard from "@/presentation/components/analytics/AdvancedAnalyticsDashboard";
 
 type PeriodOption = { value: number; label: string };
 
@@ -133,6 +135,12 @@ export default function PerformancePage() {
           />
         ) : null}
       </div>
+
+      {/* AI Monthly Summary */}
+      <AIMonthlySummary />
+
+      {/* Advanced Analytics (S28) */}
+      <AdvancedAnalyticsDashboard />
     </div>
   );
 }

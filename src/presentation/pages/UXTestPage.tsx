@@ -80,7 +80,7 @@ function Variant1({ session, chartData, zones }: { session: Session; chartData: 
       <div className="grid grid-cols-6 gap-2 mb-3">
         <KPICard label="TSS" value={Math.round(session.tss ?? 0)} />
         <KPICard label="Varighed" value={formatDuration(session.durationSeconds)} />
-        <KPICard label="Distance" value={formatDistance(session.distanceMeters)} />
+        <KPICard label="Distance" value={formatDistance(session.distanceMeters ?? 0)} />
         <KPICard label="Gns. HR" value={session.avgHr ?? "–"} unit="bpm" />
         <KPICard label="Effekt" value={session.avgPower ?? "–"} unit="W" />
         <KPICard label="Pace" value={session.avgPace ? `${Math.floor(session.avgPace / 60)}:${String(Math.round(session.avgPace % 60)).padStart(2, "0")}` : "–"} unit="/km" />
@@ -101,7 +101,7 @@ function Variant2({ session, chartData, zones }: { session: Session; chartData: 
         <span className="font-bold text-foreground">{session.title}</span>
         <span className="text-muted-foreground">TSS {Math.round(session.tss ?? 0)}</span>
         <span className="text-muted-foreground">{formatDuration(session.durationSeconds)}</span>
-        <span className="text-muted-foreground">{formatDistance(session.distanceMeters)}</span>
+        <span className="text-muted-foreground">{formatDistance(session.distanceMeters ?? 0)}</span>
         <span className="ml-auto text-primary cursor-pointer">Sammenlign →</span>
       </div>
       <div className="space-y-2">
@@ -149,7 +149,7 @@ function Variant3({ session, chartData, zones }: { session: Session; chartData: 
           <div className="grid grid-cols-2 gap-2">
             <KPICard label="TSS" value={Math.round(session.tss ?? 0)} />
             <KPICard label="Varighed" value={formatDuration(session.durationSeconds)} />
-            <KPICard label="Distance" value={formatDistance(session.distanceMeters)} />
+            <KPICard label="Distance" value={formatDistance(session.distanceMeters ?? 0)} />
             <KPICard label="Stigning" value={session.elevationGain ? `${Math.round(session.elevationGain)}m` : "–"} />
           </div>
           <div>
@@ -222,7 +222,7 @@ function Variant5({ session, chartData, zones }: { session: Session; chartData: 
           { l: "EF", v: "1.72" },
           { l: "Afkobling", v: "6.8%" },
           { l: "Varighed", v: formatDuration(session.durationSeconds) },
-          { l: "Distance", v: formatDistance(session.distanceMeters) },
+          { l: "Distance", v: formatDistance(session.distanceMeters ?? 0) },
         ].map((k) => (
           <div key={k.l} className="flex-shrink-0 rounded bg-muted/30 px-3 py-1.5 text-center min-w-[70px]">
             <div className="text-[8px] text-muted-foreground">{k.l}</div>

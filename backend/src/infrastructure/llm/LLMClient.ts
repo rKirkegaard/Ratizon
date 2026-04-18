@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { logUsageAsync } from "../../domain/services/LLMUsageService.js";
+import { getEffectiveConfig, type EffectiveLLMConfig } from "../../domain/services/EffectiveLLMService.js";
 
 // ── Provider clients ─────────────────────────────────────────────────
 
@@ -64,6 +65,7 @@ export interface LLMResponse {
   content: string;
   provider: LLMProvider;
   model: string;
+  isMock: boolean;
   inputTokens?: number;
   outputTokens?: number;
 }
@@ -73,12 +75,17 @@ export interface LLMResponse {
 async function callOpenAI(
   systemPrompt: string,
   messages: Array<{ role: "user" | "assistant"; content: string }>,
-  options: LLMOptions
+  options: LLMOptions,
+  apiKey?: string | null,
 ): Promise<LLMResponse> {
-  if (!openaiClient) throw new Error("OpenAI not configured");
+  // Use provided API key or fallback to singleton client
+  const client = (apiKey && apiKey !== OPENAI_API_KEY)
+    ? new OpenAI({ apiKey })
+    : openaiClient;
+  if (!client) throw new Error("OpenAI not configured");
 
   const model = options.model ?? "gpt-4o-mini";
-  const response = await openaiClient.chat.completions.create({
+  const response = await client.chat.completions.create({
     model,
     temperature: options.temperature ?? 0.7,
     max_tokens: options.maxTokens ?? 1024,
@@ -92,6 +99,7 @@ async function callOpenAI(
     content: response.choices[0]?.message?.content ?? "Ingen respons.",
     provider: "openai",
     model,
+    isMock: false,
     inputTokens: response.usage?.prompt_tokens,
     outputTokens: response.usage?.completion_tokens,
   };
@@ -100,16 +108,18 @@ async function callOpenAI(
 async function callAnthropic(
   systemPrompt: string,
   messages: Array<{ role: "user" | "assistant"; content: string }>,
-  options: LLMOptions
+  options: LLMOptions,
+  apiKey?: string | null,
 ): Promise<LLMResponse> {
-  if (!ANTHROPIC_API_KEY) throw new Error("Anthropic not configured");
+  const key = apiKey ?? ANTHROPIC_API_KEY;
+  if (!key) throw new Error("Anthropic not configured");
 
   const model = options.model ?? "claude-sonnet-4-6";
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-api-key": ANTHROPIC_API_KEY,
+      "x-api-key": key,
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
@@ -135,6 +145,7 @@ async function callAnthropic(
     content,
     provider: "anthropic",
     model,
+    isMock: false,
     inputTokens: data.usage?.input_tokens,
     outputTokens: data.usage?.output_tokens,
   };
@@ -148,6 +159,23 @@ function resolveProvider(requested?: LLMProvider): LLMProvider {
   if (openaiClient) return "openai";
   if (ANTHROPIC_API_KEY) return "anthropic";
   return "mock";
+}
+
+/**
+ * Resolve provider/model/key from database settings for a specific athlete.
+ * Falls back to env vars if DB has no keys.
+ */
+async function resolveForAthlete(athleteId: string): Promise<{ provider: LLMProvider; model: string; apiKey: string | null; systemContext: string | null }> {
+  try {
+    const config = await getEffectiveConfig(athleteId);
+    const provider = (config.provider === "openai" || config.provider === "anthropic") ? config.provider : "mock";
+    // Verify the resolved provider has a key
+    if (provider === "openai" && !config.apiKey && !openaiClient) return { provider: "mock", model: "mock", apiKey: null, systemContext: config.systemContext };
+    if (provider === "anthropic" && !config.apiKey && !ANTHROPIC_API_KEY) return { provider: "mock", model: "mock", apiKey: null, systemContext: config.systemContext };
+    return { provider, model: config.model, apiKey: config.apiKey, systemContext: config.systemContext };
+  } catch {
+    return { provider: resolveProvider(), model: "gpt-4o-mini", apiKey: null, systemContext: null };
+  }
 }
 
 // ── Public API ─────────────────────────────────────────────────────────
@@ -188,7 +216,19 @@ export async function generateChatCompletionFull(
   messages: Array<{ role: "user" | "assistant"; content: string }>,
   options: LLMOptions = {}
 ): Promise<LLMResponse> {
-  const provider = resolveProvider(options.provider);
+  // If athleteId provided, resolve from DB settings; otherwise use env vars
+  let provider: LLMProvider;
+  let resolvedModel = options.model;
+  let resolvedApiKey: string | null = null;
+
+  if (options.athleteId && !options.provider) {
+    const resolved = await resolveForAthlete(options.athleteId);
+    provider = resolved.provider;
+    resolvedModel = resolvedModel ?? resolved.model;
+    resolvedApiKey = resolved.apiKey;
+  } else {
+    provider = resolveProvider(options.provider);
+  }
 
   if (provider === "mock") {
     console.log("[LLM] Ingen API noegle konfigureret - bruger mock response");
@@ -196,16 +236,20 @@ export async function generateChatCompletionFull(
       content: generateMockResponse(systemPrompt),
       provider: "mock",
       model: "mock",
+      isMock: true,
     };
   }
 
   try {
     let result: LLMResponse;
 
+    // Pass resolved model into options
+    const effectiveOptions = { ...options, model: resolvedModel };
+
     if (provider === "anthropic") {
-      result = await callAnthropic(systemPrompt, messages, options);
+      result = await callAnthropic(systemPrompt, messages, effectiveOptions, resolvedApiKey);
     } else {
-      result = await callOpenAI(systemPrompt, messages, options);
+      result = await callOpenAI(systemPrompt, messages, effectiveOptions, resolvedApiKey);
     }
 
     // Log usage async (non-blocking)
@@ -228,6 +272,7 @@ export async function generateChatCompletionFull(
       content: generateMockResponse(systemPrompt),
       provider: "mock",
       model: "mock",
+      isMock: true,
     };
   }
 }

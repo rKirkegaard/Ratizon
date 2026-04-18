@@ -1,5 +1,3 @@
-import type { EquipmentCategory } from "@/domain/constants/equipmentCategories";
-
 export interface Equipment {
   id: string;
   athleteId: string;

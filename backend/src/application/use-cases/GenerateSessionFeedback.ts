@@ -3,6 +3,7 @@ import { aiSessionFeedback } from "../../infrastructure/database/schema/ai-coach
 import { sessions } from "../../infrastructure/database/schema/training.schema.js";
 import { sessionAnalytics } from "../../infrastructure/database/schema/analytics.schema.js";
 import { generateCompletion } from "../../infrastructure/llm/LLMClient.js";
+import { aiCoachingPreferences } from "../../infrastructure/database/schema/ai-coaching.schema.js";
 import { eq, and, desc } from "drizzle-orm";
 
 const SYSTEM_PROMPT = `Du er en ekspert triatlon-coach AI for Ratizon platformen. Du giver feedback paa traeningssessioner paa dansk.
@@ -142,8 +143,28 @@ export async function generateSessionFeedback(
 
   const userMessage = contextParts.join("\n\n");
 
+  // Enrich system prompt with coaching preferences
+  const [coachPrefs] = await db
+    .select()
+    .from(aiCoachingPreferences)
+    .where(eq(aiCoachingPreferences.athleteId, athleteId))
+    .limit(1);
+
+  let enrichedPrompt = SYSTEM_PROMPT;
+  if (coachPrefs) {
+    const styleMap: Record<string, string> = {
+      concise: "Hold dine svar korte og praecise.",
+      detailed: "Giv detaljerede forklaringer og begrundelser.",
+      motivational: "Vaer opmuntrende og motiverende i din tone.",
+    };
+    const styleInstruction = styleMap[coachPrefs.communicationStyle] ?? "";
+    if (styleInstruction) enrichedPrompt += `\n\nKommunikationsstil: ${styleInstruction}`;
+  }
+
   // Call LLM
-  const rawResponse = await generateCompletion(SYSTEM_PROMPT, userMessage, {
+  const rawResponse = await generateCompletion(enrichedPrompt, userMessage, {
+    athleteId,
+    requestType: "feedback",
     temperature: 0.6,
     maxTokens: 600,
   });

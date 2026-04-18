@@ -2,6 +2,10 @@ import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAthleteStore } from "@/application/stores/athleteStore";
 import SessionEquipmentSection from "@/presentation/components/equipment/SessionEquipmentSection";
+import { AISessionFeedback } from "@/presentation/components/ai-coaching/AISessionFeedback";
+import SessionDeepAnalytics from "@/presentation/components/ai-coaching/SessionDeepAnalytics";
+import RPEInput from "@/presentation/components/ai-coaching/RPEInput";
+import CoachNotesSection from "@/presentation/components/ai-coaching/CoachNotesSection";
 import { useSessionDetail, useSessionTimeSeries } from "@/application/hooks/training/useSessions";
 import { useAthleteProfile } from "@/application/hooks/athlete/useAthleteProfile";
 import { SportIcon } from "@/presentation/components/shared/SportIcon";
@@ -440,6 +444,18 @@ export default function SessionAnalysisPage({ sessionIdProp }: { sessionIdProp?:
           </div>
         </div>
       )}
+
+      {/* RPE Input (S20) */}
+      {session.id && <RPEInput sessionId={Number(session.id)} currentRpe={(session as any).rpe ?? null} />}
+
+      {/* Deep Session Analytics (S15) */}
+      {session.id && <SessionDeepAnalytics sessionId={Number(session.id)} />}
+
+      {/* AI Session Feedback */}
+      {session.id && <AISessionFeedback sessionId={Number(session.id)} />}
+
+      {/* Coach Notes */}
+      {session.id && <CoachNotesSection sessionId={Number(session.id)} />}
 
       {/* Session Equipment */}
       {athleteId && session.id && (

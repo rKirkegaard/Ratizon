@@ -23,6 +23,16 @@ const PRICING: Record<string, ModelPricing> = {
   "claude-haiku-4-5":          { inputPer1k: 0.0008, outputPer1k: 0.004 },
   "claude-3-5-sonnet-20241022": { inputPer1k: 0.003, outputPer1k: 0.015 },
   "claude-3-haiku-20240307":    { inputPer1k: 0.00025, outputPer1k: 0.00125 },
+
+  // Google Gemini
+  "gemini-2.5-pro":      { inputPer1k: 0.00125, outputPer1k: 0.01 },
+  "gemini-2.5-flash":    { inputPer1k: 0.00015, outputPer1k: 0.0006 },
+  "gemini-2.0-flash":    { inputPer1k: 0.0001,  outputPer1k: 0.0004 },
+  "gemini-2.0-flash-lite": { inputPer1k: 0.000075, outputPer1k: 0.0003 },
+
+  // Mistral
+  "mistral-large-latest": { inputPer1k: 0.002, outputPer1k: 0.006 },
+  "mistral-small-latest": { inputPer1k: 0.0002, outputPer1k: 0.0006 },
 };
 
 // Fallback pricing for unknown models
@@ -48,5 +58,7 @@ export function getAvailableModels(): Record<string, string[]> {
   return {
     openai: ["gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini", "o3-mini"],
     anthropic: ["claude-sonnet-4-6", "claude-opus-4-6", "claude-haiku-4-5"],
+    google: ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite"],
+    mistral: ["mistral-large-latest", "mistral-small-latest"],
   };
 }

@@ -8,14 +8,29 @@ export interface LLMSystemSettings {
   hasAnthropicKey: boolean;
   globalMonthlyBudgetCents: number | null;
   defaultSystemContext: string | null;
+  defaultTrainingDataRange: string;
 }
 
 export interface LLMAthletePreferences {
   inheritFromSystem: boolean;
+  inheritApiKey: boolean;
+  inheritProvider: boolean;
+  inheritModel: boolean;
+  inheritContext: boolean;
   preferredProvider: string | null;
   preferredModel: string | null;
   monthlyBudgetCents: number | null;
   customSystemContext: string | null;
+  trainingDataRange: string | null;
+}
+
+export interface LLMEffectiveConfig {
+  provider: string;
+  model: string;
+  hasApiKey: boolean;
+  systemContext: string | null;
+  trainingDataRange: string;
+  monthlyBudgetCents: number | null;
 }
 
 export interface LLMUsageStats {
@@ -27,6 +42,8 @@ export interface LLMUsageStats {
 export interface LLMModels {
   openai: string[];
   anthropic: string[];
+  google: string[];
+  mistral: string[];
 }
 
 export function useLLMSettings() {
@@ -69,6 +86,26 @@ export function useUpdateLLMPreferences(athleteId: string | null) {
     mutationFn: (data: Partial<LLMAthletePreferences>) =>
       apiClient.put(`/llm/preferences/${athleteId}`, data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["llm-preferences", athleteId] }),
+  });
+}
+
+export function useLLMEffectiveConfig(athleteId: string | null) {
+  return useQuery<LLMEffectiveConfig>({
+    queryKey: ["llm-effective", athleteId],
+    queryFn: () => apiClient.get<LLMEffectiveConfig>(`/llm/preferences/${athleteId}/effective`),
+    enabled: !!athleteId,
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useDeleteLLMPreferences(athleteId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiClient.delete(`/llm/preferences/${athleteId}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["llm-preferences", athleteId] });
+      qc.invalidateQueries({ queryKey: ["llm-effective", athleteId] });
+    },
   });
 }
 

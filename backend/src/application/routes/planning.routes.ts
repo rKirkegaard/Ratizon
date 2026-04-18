@@ -48,6 +48,44 @@ planningRouter.post("/:athleteId/ctl-estimate", estimateCTL);
 // ── Taper Calculator ──────────────────────────────────────────────────
 planningRouter.post("/:athleteId/taper/generate", generateTaperPlan);
 
+// ── Bulk Import ──────────────────────────────────────────────────────
+planningRouter.post("/planned-sessions/import", async (req: Request, res: Response) => {
+  try {
+    const { athleteId, sessions: sessionList } = req.body;
+    if (!athleteId || !Array.isArray(sessionList)) {
+      res.status(400).json({ error: "athleteId og sessions array er paakraevet" });
+      return;
+    }
+
+    const { plannedSessions } = await import("../controllers/planning.controller.js").then(() =>
+      import("../../infrastructure/database/schema/training.schema.js")
+    );
+    const { db } = await import("../../infrastructure/database/connection.js");
+
+    let imported = 0;
+    for (const s of sessionList) {
+      await db.insert(plannedSessions).values({
+        athleteId,
+        sport: s.sport ?? "run",
+        scheduledDate: new Date(s.scheduled_date),
+        sessionPurpose: s.training_type ?? "endurance",
+        title: s.title ?? `${s.sport} traening`,
+        description: s.description ?? null,
+        targetDurationSeconds: s.duration_minutes ? s.duration_minutes * 60 : null,
+        targetTss: s.tss ?? null,
+        targetZones: s.target_zones ?? null,
+        sessionBlocks: s.main_set ?? s.session_blocks ?? null,
+        aiGenerated: false,
+      });
+      imported++;
+    }
+
+    res.status(201).json({ data: { imported } });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || "Fejl ved import" });
+  }
+});
+
 // ── Budgets (stub) ────────────────────────────────────────────────────
 planningRouter.get("/:athleteId/budgets", (req: Request, res: Response) => {
   res.json({ data: [], message: `Ugebudgetter for atlet ${req.params.athleteId} hentet` });

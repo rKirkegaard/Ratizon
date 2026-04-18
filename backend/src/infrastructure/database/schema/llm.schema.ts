@@ -22,6 +22,7 @@ export const llmSettings = pgTable("llm_settings", {
   anthropicKeyIv: varchar("anthropic_key_iv", { length: 32 }),
   globalMonthlyBudgetCents: integer("global_monthly_budget_cents"), // null = unlimited
   defaultSystemContext: text("default_system_context"),
+  defaultTrainingDataRange: varchar("default_training_data_range", { length: 20 }).notNull().default("2weeks"), // single, 1week, 2weeks, 3weeks, 4weeks
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -33,10 +34,15 @@ export const athleteLlmPreferences = pgTable("athlete_llm_preferences", {
     .references(() => athletes.id, { onDelete: "cascade" })
     .unique(),
   inheritFromSystem: boolean("inherit_from_system").notNull().default(true),
+  inheritApiKey: boolean("inherit_api_key").notNull().default(true),
+  inheritProvider: boolean("inherit_provider").notNull().default(true),
+  inheritModel: boolean("inherit_model").notNull().default(true),
+  inheritContext: boolean("inherit_context").notNull().default(true),
   preferredProvider: varchar("preferred_provider", { length: 20 }),
   preferredModel: varchar("preferred_model", { length: 50 }),
   monthlyBudgetCents: integer("monthly_budget_cents"), // null = use system or unlimited
   customSystemContext: text("custom_system_context"),
+  trainingDataRange: varchar("training_data_range", { length: 20 }), // null = inherit from system
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

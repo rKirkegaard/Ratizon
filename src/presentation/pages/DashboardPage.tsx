@@ -11,6 +11,12 @@ import CoachInbox from "@/presentation/components/dashboard/CoachInbox";
 import MotivationStrip from "@/presentation/components/dashboard/MotivationStrip";
 import RaceCountdown from "@/presentation/components/planning/RaceCountdown";
 import PoolDisruptions from "@/presentation/components/dashboard/PoolDisruptions";
+import { AIDailyBriefing } from "@/presentation/components/ai-coaching/AIDailyBriefing";
+import AISuggestionsPanel from "@/presentation/components/ai-coaching/AISuggestionsPanel";
+import RecommendationsInbox from "@/presentation/components/dashboard/RecommendationsInbox";
+import MentalReadinessPanel from "@/presentation/components/ai-coaching/MentalReadinessPanel";
+import NutritionDashboard from "@/presentation/components/ai-coaching/NutritionDashboard";
+import { useAcknowledgeAlert } from "@/application/hooks/ai-coaching/useAICoaching";
 import { UserCircle2 } from "lucide-react";
 
 function SkeletonBlock({ className = "" }: { className?: string }) {
@@ -71,6 +77,7 @@ function EmptyState() {
 
 export default function DashboardPage() {
   const athleteId = useAthleteStore((s) => s.selectedAthleteId);
+  const acknowledgeAlert = useAcknowledgeAlert(athleteId);
   const {
     data,
     isLoading,
@@ -119,6 +126,9 @@ export default function DashboardPage() {
 
       <PoolDisruptions />
 
+      {/* AI Daily Briefing */}
+      <AIDailyBriefing />
+
       {/* Goals: Main + Next */}
       <div className={data.next_goal ? "grid gap-4 md:grid-cols-2" : ""}>
         <RaceCountdown goal={data.main_goal as any} isLoading={false} />
@@ -151,8 +161,20 @@ export default function DashboardPage() {
       {/* Upcoming Sessions */}
       <UpcomingSessions sessions={data.upcoming_sessions} />
 
-      {/* Coach Inbox */}
-      <CoachInbox alerts={data.alerts} totalAlerts={data.alerts_total} />
+      {/* Coach Inbox (Alerts) */}
+      <CoachInbox alerts={data.alerts} totalAlerts={data.alerts_total} onDismiss={(id) => acknowledgeAlert.mutate(id)} />
+
+      {/* Recommendations Inbox (S5) */}
+      <RecommendationsInbox />
+
+      {/* AI Suggestions */}
+      <AISuggestionsPanel />
+
+      {/* Mental Readiness (S27) */}
+      <MentalReadinessPanel />
+
+      {/* Nutrition (S26) */}
+      <NutritionDashboard />
 
       {/* Motivation Strip */}
       <MotivationStrip motivation={data.motivation} />

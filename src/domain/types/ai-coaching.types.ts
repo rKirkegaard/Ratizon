@@ -75,8 +75,9 @@ export interface ChatMessage {
   conversationId: string;
   role: "user" | "assistant";
   content: string;
-  contextType: string | null;
-  contextPage: string | null;
+  contextType?: string | null;
+  contextPage?: string | null;
+  isMock?: boolean;
   createdAt: string;
 }
 

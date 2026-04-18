@@ -13,6 +13,7 @@ import {
 import { SportIcon } from "@/presentation/components/shared/SportIcon";
 import { Plus, Trash2, Clock, Zap, Droplets, Flame, Pencil, Check } from "lucide-react";
 import ExportPdfButton from "@/presentation/components/shared/ExportPdfButton";
+import RaceWeekModule from "@/presentation/components/planning/RaceWeekModule";
 import { exportRacePlanPdf } from "@/domain/utils/pdfExport";
 import type { RacePlan, RaceSegment, SegmentType } from "@/domain/types/race-plan.types";
 
@@ -788,6 +789,11 @@ export default function RacePlanPage() {
             )}
           </div>
         </>
+      )}
+
+      {/* Race Week Module (S22) */}
+      {mainGoal?.id && (
+        <RaceWeekModule goalId={mainGoal.id} goalTitle={mainGoal.title ?? "Race"} />
       )}
     </div>
   );

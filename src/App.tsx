@@ -22,6 +22,8 @@ import SessionAnalysisPage from "@/presentation/pages/SessionAnalysisPage";
 import AdminUsersPage from "@/presentation/pages/AdminUsersPage";
 import AdminAssignmentsPage from "@/presentation/pages/AdminAssignmentsPage";
 import AdminSystemSettingsPage from "@/presentation/pages/AdminSystemSettingsPage";
+import CoachAssistantPage from "@/presentation/pages/CoachAssistantPage";
+import CoachTriagePage from "@/presentation/pages/CoachTriagePage";
 import LoginPage from "@/presentation/pages/LoginPage";
 import DevLoginPage from "@/presentation/pages/DevLoginPage";
 
@@ -54,6 +56,8 @@ export default function App() {
         <Route path="/admin/brugere" element={<AdminUsersPage />} />
         <Route path="/admin/tilknytninger" element={<AdminAssignmentsPage />} />
         <Route path="/admin/indstillinger" element={<AdminSystemSettingsPage />} />
+        <Route path="/coach-assistent" element={<CoachAssistantPage />} />
+        <Route path="/coach-triage" element={<CoachTriagePage />} />
       </Route>
     </Routes>
   );

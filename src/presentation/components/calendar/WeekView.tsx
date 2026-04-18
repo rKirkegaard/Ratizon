@@ -195,6 +195,9 @@ interface WeekViewProps {
   phases: CalendarPhase[];
   goals: CalendarGoal[];
   pmcPoints: Array<{ date: string; ctl: number; atl: number; tsb: number }>;
+  selectionMode?: boolean;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
 }
 
 export default function WeekView({
@@ -209,6 +212,9 @@ export default function WeekView({
   phases,
   goals,
   pmcPoints,
+  selectionMode,
+  selectedIds,
+  onToggleSelect,
 }: WeekViewProps) {
   const getSportColor = useAthleteStore((s) => s.getSportColor);
   const selectedAthleteId = useAthleteStore((s) => s.selectedAthleteId);
@@ -610,6 +616,17 @@ export default function WeekView({
                       style={{ borderLeftColor: sportColor }}
                     >
                       <div className="flex items-start gap-2">
+                        {selectionMode && onToggleSelect && (
+                          <button
+                            onPointerDown={(e) => e.stopPropagation()}
+                            onClick={(e) => { e.stopPropagation(); onToggleSelect(p.id); }}
+                            className={`mt-0.5 flex-shrink-0 w-4 h-4 rounded border flex items-center justify-center ${
+                              selectedIds?.has(p.id) ? "bg-primary border-primary" : "border-muted-foreground/40"
+                            }`}
+                          >
+                            {selectedIds?.has(p.id) && <CheckCircle2 size={10} className="text-primary-foreground" />}
+                          </button>
+                        )}
                         <SportIcon sport={p.sport} size={16} className="mt-0.5 flex-shrink-0" />
                         <div className="flex-1 min-w-0">
                           <div className="flex w-full items-center gap-1 text-[10px] uppercase tracking-wide font-medium text-muted-foreground">
@@ -626,7 +643,7 @@ export default function WeekView({
                         </div>
                       </div>
                       {/* Delete button */}
-                      {onDeletePlanned && (
+                      {onDeletePlanned && !selectionMode && (
                         <button
                           onPointerDown={(e) => e.stopPropagation()}
                           onClick={(e) => { e.stopPropagation(); e.preventDefault(); onDeletePlanned(p.id); }}

@@ -4,6 +4,7 @@ import UserMenu from "@/presentation/components/layout/UserMenu";
 import CommandPalette from "@/presentation/components/layout/CommandPalette";
 import AthleteSelector from "@/presentation/components/layout/AthleteSelector";
 import CreateSessionDialog from "@/presentation/components/layout/CreateSessionDialog";
+import AIChatPanel from "@/presentation/components/ai-coaching/AIChatPanel";
 import { useAuthStore } from "@/application/stores/authStore";
 import { apiClient } from "@/application/api/client";
 import {
@@ -30,6 +31,7 @@ import {
   ChevronRight,
   ChevronDown,
   MessageCircle,
+  Users,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -85,6 +87,8 @@ const STATIC_SECTIONS_AFTER: NavSection[] = [
     items: [
       { label: "Saeson & Maal", path: "/saeson-maal", icon: <Target size={18} /> },
       { label: "Raceplan", path: "/raceplan", icon: <Flag size={18} /> },
+      { label: "AI Coach", path: "/coach-assistent", icon: <MessageCircle size={18} /> },
+      { label: "Coach Triage", path: "/coach-triage", icon: <Users size={18} /> },
     ],
   },
   {
@@ -132,7 +136,7 @@ export default function AppLayout() {
   const selectedAthleteId = useAthleteStore((s) => s.selectedAthleteId);
   const canSelectAthletes = currentUser?.role === "coach" || currentUser?.role === "admin";
   const getSportsWithPages = useAthleteStore((s) => s.getSportsWithPages);
-  const [aiInput, setAiInput] = useState("");
+  // aiInput state removed — now handled by AIChatPanel
   const [commandOpen, setCommandOpen] = useState(false);
   const [createSessionOpen, setCreateSessionOpen] = useState(false);
   const [allowedPages, setAllowedPages] = useState<Set<string> | null>(null); // null = all allowed
@@ -340,42 +344,7 @@ export default function AppLayout() {
           </main>
 
           {/* AI Chat Panel */}
-          {aiPanelOpen && (
-            <aside
-              data-testid="ai-panel"
-              className="flex w-80 flex-col border-l border-border bg-card"
-            >
-              <div className="flex items-center justify-between border-b border-border px-4 py-3">
-                <span className="text-sm font-semibold">AI Coach</span>
-                <button
-                  onClick={() => setAiPanelOpen(false)}
-                  className="rounded p-1 text-muted-foreground hover:text-foreground"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-              <div className="flex-1 overflow-y-auto p-4">
-                <p className="text-sm text-muted-foreground">
-                  Stil et spoergsmaal om din traening...
-                </p>
-              </div>
-              <div className="border-t border-border p-3">
-                <div className="flex gap-2">
-                  <input
-                    data-testid="ai-input"
-                    type="text"
-                    value={aiInput}
-                    onChange={(e) => setAiInput(e.target.value)}
-                    placeholder="Skriv her..."
-                    className="flex-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm"
-                  />
-                  <button className="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground">
-                    Send
-                  </button>
-                </div>
-              </div>
-            </aside>
-          )}
+          {aiPanelOpen && <AIChatPanel />}
         </div>
       </div>
     </div>

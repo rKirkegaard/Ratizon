@@ -8,6 +8,9 @@ import {
   timestamp,
   boolean,
   jsonb,
+  integer,
+  real,
+  date,
 } from "drizzle-orm/pg-core";
 import { athletes } from "./athlete.schema";
 import { users } from "./athlete.schema";
@@ -63,6 +66,32 @@ export const alertRules = pgTable("alert_rules", {
   enabled: boolean("enabled").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const aiWeeklySummaries = pgTable("ai_weekly_summaries", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  athleteId: uuid("athlete_id")
+    .notNull()
+    .references(() => athletes.id, { onDelete: "cascade" }),
+  weekStart: timestamp("week_start", { withTimezone: true }).notNull(),
+  summary: text("summary").notNull(),
+  highlights: jsonb("highlights"),    // string[]
+  concerns: jsonb("concerns"),        // string[]
+  nextWeekFocus: jsonb("next_week_focus"), // string[]
+  generatedAt: timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const aiMonthlySummaries = pgTable("ai_monthly_summaries", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  athleteId: uuid("athlete_id")
+    .notNull()
+    .references(() => athletes.id, { onDelete: "cascade" }),
+  monthStart: timestamp("month_start", { withTimezone: true }).notNull(),
+  summary: text("summary").notNull(),
+  highlights: jsonb("highlights"),
+  concerns: jsonb("concerns"),
+  nextMonthFocus: jsonb("next_month_focus"),
+  generatedAt: timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const aiSuggestionLog = pgTable("ai_suggestion_log", {
@@ -130,4 +159,68 @@ export const coachNotes = pgTable("coach_notes", {
   visibility: varchar("visibility", { length: 20 }).notNull().default("private"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ── Recommendations (S5) ───────────────────────────────────────────
+
+export const recommendations = pgTable("recommendations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  athleteId: uuid("athlete_id")
+    .notNull()
+    .references(() => athletes.id, { onDelete: "cascade" }),
+  category: varchar("category", { length: 50 }).notNull(),
+  priority: varchar("priority", { length: 10 }).notNull().default("medium"),
+  title: varchar("title", { length: 200 }).notNull(),
+  description: text("description").notNull(),
+  reasoning: text("reasoning"),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  generatedBy: varchar("generated_by", { length: 50 }).notNull().default("ai"),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+  implementedAt: timestamp("implemented_at", { withTimezone: true }),
+  rejectionReason: varchar("rejection_reason", { length: 500 }),
+  implementationNotes: varchar("implementation_notes", { length: 1000 }),
+  sport: varchar("sport", { length: 10 }),
+  scheduledDate: date("scheduled_date"),
+  trainingType: varchar("training_type", { length: 50 }),
+  durationMinutes: integer("duration_minutes"),
+  tss: integer("tss"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ── Training Constraints (S21) ─────────────────────────────────────
+
+export const athleteTrainingConstraints = pgTable("athlete_training_constraints", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  athleteId: uuid("athlete_id")
+    .notNull()
+    .references(() => athletes.id, { onDelete: "cascade" }),
+  constraintType: varchar("constraint_type", { length: 30 }).notNull(),
+  constraintData: jsonb("constraint_data").notNull(),
+  validFrom: date("valid_from").notNull(),
+  validTo: date("valid_to"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ── Race Results (S24a) ────────────────────────────────────────────
+
+export const raceResults = pgTable("race_results", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  athleteId: uuid("athlete_id")
+    .notNull()
+    .references(() => athletes.id, { onDelete: "cascade" }),
+  goalId: uuid("goal_id"),
+  raceName: varchar("race_name", { length: 255 }).notNull(),
+  raceDate: date("race_date").notNull(),
+  raceType: varchar("race_type", { length: 30 }),
+  actualSwimTime: integer("actual_swim_time"),
+  actualBikeTime: integer("actual_bike_time"),
+  actualRunTime: integer("actual_run_time"),
+  actualTotalTime: integer("actual_total_time"),
+  conditions: text("conditions"),
+  notes: text("notes"),
+  overallPlacement: integer("overall_placement"),
+  ageGroupPlacement: integer("age_group_placement"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

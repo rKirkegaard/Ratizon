@@ -53,6 +53,9 @@ interface MonthViewProps {
   onAddSession?: (dateStr: string) => void;
   phases: CalendarPhase[];
   goals: CalendarGoal[];
+  selectionMode?: boolean;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
 }
 
 export default function MonthView({
@@ -63,6 +66,9 @@ export default function MonthView({
   isLoading,
   onDayClick,
   goals,
+  selectionMode,
+  selectedIds,
+  onToggleSelect,
 }: MonthViewProps) {
   const selectedAthleteId = useAthleteStore((s) => s.selectedAthleteId);
   const { data: profileData } = useAthleteProfile(selectedAthleteId);
@@ -283,9 +289,21 @@ export default function MonthView({
                           return (
                             <div
                               key={`p-${p.id}`}
-                              onClick={(e) => { e.stopPropagation(); setSelectedSession(p); setSessionType("planned"); }}
-                              className="flex rounded overflow-hidden border border-dashed border-border/50 bg-muted/20 cursor-pointer"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (selectionMode && onToggleSelect) { onToggleSelect(p.id); }
+                                else { setSelectedSession(p); setSessionType("planned"); }
+                              }}
+                              className={`flex rounded overflow-hidden border border-dashed cursor-pointer ${
+                                selectionMode && selectedIds?.has(p.id) ? "border-primary bg-primary/10" : "border-border/50 bg-muted/20"
+                              }`}
                             >
+                              {/* Selection checkbox */}
+                              {selectionMode && (
+                                <div className={`w-5 flex items-center justify-center shrink-0 ${selectedIds?.has(p.id) ? "bg-primary/20" : ""}`}>
+                                  <div className={`w-3 h-3 rounded border ${selectedIds?.has(p.id) ? "bg-primary border-primary" : "border-muted-foreground/40"}`} />
+                                </div>
+                              )}
                               {/* Left sport border */}
                               <div className="w-[3px] shrink-0 rounded-l" style={{ backgroundColor: getSportColor(p.sport) }} />
                               {/* Content */}

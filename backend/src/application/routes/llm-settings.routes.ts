@@ -4,6 +4,8 @@ import {
   updateSystemSettings,
   getAthletePreferences,
   updateAthletePreferences,
+  deleteAthletePreferences,
+  getEffectivePreferences,
   getAthleteUsage,
   checkAthleteLimit,
   getModels,
@@ -21,6 +23,8 @@ llmSettingsRouter.get("/models", getModels);
 // Per-athlete preferences
 llmSettingsRouter.get("/preferences/:athleteId", getAthletePreferences);
 llmSettingsRouter.put("/preferences/:athleteId", updateAthletePreferences);
+llmSettingsRouter.delete("/preferences/:athleteId", deleteAthletePreferences);
+llmSettingsRouter.get("/preferences/:athleteId/effective", getEffectivePreferences);
 
 // Usage stats
 llmSettingsRouter.get("/usage/:athleteId", getAthleteUsage);

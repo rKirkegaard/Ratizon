@@ -1,127 +1,131 @@
-import { useState, useRef, useEffect } from 'react';
-import { useAIChat } from '@/application/hooks/ai-coaching/useAICoaching';
-import { useAthleteStore } from '@/application/stores/athleteStore';
-import { useUIStore } from '@/application/stores/uiStore';
-import { Bot, X, Send, User, Loader2 } from 'lucide-react';
+import { useState, useRef, useEffect } from "react";
+import { X, Plus, ChevronDown, MessageCircle } from "lucide-react";
+import { useAthleteStore } from "@/application/stores/athleteStore";
+import { useUiStore } from "@/application/stores/uiStore";
+import { useChat } from "@/application/hooks/ai-coaching/useChat";
+import { useConversations, useConversationMessages } from "@/application/hooks/ai-coaching/useConversations";
+import ChatMessageBubble from "./ChatMessageBubble";
+import TypingIndicator from "./TypingIndicator";
+import ChatInput from "./ChatInput";
 
-interface ChatMessage {
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: Date;
-}
-
-export function AIChatBar() {
-  const { aiPanelOpen, setAIPanelOpen } = useUIStore();
-
-  if (aiPanelOpen) return null;
-
-  return (
-    <button
-      data-testid="ai-chat-bar"
-      onClick={() => setAIPanelOpen(true)}
-      className="fixed bottom-0 left-0 right-0 h-10 bg-card border-t border-border/50 flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors z-40"
-    >
-      <Bot className="h-4 w-4" />
-      Spørg din AI-coach...
-    </button>
-  );
-}
-
-export function AIChatPanel() {
+export default function AIChatPanel() {
   const athleteId = useAthleteStore((s) => s.selectedAthleteId);
-  const { aiPanelOpen, setAIPanelOpen } = useUIStore();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState('');
-  const chatMutation = useAIChat(athleteId);
+  const setAiPanelOpen = useUiStore((s) => s.setAiPanelOpen);
+
+  const { messages, conversationId, isLoading, error, sendMessage, loadConversation, removeMessage, clearChat } = useChat({ athleteId });
+  const { data: conversations } = useConversations(athleteId);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [loadingConvId, setLoadingConvId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Auto-scroll on new messages
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages.length]);
 
-  if (!aiPanelOpen) return null;
-
-  const handleSend = async () => {
-    if (!input.trim() || chatMutation.isPending) return;
-    const userMsg: ChatMessage = { role: 'user', content: input.trim(), timestamp: new Date() };
-    setMessages(prev => [...prev, userMsg]);
-    setInput('');
-
-    try {
-      const response = await chatMutation.mutateAsync({ message: userMsg.content, contextPage: window.location.pathname });
-      const aiMsg: ChatMessage = { role: 'assistant', content: (response as any).reply || (response as any).content || 'Ingen svar', timestamp: new Date() };
-      setMessages(prev => [...prev, aiMsg]);
-    } catch {
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Kunne ikke få svar fra AI-coach. Prøv igen.', timestamp: new Date() }]);
+  // Load conversation messages when switching
+  const { data: convMessages } = useConversationMessages(loadingConvId);
+  useEffect(() => {
+    if (convMessages && loadingConvId) {
+      loadConversation(loadingConvId, convMessages);
+      setLoadingConvId(null);
     }
-  };
+  }, [convMessages, loadingConvId, loadConversation]);
+
+  function handleSwitchConversation(convId: string) {
+    setLoadingConvId(convId);
+    setDropdownOpen(false);
+  }
+
+  function handleNewChat() {
+    clearChat();
+    setDropdownOpen(false);
+  }
+
+  const activeTitle = conversations?.find((c) => c.id === conversationId)?.title ?? "Ny samtale";
 
   return (
-    <div data-testid="ai-chat-panel" className="fixed bottom-0 right-0 w-full md:w-[420px] h-[500px] bg-card border border-border/50 rounded-t-xl shadow-2xl z-50 flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
-        <div className="flex items-center gap-2">
-          <Bot className="h-5 w-5 text-primary" />
-          <span className="text-sm font-medium">AI Coach</span>
+    <aside
+      data-testid="ai-chat-panel"
+      className="flex h-full w-80 flex-col border-l border-border bg-card"
+    >
+      {/* Header with conversation dropdown */}
+      <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
+        <button
+          data-testid="chat-new"
+          onClick={handleNewChat}
+          className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+        >
+          <Plus className="h-4 w-4" />
+        </button>
+
+        <div className="relative min-w-0 flex-1">
+          <button
+            data-testid="chat-conversation-selector"
+            onClick={() => setDropdownOpen(!dropdownOpen)}
+            className="flex w-full min-w-0 items-center gap-1.5 rounded-md px-2 py-1 text-sm text-foreground hover:bg-accent/50 truncate"
+          >
+            <span className="truncate">{activeTitle}</span>
+            <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />
+          </button>
+
+          {dropdownOpen && conversations && conversations.length > 0 && (
+            <div className="absolute left-0 right-0 top-8 z-50 max-h-64 overflow-y-auto rounded-lg border border-border bg-card shadow-xl">
+              {conversations.map((conv) => (
+                <button
+                  key={conv.id}
+                  onClick={() => handleSwitchConversation(conv.id)}
+                  className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors ${
+                    conv.id === conversationId
+                      ? "bg-accent text-foreground"
+                      : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                  }`}
+                >
+                  <MessageCircle className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">{conv.title}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
-        <button onClick={() => setAIPanelOpen(false)} className="text-muted-foreground hover:text-foreground">
+
+        <button
+          data-testid="chat-close"
+          onClick={() => setAiPanelOpen(false)}
+          className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:text-foreground"
+        >
           <X className="h-4 w-4" />
         </button>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
-        {messages.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-sm">
-            <Bot className="h-8 w-8 mb-2 opacity-30" />
-            <p>Stil et spørgsmål til din AI-coach</p>
-            <p className="text-xs mt-1">F.eks. "Skal jeg træne hårdt i dag?"</p>
+      {/* Messages area */}
+      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-4">
+        {messages.length === 0 && !isLoading && (
+          <div className="flex flex-col items-center justify-center h-full text-center">
+            <MessageCircle className="h-8 w-8 text-muted-foreground/30 mb-2" />
+            <p className="text-sm text-muted-foreground">Stil et spoergsmaal til din AI-coach</p>
           </div>
         )}
-        {messages.map((msg, i) => (
-          <div key={i} className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            {msg.role === 'assistant' && <Bot className="h-5 w-5 text-primary mt-1 shrink-0" />}
-            <div className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
-              msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 text-foreground'
-            }`}>
-              {msg.content}
-            </div>
-            {msg.role === 'user' && <User className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />}
-          </div>
+
+        {messages.map((msg) => (
+          <ChatMessageBubble key={msg.id} msg={msg} onDelete={removeMessage} />
         ))}
-        {chatMutation.isPending && (
-          <div className="flex gap-2">
-            <Bot className="h-5 w-5 text-primary mt-1" />
-            <div className="bg-muted/50 rounded-lg px-3 py-2">
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-            </div>
+
+        {isLoading && <TypingIndicator />}
+
+        {error && (
+          <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            {error}
           </div>
         )}
+
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
-      <div className="px-4 py-3 border-t border-border/50">
-        <div className="flex gap-2">
-          <input
-            data-testid="ai-chat-input"
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="Skriv en besked..."
-            className="flex-1 bg-muted/30 border border-border/50 rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-          />
-          <button
-            data-testid="ai-chat-send"
-            onClick={handleSend}
-            disabled={!input.trim() || chatMutation.isPending}
-            className="px-3 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-          >
-            <Send className="h-4 w-4" />
-          </button>
-        </div>
+      {/* Input area */}
+      <div className="border-t border-border px-3 py-2.5">
+        <ChatInput onSend={sendMessage} disabled={isLoading || !athleteId} />
       </div>
-    </div>
+    </aside>
   );
 }

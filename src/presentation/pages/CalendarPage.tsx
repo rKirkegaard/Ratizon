@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, format,
 } from "date-fns";
-import { Calendar, ArrowLeftRight, Upload, Download, CheckSquare, Trash2 } from "lucide-react";
+import { Calendar, ArrowLeftRight, Upload, Download, CheckSquare, Trash2, Brain } from "lucide-react";
 import { useAthleteStore } from "@/application/stores/athleteStore";
 import {
   useCalendarSessions, useMoveSession, useDeleteSession,
@@ -14,6 +14,7 @@ import MonthView from "@/presentation/components/calendar/MonthView";
 import YearView from "@/presentation/components/calendar/YearView";
 import CreateSessionDialog from "@/presentation/components/layout/CreateSessionDialog";
 import ImportPlanModal from "@/presentation/components/calendar/ImportPlanModal";
+import AITrainingPlanImport from "@/presentation/components/calendar/AITrainingPlanImport";
 
 type ViewMode = "week" | "month" | "year";
 
@@ -49,6 +50,7 @@ export default function CalendarPage() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [importOpen, setImportOpen] = useState(false);
+  const [aiImportOpen, setAiImportOpen] = useState(false);
 
   const selectedAthleteId = useAthleteStore((s) => s.selectedAthleteId);
   const getActiveSports = useAthleteStore((s) => s.getActiveSports);
@@ -162,7 +164,10 @@ export default function CalendarPage() {
 
         {/* Import */}
         <button onClick={() => setImportOpen(true)} className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground">
-          <Upload size={14} /> Importer plan
+          <Upload size={14} /> Importer JSON
+        </button>
+        <button data-testid="ai-import-plan-btn" onClick={() => setAiImportOpen(true)} className="flex items-center gap-1.5 rounded-md border border-purple-500/30 bg-purple-500/10 px-3 py-1.5 text-sm text-purple-400 hover:text-purple-300 hover:bg-purple-500/20">
+          <Brain size={14} /> AI Import
         </button>
 
         {/* Export */}
@@ -239,6 +244,9 @@ export default function CalendarPage() {
           phases={phases}
           goals={goals}
           pmcPoints={pmcPoints}
+          selectionMode={selectionMode}
+          selectedIds={selectedIds}
+          onToggleSelect={toggleSelection}
         />
       )}
 
@@ -253,6 +261,9 @@ export default function CalendarPage() {
           onAddSession={handleAddSession}
           phases={phases}
           goals={goals}
+          selectionMode={selectionMode}
+          selectedIds={selectedIds}
+          onToggleSelect={toggleSelection}
         />
       )}
 
@@ -274,6 +285,7 @@ export default function CalendarPage() {
       {selectedAthleteId && (
         <ImportPlanModal open={importOpen} onClose={() => setImportOpen(false)} athleteId={selectedAthleteId} />
       )}
+      <AITrainingPlanImport open={aiImportOpen} onClose={() => setAiImportOpen(false)} athleteId={selectedAthleteId ?? ""} />
     </div>
   );
 }

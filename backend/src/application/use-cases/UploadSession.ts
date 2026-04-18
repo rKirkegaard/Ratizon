@@ -274,6 +274,11 @@ export async function uploadSession(
     console.error("PMC genberegning fejlede:", err)
   );
 
+  // ── Auto-generate session feedback + evaluate alerts (fire-and-forget) ──
+  autoGenerateFeedbackAndAlerts(athleteId, sessionId.toString()).catch((err) =>
+    console.error("Auto AI feedback fejlede:", err)
+  );
+
   return {
     sessionId: sessionId.toString(),
     sport: parsed.session.sport,
@@ -324,5 +329,35 @@ async function recalculatePmcForAthlete(athleteId: string): Promise<void> {
         rampRate: p.rampRate,
       }))
     );
+  }
+}
+
+/**
+ * Auto-generate session feedback and evaluate alerts after upload.
+ * Only runs if athlete has autoSuggestions enabled in preferences.
+ * Fire-and-forget — does not block the upload response.
+ */
+async function autoGenerateFeedbackAndAlerts(athleteId: string, sessionId: string): Promise<void> {
+  try {
+    // Check if auto-suggestions are enabled
+    const { aiCoachingPreferences } = await import("../../infrastructure/database/schema/ai-coaching.schema.js");
+    const [prefs] = await db
+      .select({ autoSuggestions: aiCoachingPreferences.autoSuggestions })
+      .from(aiCoachingPreferences)
+      .where(eq(aiCoachingPreferences.athleteId, athleteId))
+      .limit(1);
+
+    const autoEnabled = prefs?.autoSuggestions ?? true; // default on
+
+    if (autoEnabled) {
+      const { generateSessionFeedback } = await import("./GenerateSessionFeedback.js");
+      await generateSessionFeedback(athleteId, parseInt(sessionId));
+    }
+
+    // Always evaluate alerts after new data
+    const { evaluateAlerts } = await import("../../domain/services/AlertEngine.js");
+    await evaluateAlerts(athleteId);
+  } catch (err) {
+    console.error("Auto AI feedback/alerts fejlede:", err);
   }
 }
