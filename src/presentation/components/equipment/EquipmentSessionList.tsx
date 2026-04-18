@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useEquipmentSessions } from "@/application/hooks/equipment/useEquipment";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
-import { CATEGORY_ICONS } from "@/domain/constants/equipmentCategories";
 
 interface EquipmentSessionListProps {
   athleteId: string;

@@ -8,13 +8,6 @@ interface UploadZoneProps {
 type UploadStatus = "idle" | "uploading" | "success" | "error";
 
 const ACCEPTED_EXTENSIONS = [".fit", ".tcx", ".zip"];
-const ACCEPTED_MIME = [
-  "application/octet-stream",
-  "application/zip",
-  "application/x-zip-compressed",
-  "text/xml",
-  "application/xml",
-];
 
 export default function UploadZone({
   athleteId,

@@ -11,9 +11,6 @@ interface WorkoutVisualizationProps {
 const ZONE_COLORS: Record<number, string> = {
   1: "#3A7BFF", 2: "#28CF59", 3: "#F6D74A", 4: "#F57C00", 5: "#D32F2F",
 };
-const ZONE_LABELS: Record<number, string> = {
-  1: "Recovery", 2: "Aerob", 3: "Tempo", 4: "Taerskel", 5: "VO2max",
-};
 const ZONE_HEIGHTS: Record<number, number> = {
   1: 25, 2: 40, 3: 55, 4: 75, 5: 95,
 };

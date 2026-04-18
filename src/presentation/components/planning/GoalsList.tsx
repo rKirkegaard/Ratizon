@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { AlertTriangle, Clock } from "lucide-react";
+import { Clock } from "lucide-react";
 import DatePicker from "@/presentation/components/shared/DatePicker";
 import ConfirmDialog from "@/presentation/components/shared/ConfirmDialog";
 import type { Goal } from "@/domain/types/planning.types";
@@ -61,11 +61,6 @@ function hmsToSecs(str: string): number | null {
   return null;
 }
 
-function formatDistanceShort(m: number): string {
-  if (m >= 1000) return `${(m / 1000).toFixed(m % 1000 === 0 ? 0 : 1)} km`;
-  return `${m} m`;
-}
-
 /** Compute pace string from distance (m) and time (seconds) */
 function paceFromDistAndTime(distM: number, timeSec: number, sport: string): string {
   if (!distM || !timeSec || timeSec <= 0) return "";
@@ -124,7 +119,6 @@ const RACE_SPORT_OPTIONS = [
 ];
 
 const inputCls = "rounded border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring";
-const readOnlyCls = "rounded border border-input bg-muted/50 px-3 py-2 text-sm text-muted-foreground cursor-default tabular-nums";
 
 // ── Extracted sub-components (outside main component to avoid re-mount) ──
 
@@ -318,7 +312,6 @@ export default function GoalsList({ goals, isLoading, onDelete, onCreate, onUpda
 
   const isRace = formData.goalType === "race";
   const sport = formData.sport;
-  const isCustom = formData.raceSubType === "custom";
   const hasDiscipline = (d: string) => sport === "triathlon" || sport === d;
   const subTypeOptions = useMemo(() => getSubTypeOptions(sport), [sport]);
 
@@ -336,17 +329,6 @@ export default function GoalsList({ goals, isLoading, onDelete, onCreate, onUpda
 
   const hasSplits = splitSum !== null;
   const computedTotal = hasSplits ? splitSum : null;
-
-  // Cross-validation per discipline
-  function checkMismatch(distM: number, pace: string, timeSec: number | null, disciplineSport: string): string | null {
-    if (!distM || !pace.trim() || !timeSec) return null;
-    const exp = expectedTime(distM, pace, disciplineSport);
-    if (!exp) return null;
-    const diff = Math.abs(exp - timeSec);
-    const pct = (diff / timeSec) * 100;
-    if (pct > 2) return `Pace x distance = ${secsToHms(Math.round(exp))} (afviger ${Math.round(pct)}%)`;
-    return null;
-  }
 
   if (isLoading) {
     return (

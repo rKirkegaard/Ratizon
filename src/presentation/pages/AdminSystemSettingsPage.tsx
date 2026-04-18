@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { apiClient } from "@/application/api/client";
 import { LLM_PROVIDERS, getModelsForProvider, getProvider } from "@/domain/constants/llmProviders";
-import { Brain, Key, Eye, EyeOff, Save, Trash2, Loader2, Palette, FileText, ShieldAlert, BarChart3, Settings, Wrench } from "lucide-react";
+import { Brain, Key, Eye, EyeOff, Save, Trash2, Loader2, Palette, FileText, ShieldAlert, BarChart3, Wrench } from "lucide-react";
 import ZoneColorPicker from "@/presentation/components/settings/ZoneColorPicker";
 import SportConfigEditor from "@/presentation/components/settings/SportConfigEditor";
 import GarminConnection from "@/presentation/components/settings/GarminConnection";
@@ -40,7 +40,7 @@ function hasKeyForProvider(settings: SystemSettings | null, providerId: string):
   const map: Record<string, keyof SystemSettings> = {
     openai: "hasOpenaiKey", anthropic: "hasAnthropicKey", google: "hasGoogleKey", mistral: "hasMistralKey",
   };
-  return !!(settings as any)[map[providerId] ?? ""] ?? false;
+  return !!(settings as any)[map[providerId] ?? ""];
 }
 
 function apiKeyFieldName(providerId: string): string {

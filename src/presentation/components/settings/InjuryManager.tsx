@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { HeartPulse, Plus, Trash2, Brain, Loader2, ChevronDown } from "lucide-react";
+import { HeartPulse, Plus, Trash2, Brain, Loader2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/application/api/client";
 

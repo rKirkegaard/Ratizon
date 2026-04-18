@@ -8,7 +8,6 @@ import {
   Area,
   XAxis,
   YAxis,
-  CartesianGrid,
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
@@ -66,7 +65,7 @@ export default function SessionPopup({ session, sessionType, athleteId: propAthl
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [editingType, setEditingType] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [, setSaving] = useState(false);
 
   const sessionId = sessionType === "completed" ? String((session as Session).id) : null;
 

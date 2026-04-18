@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useAthleteStore } from "@/application/stores/athleteStore";
 import { useSessions } from "@/application/hooks/training/useSessions";
 import { useSessionComparison, usePeriodComparison } from "@/application/hooks/analytics/useComparison";
-import { SportIcon } from "@/presentation/components/shared/SportIcon";
 import DatePicker from "@/presentation/components/shared/DatePicker";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,

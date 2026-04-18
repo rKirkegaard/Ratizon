@@ -2,12 +2,11 @@ import { useState } from "react";
 import { useAthleteStore } from "@/application/stores/athleteStore";
 import { useSessions } from "@/application/hooks/training/useSessions";
 import { useSessionDetail, useSessionTimeSeries } from "@/application/hooks/training/useSessions";
-import { SportIcon } from "@/presentation/components/shared/SportIcon";
 import { formatDuration, formatDistance } from "@/domain/utils/formatters";
 import {
-  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell, PieChart, Pie,
+  AreaChart, Area, ResponsiveContainer, Cell, PieChart, Pie,
 } from "recharts";
-import { Heart, Zap, TrendingUp, Clock, Activity, ArrowRight } from "lucide-react";
+import { Heart, Zap, TrendingUp, ArrowRight } from "lucide-react";
 import type { Session } from "@/domain/types/training.types";
 
 const ZONE_COLORS = ["#3B82F6", "#22C55E", "#EAB308", "#F97316", "#EF4444"];

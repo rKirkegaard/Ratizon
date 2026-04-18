@@ -2,10 +2,9 @@ import { paceSecToMss } from "@/domain/utils/paceUtils";
 import {
   calcExpectedThresholds,
   type ThresholdTarget,
-  type ThresholdProgressionResult,
 } from "@/domain/utils/thresholdProgression";
 import type { DerivedThresholds } from "@/application/hooks/planning/useCTLEstimate";
-import { TrendingUp, TrendingDown, Check } from "lucide-react";
+import { TrendingDown, Check } from "lucide-react";
 
 interface ThresholdProgressionCardProps {
   currentBaselines: { ftp: number; runPaceSec: number; swimCssSec: number };

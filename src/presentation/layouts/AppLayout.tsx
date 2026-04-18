@@ -32,7 +32,6 @@ import {
   ChevronDown,
   MessageCircle,
   Users,
-  X,
   type LucideIcon,
 } from "lucide-react";
 import { useUiStore } from "@/application/stores/uiStore";
@@ -133,8 +132,6 @@ const FALLBACK_DISCIPLINE_ITEMS: NavItem[] = [
 export default function AppLayout() {
   const { sidebarCollapsed, setSidebarCollapsed, aiPanelOpen, setAiPanelOpen, collapsedSections, toggleSection } = useUiStore();
   const currentUser = useAuthStore((s) => s.user);
-  const selectedAthleteId = useAthleteStore((s) => s.selectedAthleteId);
-  const canSelectAthletes = currentUser?.role === "coach" || currentUser?.role === "admin";
   const getSportsWithPages = useAthleteStore((s) => s.getSportsWithPages);
   // aiInput state removed — now handled by AIChatPanel
   const [commandOpen, setCommandOpen] = useState(false);

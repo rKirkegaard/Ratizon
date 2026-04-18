@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useAthleteStore } from "@/application/stores/athleteStore";
 
 interface ZoneColorPickerProps {
   onColorsChange?: (colors: Record<string, string>) => void;
@@ -29,8 +28,6 @@ const PRESET_COLORS = [
 ];
 
 export default function ZoneColorPicker({ onColorsChange }: ZoneColorPickerProps) {
-  const zoneColors = useAthleteStore((s) => s.zoneColors);
-
   const [colors, setColors] = useState<Record<string, string>>({
     zone1: getComputedColor("--zone-1"),
     zone2: getComputedColor("--zone-2"),

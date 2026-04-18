@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { User, ChevronUp } from "lucide-react";
+import { ChevronUp } from "lucide-react";
 import { useAuthStore } from "@/application/stores/authStore";
 import { useAthleteStore } from "@/application/stores/athleteStore";
 import { apiClient } from "@/application/api/client";

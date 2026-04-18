@@ -1,4 +1,4 @@
-import { CATEGORY_ICONS, getCategoryInfo } from "@/domain/constants/equipmentCategories";
+import { getCategoryInfo } from "@/domain/constants/equipmentCategories";
 import EquipmentLifespanBar from "./EquipmentLifespanBar";
 import type { Equipment } from "@/domain/types/equipment.types";
 

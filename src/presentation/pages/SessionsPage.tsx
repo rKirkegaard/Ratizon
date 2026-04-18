@@ -1,4 +1,4 @@
-import { useState, useMemo, lazy, Suspense } from "react";
+import { useState, useMemo } from "react";
 import { useAthleteStore } from "@/application/stores/athleteStore";
 import {
   useSessions,

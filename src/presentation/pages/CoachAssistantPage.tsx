@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { Bot, Plus, MessageSquare, Trash2, Pencil, Check, X, Loader2 } from "lucide-react";
+import { Bot, Plus, Trash2, Pencil, Loader2 } from "lucide-react";
 import { useAthleteStore } from "@/application/stores/athleteStore";
 import { useChat } from "@/application/hooks/ai-coaching/useChat";
 import {

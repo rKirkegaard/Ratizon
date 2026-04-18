@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Flag, Utensils, ClipboardCheck, BarChart3, Loader2, RefreshCw, Check, ChevronDown } from "lucide-react";
+import { Flag, Utensils, ClipboardCheck, BarChart3, Loader2, RefreshCw } from "lucide-react";
 import { apiClient } from "@/application/api/client";
 import { useAthleteStore } from "@/application/stores/athleteStore";
 

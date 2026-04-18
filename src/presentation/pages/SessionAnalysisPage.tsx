@@ -13,12 +13,12 @@ import { formatDuration, formatDistance } from "@/domain/utils/formatters";
 import { apiClient } from "@/application/api/client";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  AreaChart, Area, LineChart, Line, BarChart, Bar, Cell,
+  AreaChart, Area, BarChart, Bar, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine,
 } from "recharts";
 import {
-  ArrowLeft, Heart, Zap, TrendingUp, TrendingDown, Minus, Clock, Activity, Mountain, Pencil,
-  ChevronDown, ChevronUp, Info,
+  ArrowLeft, Zap, TrendingUp, TrendingDown, Minus, Activity, Mountain, Pencil,
+  Info,
 } from "lucide-react";
 
 // IronCoach exact zone colors
@@ -463,7 +463,7 @@ export default function SessionAnalysisPage({ sessionIdProp }: { sessionIdProp?:
           sessionId={session.id}
           athleteId={athleteId}
           sport={session.sport}
-          totalDistanceM={session.distanceMeters}
+          totalDistanceM={session.distanceMeters ?? undefined}
           totalDurationMin={session.durationSeconds ? session.durationSeconds / 60 : undefined}
           laps={laps.map((l: any, i: number) => ({
             lapIndex: i + 1,

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 import { DayPicker } from "react-day-picker";
 import { da } from "react-day-picker/locale";
 import { format, parse, isValid } from "date-fns";
@@ -11,7 +11,7 @@ import "react-day-picker/style.css";
  * Stores dates as yyyy-MM-dd, displays as Danish long format.
  */
 
-interface DatePickerProps {
+export interface DatePickerProps {
   value: string;                    // yyyy-MM-dd or ""
   onChange: (value: string) => void;
   placeholder?: string;
@@ -19,6 +19,7 @@ interface DatePickerProps {
   className?: string;
   yearStart?: number;
   yearEnd?: number;
+  required?: boolean;
 }
 
 const MONTHS = [

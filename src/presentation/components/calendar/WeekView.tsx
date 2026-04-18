@@ -21,16 +21,15 @@ import { da } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Clock, Trash2, Coffee, MapPin, Zap, Heart, TrendingUp, CheckCircle2, Target, Waves, Bike, Footprints } from "lucide-react";
 import { useSessionTimeSeries } from "@/application/hooks/training/useSessions";
 import {
-  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  AreaChart, Area, XAxis, YAxis, ResponsiveContainer,
 } from "recharts";
 import { SportIcon } from "@/presentation/components/shared/SportIcon";
 import SessionPopup from "@/presentation/components/calendar/SessionPopup";
-import ZoneBar from "@/presentation/components/calendar/ZoneBar";
 import CreateSessionDialog from "@/presentation/components/layout/CreateSessionDialog";
 import { useAthleteStore } from "@/application/stores/athleteStore";
 import { useAthleteProfile } from "@/application/hooks/athlete/useAthleteProfile";
 import { formatDuration, formatDistance } from "@/domain/utils/formatters";
-import { getPhaseForDate, PHASE_COLORS, PHASE_LABELS } from "@/domain/utils/phase-colors";
+import { getPhaseForDate, PHASE_LABELS } from "@/domain/utils/phase-colors";
 import type { Session, PlannedSession } from "@/domain/types/training.types";
 import type { SessionBrick } from "@/domain/types/brick.types";
 import type {
@@ -140,18 +139,6 @@ function WeekSessionCharts({ athleteId, sessionId, sport }: { athleteId: string 
       )}
     </div>
   );
-}
-
-// Zone-based border color: Z1-2=blue, Z3=yellow, Z4+=red
-function getIntensityColor(sessionType: string | undefined): string {
-  if (!sessionType) return "#6B7280";
-  const t = sessionType.toLowerCase();
-  if (t === "recovery") return "#3B82F6";           // blue = Z1
-  if (t === "endurance") return "#22C55E";           // green = Z2
-  if (t === "tempo") return "#EAB308";               // yellow = Z3
-  if (t === "sweet_spot" || t === "threshold") return "#F97316"; // orange = Z3-4
-  if (t === "vo2max" || t === "anaerobic") return "#EF4444";     // red = Z4-5
-  return "#3B82F6"; // default blue
 }
 
 // ── DnD helper components ─────────────────────────────────────────────
@@ -268,17 +255,6 @@ export default function WeekView({
     () => getPhaseForDate(format(weekStart, "yyyy-MM-dd"), phases),
     [weekStart, phases]
   );
-
-  // Goals in this week
-  const weekGoals = useMemo(() => {
-    const ws = weekStart.getTime();
-    const we = weekEnd.getTime();
-    return goals.filter((g) => {
-      if (!g.targetDate) return false;
-      const t = new Date(g.targetDate).getTime();
-      return t >= ws && t <= we;
-    });
-  }, [goals, weekStart, weekEnd]);
 
   // Goals by day key
   const goalsByDay = useMemo(() => {
@@ -601,7 +577,6 @@ export default function WeekView({
                   const sportColor = getSportColor(p.sport);
                   const pMetrics = calcPlannedSessionMetrics(p, athleteThresholdPace);
                   const pDuration = pMetrics.durationSec;
-                  const pTss = pMetrics.tss;
                   const purposeLabel = p.sessionPurpose ? {
                     endurance: "UDHOLDENHED", tempo: "TEMPO", sweet_spot: "SWEET SPOT",
                     threshold: "TAERSKEL", vo2max: "VO2MAX", recovery: "RESTITUTION",
@@ -802,7 +777,7 @@ export default function WeekView({
       <CreateSessionDialog
         open={!!editSession}
         onClose={() => setEditSession(null)}
-        editSession={editSession}
+        editSession={editSession as any}
       />
     </div>
   );

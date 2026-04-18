@@ -4,7 +4,7 @@ import { useAuthStore } from "@/application/stores/authStore";
 import {
   Search, LayoutDashboard, CalendarDays, FileBarChart2, TrendingUp,
   Activity, Heart, Footprints, Bike, Waves, Target, Flag, List,
-  Upload, Wrench, Settings, Flame, Shield, Users, Bot,
+  Upload, Wrench, Settings, Flame, Shield, Users,
 } from "lucide-react";
 
 interface CommandItem {

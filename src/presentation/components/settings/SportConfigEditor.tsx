@@ -4,7 +4,7 @@ import {
   useSportConfigs,
   useApplySportPreset,
 } from "@/application/hooks/athlete/useSportConfigs";
-import type { SportConfig, SportPreset } from "@/domain/types/sport.types";
+import type { SportPreset } from "@/domain/types/sport.types";
 import { SportIcon } from "@/presentation/components/shared/SportIcon";
 
 interface SportConfigEditorProps {
@@ -37,7 +37,7 @@ const PRESET_COLORS = [
 ];
 
 export default function SportConfigEditor({ athleteId }: SportConfigEditorProps) {
-  const { sportConfigs, loading, refetch } = useSportConfigs(athleteId);
+  const { loading, refetch } = useSportConfigs(athleteId);
   const { applyPreset, loading: presetLoading } = useApplySportPreset(athleteId);
   const getActiveSports = useAthleteStore((s) => s.getActiveSports);
 

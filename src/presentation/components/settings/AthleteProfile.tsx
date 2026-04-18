@@ -190,7 +190,6 @@ export default function AthleteProfile({ profile, isLoading, isSaving, onSave }:
     { key: "weeklyVolumeMax", label: "Vol. max", type: "number", unit: "timer", step: "0.5", group: "Traening", icon: Clock, iconColor: "text-muted-foreground", width: "max-w-[90px]" },
   ];
 
-  const isBaselineGroup = (g: string) => g !== "Personlig info";
 
   const renderFieldGroup = (group: string) => (
     <div className="grid gap-x-4 gap-y-3 grid-cols-2 sm:grid-cols-3">

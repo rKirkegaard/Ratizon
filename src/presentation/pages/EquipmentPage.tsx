@@ -26,7 +26,7 @@ export default function EquipmentPage() {
   const [modalOpen, setModalOpen] = useState(false);
 
   const items: Equipment[] = useMemo(() => {
-    const raw = equipmentData?.data ?? (Array.isArray(equipmentData) ? equipmentData : []) as Equipment[];
+    const raw = (equipmentData as any)?.data ?? (Array.isArray(equipmentData) ? equipmentData : []) as Equipment[];
     return raw;
   }, [equipmentData]);
 

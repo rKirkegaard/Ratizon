@@ -28,7 +28,6 @@ export default function LLMSettingsComponent({ athleteId }: LLMSettingsProps) {
   const updatePrefs = useUpdateLLMPreferences(athleteId);
 
   const [editBudget, setEditBudget] = useState<string>("");
-  const [showBudgetEdit, setShowBudgetEdit] = useState(false);
 
   if (sysLoading || prefsLoading) {
     return (

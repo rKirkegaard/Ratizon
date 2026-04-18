@@ -1,6 +1,5 @@
 import { useAthleteProfile } from "@/application/hooks/athlete/useAthleteProfile";
 import { parseMssToPaceSec } from "@/domain/utils/paceUtils";
-import { useAthleteStore } from "@/application/stores/athleteStore";
 import { Heart, Zap, TrendingUp } from "lucide-react";
 
 // IronCoach exact zone colors
@@ -25,8 +24,6 @@ export default function TrainingZones({ athleteId }: TrainingZonesProps) {
   const restingHr = profile?.restingHr;
   const ftp = profile?.ftp;
   const runThresholdPace = parseMssToPaceSec(profile?.runThresholdPace);
-  const swimCss = profile?.swimCss;
-
   // Karvonen HR zones: ((HRmax - HRrest) * %intensity) + HRrest
   const hrZones = maxHr && restingHr ? [
     { zone: 1, name: ZONE_NAMES[0], pctLow: 0.50, pctHigh: 0.60 },
@@ -125,7 +122,7 @@ export default function TrainingZones({ athleteId }: TrainingZonesProps) {
                 </div>
               ))}
             </div>
-            <div className="mt-1 text-[9px] text-muted-foreground">Taerskel: {fmtPace(runThresholdPace)}/km</div>
+            <div className="mt-1 text-[9px] text-muted-foreground">Taerskel: {fmtPace(runThresholdPace!)}/km</div>
           </div>
         )}
       </div>

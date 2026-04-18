@@ -1,8 +1,6 @@
 import { useMemo } from "react";
 import {
   endOfMonth,
-  startOfWeek,
-  addDays,
   addYears,
   subYears,
   format,
@@ -11,13 +9,12 @@ import {
   getISOWeek,
   parseISO,
 } from "date-fns";
-import { ChevronLeft, ChevronRight, Clock, MapPin } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock } from "lucide-react";
 import { SportIcon } from "@/presentation/components/shared/SportIcon";
 import { useAthleteStore } from "@/application/stores/athleteStore";
 import { formatDuration, formatDistance } from "@/domain/utils/formatters";
 import { PHASE_COLORS } from "@/domain/utils/phase-colors";
 import type { Session } from "@/domain/types/training.types";
-import type { SessionBrick } from "@/domain/types/brick.types";
 import type {
   CalendarEntry,
   CalendarPhase,
@@ -240,7 +237,7 @@ export default function YearView({
 
       {/* Month cards grid */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
-        {monthData.map(({ mi, ms, monthDuration, bySport, dailyBars, maxDayDuration, monthGoals, monthPhases, phaseSegments, daysInMonth }) => {
+        {monthData.map(({ mi, ms, monthDuration, bySport, dailyBars, maxDayDuration, monthGoals, phaseSegments, daysInMonth }) => {
           const isCurrent = mi === new Date().getMonth() && year === new Date().getFullYear();
           const hasARace = monthGoals.some((g) => g.racePriority === "A");
 
@@ -282,7 +279,7 @@ export default function YearView({
                           className="group relative"
                           style={{
                             flex: span,
-                            backgroundColor: seg.phase.color || PHASE_COLORS[seg.phase.phaseType] || "#6B7280",
+                            backgroundColor: (seg.phase as any).color || PHASE_COLORS[seg.phase.phaseType] || "#6B7280",
                           }}
                           title={seg.phase.phaseName}
                         >
@@ -330,7 +327,6 @@ export default function YearView({
                 {monthGoals.length > 0 && (
                   <div className="flex gap-px mb-0.5" style={{ height: 10 }}>
                     {Array.from({ length: daysInMonth }).map((_, di) => {
-                      const dayDate = new Date(year, mi, di + 1);
                       const dayGoals = monthGoals.filter((g) => {
                         if (!g.targetDate) return false;
                         const gd = new Date(g.targetDate);
@@ -390,7 +386,6 @@ export default function YearView({
                     const isMonday = d.getDay() === 1;
                     // ISO week number
                     const weekNum = isMonday ? (() => {
-                      const jan4 = new Date(d.getFullYear(), 0, 4);
                       const dayOfYear = Math.floor((d.getTime() - new Date(d.getFullYear(), 0, 1).getTime()) / 86400000) + 1;
                       const wday = d.getDay() || 7;
                       return Math.ceil((dayOfYear - wday + 10) / 7);

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, format,
 } from "date-fns";
-import { Calendar, ArrowLeftRight, Upload, Download, CheckSquare, Trash2, Brain } from "lucide-react";
+import { ArrowLeftRight, Upload, Download, CheckSquare, Trash2, Brain } from "lucide-react";
 import { useAthleteStore } from "@/application/stores/athleteStore";
 import {
   useCalendarSessions, useMoveSession, useDeleteSession,
@@ -46,7 +46,7 @@ export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [sportFilter, setSportFilter] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
-  const [createDate, setCreateDate] = useState<string | null>(null);
+  const [, setCreateDate] = useState<string | null>(null);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [importOpen, setImportOpen] = useState(false);

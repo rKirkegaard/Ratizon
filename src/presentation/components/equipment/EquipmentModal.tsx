@@ -74,14 +74,14 @@ export default function EquipmentModal({ open, onClose, athleteId, equipment }: 
     const payload = {
       equipmentType: category,
       name: name.trim(),
-      brand: brand || null,
-      model: model || null,
-      purchaseDate: purchaseDate || null,
+      brand: brand || undefined,
+      model: model || undefined,
+      purchaseDate: purchaseDate || undefined,
       initialKm: Number(initialKm) || 0,
       maxDistanceKm: retirementKm ? Number(retirementKm) : null,
       maxDurationHours: retirementHours ? Number(retirementHours) : null,
       isDefaultFor: isDefaultFor || null,
-      notes: notes || null,
+      notes: notes || undefined,
     };
 
     if (isEdit && equipment) {

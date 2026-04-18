@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Inbox, Check, X, CheckCheck, Calendar, Loader2, ChevronDown } from "lucide-react";
+import { Inbox, Check, X, CheckCheck, Calendar, Loader2 } from "lucide-react";
 import { useAthleteStore } from "@/application/stores/athleteStore";
 import {
   useRecommendations,
